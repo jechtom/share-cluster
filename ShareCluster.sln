@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26711.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShareCluster", "ShareCluster\ShareCluster.csproj", "{DA0A130C-1D0C-491A-A805-EDF606FDC146}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShareCluster", "ShareCluster.App\ShareCluster.csproj", "{214633D1-ABC6-4D12-92C2-C2D0DA35B8F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DA0A130C-1D0C-491A-A805-EDF606FDC146}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA0A130C-1D0C-491A-A805-EDF606FDC146}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA0A130C-1D0C-491A-A805-EDF606FDC146}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA0A130C-1D0C-491A-A805-EDF606FDC146}.Release|Any CPU.Build.0 = Release|Any CPU
+		{214633D1-ABC6-4D12-92C2-C2D0DA35B8F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{214633D1-ABC6-4D12-92C2-C2D0DA35B8F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{214633D1-ABC6-4D12-92C2-C2D0DA35B8F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{214633D1-ABC6-4D12-92C2-C2D0DA35B8F4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
