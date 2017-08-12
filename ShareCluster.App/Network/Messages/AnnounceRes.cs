@@ -1,23 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using ZeroFormatter;
+using ProtoBuf;
 
 namespace ShareCluster.Network.Messages
 {
-    [ZeroFormattable]
+    [ProtoContract]
     public class AnnounceRes
     {
-        [Index(0)]
+        [ProtoMember(1)]
         public virtual bool IsSuccess { get; set; }
 
-        [Index(1)]
+        [ProtoMember(2)]
         public virtual string FailReason { get; set; }
 
-        [Index(2)]
+        [ProtoMember(3)]
         public virtual int ServerVersion { get; set; }
 
-        [Index(3)]
+        [ProtoMember(4)]
         public virtual ICollection<ClusterDiscoveryItem> Clusters { get; set; }
     }
 }

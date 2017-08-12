@@ -1,11 +1,16 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ShareCluster
 {
+    [ProtoContract]
     public struct Hash : IEquatable<Hash>, IFormattable
     {
+        [ProtoMember(1)]
         public byte[] Data;
 
         public Hash(byte[] data)
@@ -21,6 +26,11 @@ namespace ShareCluster
         public override bool Equals(object obj)
         {
             return ((Hash)obj).Equals(this);
+        }
+
+        public string ToString(string format)
+        {
+            return ToString(format, CultureInfo.InvariantCulture);
         }
 
         public override string ToString()
@@ -48,9 +58,21 @@ namespace ShareCluster
 
         public string ToString(string format, IFormatProvider formatProvider)
         {
-            if(format == "s")
+            if (format != null)
             {
-                return ToString(3);
+                var match = Regex.Match(format, @"^s(?<bytes>\d+)?$");
+
+                if (match.Success)
+                {
+                    if (int.TryParse(match.Groups["bytes"]?.Value, out int bytes))
+                    {
+                        if (bytes >= 1 && bytes <= Data.Length)
+                        {
+                            return ToString(bytes);
+                        }
+                    }
+                    return ToString(4);
+                }
             }
 
             return ToString();

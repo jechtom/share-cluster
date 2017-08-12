@@ -1,14 +1,14 @@
-﻿using ZeroFormatter;
+﻿using ProtoBuf;
 
 namespace ShareCluster.Network.Messages
 {
-    [ZeroFormattable]
+    [ProtoContract]
     public class ClusterDiscoveryItem
     {
-        [Index(0)]
+        [ProtoMember(1)]
         public virtual byte[] Hash { get; set; }
 
-        [Index(1)]
+        [ProtoMember(2)]
         public virtual string Name { get; set; }
     }
 }

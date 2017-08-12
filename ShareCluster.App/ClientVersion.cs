@@ -1,11 +1,14 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace ShareCluster
 {
+    [ProtoContract]
     public struct ClientVersion : IEquatable<ClientVersion>, IComparable<ClientVersion>
     {
+        [ProtoMember(1)]
         public int Version;
 
         public ClientVersion(int version)
@@ -36,6 +39,14 @@ namespace ShareCluster
         public override string ToString()
         {
             return $"v{Version}";
+        }
+
+        public void ThrowIfNotCompatibleWith(ClientVersion version)
+        {
+            if(Version != version.Version)
+            {
+                throw new InvalidOperationException($"Local version {this} is incompatible with {version}.");
+            }
         }
     }
 }

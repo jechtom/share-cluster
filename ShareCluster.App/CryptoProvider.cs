@@ -10,24 +10,24 @@ namespace ShareCluster
         RandomNumberGenerator randomGenerator;
         Func<HashAlgorithm> hashAlgFactory;
         HashAlgorithm internalAlg;
-
-        public CryptoProvider()
-            : this(() => new SHA512CryptoServiceProvider())
-        {
-
-        }
-
+        
         public CryptoProvider(Func<HashAlgorithm> algorithmFactory)
         {
             randomGenerator = new RNGCryptoServiceProvider();
             hashAlgFactory = algorithmFactory ?? throw new ArgumentNullException(nameof(algorithmFactory));
             internalAlg = algorithmFactory();
             BytesLength = (internalAlg.HashSize + 7) / 8;
+
+            using (var hash = algorithmFactory())
+            {
+                EmptyHash = new Hash(hash.ComputeHash(new byte[0]));
+            }
         }
 
         public HashAlgorithm CreateHashAlgorithm() => hashAlgFactory();
 
         public int BytesLength { get; }
+        public Hash EmptyHash { get; }
 
         public Hash CreateRandom()
         {

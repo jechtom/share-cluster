@@ -29,7 +29,7 @@ namespace ShareCluster.Network
             {
                 var ip = new IPEndPoint(IPAddress.Broadcast, _settings.UdpAnnouncePort);
 
-                byte[] message = ZeroFormatter.ZeroFormatterSerializer.Serialize(new Messages.AnnounceReq()
+                byte[] message = _settings.MessageSerializer.Serialize(new Messages.AnnounceReq()
                 {
                     ClientApp = "ShareCluster.App",
                     ClientVersion = 1,
@@ -49,7 +49,7 @@ namespace ShareCluster.Network
                     try
                     {
                         var messageBytes = await client.ReceiveAsync().WithCancellation(timeout.Token);
-                        response = ZeroFormatter.ZeroFormatterSerializer.Deserialize<Messages.AnnounceRes>(messageBytes.Buffer);
+                        response = _settings.MessageSerializer.Deserialize<Messages.AnnounceRes>(messageBytes.Buffer);
                     }
                     catch(TaskCanceledException)
                     {
@@ -72,10 +72,10 @@ namespace ShareCluster.Network
             {
                 var rec = await client.ReceiveAsync();
                 Messages.AnnounceReq messageReq;
-                messageReq = ZeroFormatter.ZeroFormatterSerializer.Deserialize<Messages.AnnounceReq>(rec.Buffer);
+                messageReq = _settings.MessageSerializer.Deserialize<Messages.AnnounceReq>(rec.Buffer);
                 Console.WriteLine($"Received request from: {messageReq.ClientName}");
 
-                var bytes = ZeroFormatter.ZeroFormatterSerializer.Serialize(new Messages.AnnounceRes()
+                var bytes = _settings.MessageSerializer.Serialize(new Messages.AnnounceRes()
                 {
                     IsSuccess = true,
                     FailReason = null,

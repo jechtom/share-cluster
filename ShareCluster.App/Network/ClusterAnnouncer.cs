@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net;
+using System.IO;
 
 namespace ShareCluster.Network
 {
@@ -54,7 +55,7 @@ namespace ShareCluster.Network
                 try
                 {
                     Messages.AnnounceReq messageReq;
-                    messageReq = ZeroFormatter.ZeroFormatterSerializer.Deserialize<Messages.AnnounceReq>(rec.Buffer);
+                    messageReq = _settings.MessageSerializer.Deserialize<Messages.AnnounceReq>(rec.Buffer);
                     Console.WriteLine($"Received request from: {messageReq.ClientName}");
                 }
                 catch(TaskCanceledException)
@@ -68,15 +69,15 @@ namespace ShareCluster.Network
 
                 try
                 {
-                    var bytes = ZeroFormatter.ZeroFormatterSerializer.Serialize(new Messages.AnnounceRes()
-                    {
-                        IsSuccess = true,
-                        FailReason = null,
-                        ServerVersion = 1,
-                        Clusters = _clusters
-                    });
-
+                    byte[] bytes = _settings.MessageSerializer.Serialize(new Messages.AnnounceRes()
+                        {
+                            IsSuccess = true,
+                            FailReason = null,
+                            ServerVersion = 1,
+                            Clusters = _clusters
+                        });
                     await _client.SendAsync(bytes, bytes.Length, rec.RemoteEndPoint).WithCancellation(_cancel.Token);
+
                 }
                 catch (TaskCanceledException)
                 {

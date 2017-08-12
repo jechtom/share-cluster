@@ -1,20 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using ZeroFormatter;
+using ProtoBuf;
 
 namespace ShareCluster.Network.Messages
 {
-    [ZeroFormattable]
+    [ProtoContract]
     public class AnnounceReq
     {
-        [Index(0)]
+        [ProtoMember(1)]
         public virtual int ClientVersion { get; set; }
 
-        [Index(1)]
+        [ProtoMember(2)]
         public virtual string ClientApp { get; set; }
 
-        [Index(2)]
+        [ProtoMember(3)]
         public virtual string ClientName { get; set; }
     }
 }
