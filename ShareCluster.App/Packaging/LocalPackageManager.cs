@@ -17,13 +17,11 @@ namespace ShareCluster.Packaging
 
         private readonly ILogger<LocalPackageManager> logger;
         private readonly AppInfo app;
-        private readonly ILoggerFactory loggerFactory;
 
-        public LocalPackageManager(AppInfo app, ILoggerFactory loggerFactory)
+        public LocalPackageManager(AppInfo app)
         {
-            this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            this.logger = loggerFactory.CreateLogger<LocalPackageManager>();
             this.app = app ?? throw new ArgumentNullException(nameof(app));
+            this.logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
             PackageRepositoryPath = app.PackageRepositoryPath;
         }
         
@@ -35,7 +33,7 @@ namespace ShareCluster.Packaging
             foreach (var metaFilePath in metaFiles)
             {
                 string path = Path.GetDirectoryName(metaFilePath);
-                var reader = new FilePackageReader(loggerFactory, app.Crypto, app.MessageSerializer, app.Version, path);
+                var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.Version, path);
                 var meta = reader.ReadMetadata();
                 if(meta == null)
                 {
@@ -60,7 +58,7 @@ namespace ShareCluster.Packaging
             var packageBuilder = new PackageBuilder();
             
             // create writer - transfers physical files to packages
-            var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, loggerFactory);
+            var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
 
             // create parraler writer block
             var writeFileBlock = new ActionBlock<FolderCrawlerDiscoveredItem>(
@@ -69,7 +67,7 @@ namespace ShareCluster.Packaging
             );
 
             // file system crawler (to read files and folders)
-            var folderCrawlerSource = new FolderCrawler(folderToProcess, packageBuilder, loggerFactory);
+            var folderCrawlerSource = new FolderCrawler(folderToProcess, packageBuilder, app.LoggerFactory);
 
             // buffer crawler output
             var buffer = new BufferBlock<FolderCrawlerDiscoveredItem>();

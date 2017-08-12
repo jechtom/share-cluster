@@ -28,5 +28,17 @@ namespace ShareCluster
         {
             ProtoBuf.Serializer.Serialize(stream, value);
         }
+
+        public object Deserialize(Stream stream, Type type)
+        {
+            return ProtoBuf.Serializer.Deserialize(type, stream);
+        }
+
+        public T Deserialize<T>(Stream stream)
+        {
+            return ProtoBuf.Serializer.Deserialize<T>(stream);
+        }
+
+        public string MimeType => "application/protobuf";
     }
 }

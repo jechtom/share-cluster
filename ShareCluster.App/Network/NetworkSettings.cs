@@ -10,5 +10,6 @@ namespace ShareCluster.Network
         public UInt16 TcpCommunicationPort { get; set; } = 13978;
         public TimeSpan DiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
         public IMessageSerializer MessageSerializer { get; set; }
+        public TimeSpan DiscoveryTimer { get; internal set; } = TimeSpan.FromSeconds(30);
     }
 }
