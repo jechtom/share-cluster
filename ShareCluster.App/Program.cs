@@ -32,8 +32,7 @@ namespace ShareCluster
             var localPackageManager = new Packaging.LocalPackageManager(appInfo);
             
             var packageManager = new Packaging.PackageManager(appInfo, localPackageManager, peerManager);
-
-
+            
             var webHost = new WebHostBuilder()
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
