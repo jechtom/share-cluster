@@ -2,13 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Net;
 
 namespace ShareCluster.Network.Messages
 {
     [ProtoContract]
-    public class PackageMetaRequest
+    public class DiscoveryPeerData
     {
         [ProtoMember(1)]
-        public Hash PackageHash { get; set; }
+        public IPEndPoint ServiceEndpoint { get; set; }
     }
 }

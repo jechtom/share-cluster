@@ -2,29 +2,36 @@
 using ShareCluster.Network.Messages;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 
 namespace ShareCluster.Network
 {
-    public class HttpApiController
+    public class HttpApiController : IHttpApiController
     {
-        private readonly Packaging.PackageManager packageManager;
+        private readonly ClusterManager packageManager;
 
-        public HttpApiController(Packaging.PackageManager packageManager)
+        public HttpApiController(ClusterManager packageManager)
         {
             this.packageManager = packageManager ?? throw new ArgumentNullException(nameof(packageManager));
         }
 
         [HttpPost]
-        public PackageMetaResponse PackageMeta([FromBody]PackageMetaRequest request)
+        public PackageResponse Package([FromBody]PackageRequest request)
         {
-            return packageManager.GetPackageMeta(request);
+            return packageManager.GetPackage(request);
         }
 
         [HttpPost]
-        public StatusResponse Status()
+        public DiscoveryMessage Discovery([FromBody]DiscoveryMessage request)
         {
-            return packageManager.GetStatus();
+            var address = RemoteIpAddress;
+            packageManager.ProcessDiscoveryMessage(request, address);
+            return packageManager.CreateDiscoveryMessage();
         }
+
+        public IPAddress RemoteIpAddress { get; set; }
+        public Hash InstanceHash { get; set; }
+        public bool IsLoopback { get; set; }
     }
 }

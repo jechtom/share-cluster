@@ -41,12 +41,21 @@ namespace ShareCluster
             return $"v{Version}";
         }
 
-        public void ThrowIfNotCompatibleWith(ClientVersion version)
+        public bool IsCompatibleWith(ClientVersion version)
         {
-            if(Version != version.Version)
+            return Version == version.Version;
+        }
+
+        public static bool TryParse(string valueString, out ClientVersion version)
+        {
+            if(valueString == null || !valueString.StartsWith("v") || !int.TryParse(valueString.Substring(1), out int versionInt))
             {
-                throw new InvalidOperationException($"Local version {this} is incompatible with {version}.");
+                version = default(ClientVersion);
+                return false;
             }
+
+            version = new ClientVersion(versionInt);
+            return true;
         }
     }
 }

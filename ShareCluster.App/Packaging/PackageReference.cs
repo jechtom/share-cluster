@@ -7,7 +7,7 @@ namespace ShareCluster.Packaging
     public class PackageReference
     {
         public Dto.PackageMeta Meta { get; set; }
-        public string SourceFolder { get; set; }
-        public string SourceFolderName => FileHelper.GetFileOrDirectoryName(SourceFolder);
+        public string MetaPath { get; set; }
+        public string SourceFolderName => FileHelper.GetFileOrDirectoryName(MetaPath);
     }
 }

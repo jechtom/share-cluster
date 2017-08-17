@@ -6,18 +6,18 @@ using System.Threading.Tasks;
 
 namespace ShareCluster.Network
 {
-    public class HttpInputFormatter : IInputFormatter, IOutputFormatter
+    public class HttpFormatter : IInputFormatter, IOutputFormatter
     {
         private readonly IMessageSerializer serializer;
 
-        public HttpInputFormatter(IMessageSerializer serializer)
+        public HttpFormatter(IMessageSerializer serializer)
         {
             this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         }
 
         bool IInputFormatter.CanRead(InputFormatterContext context)
         {
-            if (!context.HttpContext.Request.ContentType.Equals(serializer.MimeType, StringComparison.OrdinalIgnoreCase))
+            if (!(context.HttpContext.Request.ContentType ?? "").Equals(serializer.MimeType, StringComparison.OrdinalIgnoreCase))
                 return false;
             return true;
         }

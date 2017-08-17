@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Primitives;
 
 namespace ShareCluster
 {
@@ -81,6 +82,41 @@ namespace ShareCluster
         public string ToString(int bytes)
         {
             return BitConverter.ToString(Data, 0, bytes).Replace("-", string.Empty);
+        }
+
+        public static bool TryParse(StringValues valueString, out Hash hash)
+        {
+            if(!TryConvertHexStringToByteArray(valueString, out byte[] bytes))
+            {
+                hash = default(Hash);
+                return false;
+            }
+
+            hash = new Hash(bytes);
+            return true;
+        }
+
+        public static bool TryConvertHexStringToByteArray(string hexString, out byte[] result)
+        {
+            if (hexString.Length % 2 != 0)
+            {
+                result = null;
+                return false;
+            }
+
+            result = new byte[hexString.Length / 2];
+            for (int index = 0; index < result.Length; index++)
+            {
+                string byteValue = hexString.Substring(index * 2, 2);
+                if(!byte.TryParse(byteValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out byte b))
+                {
+                    result = null;
+                    return false;
+                }
+                result[index] = b;
+            }
+
+            return true;
         }
     }
 }

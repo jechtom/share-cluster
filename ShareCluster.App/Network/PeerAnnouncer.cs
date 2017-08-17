@@ -15,6 +15,7 @@ namespace ShareCluster.Network
     public class PeerAnnouncer : IDisposable
     {
         private readonly ILogger<PeerAnnouncer> logger;
+        private readonly CompatibilityChecker compatibilityChecker;
         private readonly IPeerRegistry registry;
         private readonly NetworkSettings settings;
         private readonly AnnounceMessage announce;
@@ -23,9 +24,10 @@ namespace ShareCluster.Network
         private CancellationTokenSource cancel;
         private Task task;
 
-        public PeerAnnouncer(ILoggerFactory loggerFactory, IPeerRegistry registry, NetworkSettings settings, AnnounceMessage announce)
+        public PeerAnnouncer(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, AnnounceMessage announce)
         {
             this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PeerAnnouncer>();
+            this.compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
             this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.announce = announce ?? throw new ArgumentNullException(nameof(announce));
@@ -61,8 +63,16 @@ namespace ShareCluster.Network
                 {
                     AnnounceMessage messageReq;
                     messageReq = settings.MessageSerializer.Deserialize<AnnounceMessage>(rec.Buffer);
+                    if(messageReq.CorrelationHash.Equals(announce.CorrelationHash))
+                    {
+                        continue; // own request
+                    }
+
+                    var endpoint = new IPEndPoint(rec.RemoteEndPoint.Address, messageReq.ServicePort);
+                    if (!compatibilityChecker.IsCompatibleWith(endpoint, messageReq.Version)) continue;
+                    registry.RegisterPeer(new PeerInfo(endpoint, isDirectDiscovery: true));
+
                     logger.LogTrace($"Received request from {rec.RemoteEndPoint.Address}.");
-                    registry.RegisterPeer(new PeerInfo(messageReq, rec.RemoteEndPoint.Address));
                 }
                 catch(OperationCanceledException)
                 {
@@ -71,6 +81,7 @@ namespace ShareCluster.Network
                 catch(Exception e)
                 {
                     logger.LogDebug($"Cannot read message from {rec.RemoteEndPoint}. Reason: {e.Message}");
+                    continue;
                 }
 
                 try

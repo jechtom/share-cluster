@@ -20,6 +20,7 @@ namespace ShareCluster.Packaging
         private readonly PackageBuilder builder;
         private readonly CryptoProvider crypto;
         private readonly IMessageSerializer serializer;
+        public string packageStoragePath;
 
         public FilePackageWriter(PackageBuilder builder, CryptoProvider crypto, IMessageSerializer serializer, string packageStoragePath, ILoggerFactory loggerFactory)
         {
@@ -29,9 +30,7 @@ namespace ShareCluster.Packaging
             this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             this.packageStoragePath = packageStoragePath ?? throw new ArgumentNullException(nameof(packageStoragePath));
         }
-
-        public string packageStoragePath;
-
+        
         public CryptoProvider Crypto => crypto;
         
         public ReserverStreamInfo ReserveStreamForSize(long requiredLength)
@@ -126,7 +125,7 @@ namespace ShareCluster.Packaging
             currentBlock.BlockHashStream = new CryptoStream(currentBlock.FileStream, currentBlock.HashAlgorithm, CryptoStreamMode.Write);
         }
 
-        public PackageMeta WritePackageDefinition(Package package)
+        public PackageReference WritePackageDefinition(Package package, bool isDownloaded, Hash? expectedHash)
         {
             var info = new PackageMeta();
 
@@ -139,11 +138,23 @@ namespace ShareCluster.Packaging
                 info.PackageHash = new Hash(hashAlg.Hash);
                 info.Version = package.Version;
                 info.Size = fileStream.Length + package.Blocks.Sum(b => b.Size);
+                info.IsDownloaded = isDownloaded;
+                info.LocalCopyPackageParts = new PackageParts(info.Size, initialState: isDownloaded).BitmapData;
             }
 
-            File.WriteAllBytes(Path.Combine(packageStoragePath, LocalPackageManager.PackageMetaFileName), serializer.Serialize(info));
+            if(expectedHash != null && !info.PackageHash.Equals(expectedHash))
+            {
+                throw new InvalidOperationException($"Expected hash is {expectedHash} but computed hash is {info.PackageHash}.");
+            }
 
-            return info;
+            string metaFilePath = Path.Combine(packageStoragePath, LocalPackageManager.PackageMetaFileName);
+            File.WriteAllBytes(metaFilePath, serializer.Serialize(info));
+
+            return new PackageReference()
+            {
+                Meta = info,
+                MetaPath = metaFilePath
+            };
         }
 
         private class BlockWriter

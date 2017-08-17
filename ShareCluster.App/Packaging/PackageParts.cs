@@ -14,12 +14,19 @@ namespace ShareCluster.Packaging
             BitmapData = bitmapData;
         }
 
-        public PackageParts(long size)
+        public PackageParts(long size, bool initialState)
         {
             long partsCount = (size + PartSize - 1) / PartSize;
             long bitmapLength = (partsCount + 7) / 8;
-            BitmapData = new byte[size];
+            BitmapData = new byte[bitmapLength];
 
+            if (initialState)
+            {
+                for (int i = 0; i < bitmapLength; i++)
+                {
+                    BitmapData[i] = 0xFF;
+                }
+            }
         }
 
         public byte[] BitmapData { get; set; }

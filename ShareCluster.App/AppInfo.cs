@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -8,9 +9,19 @@ namespace ShareCluster
 {
     public class AppInfo
     {
-        public static AppInfo CreateCurrent(ILoggerFactory loggerFactory)
+        public static AppInfo CreateCurrent()
         {
-            return new AppInfo()
+            var loggerFactory = new LoggerFactory().AddConsole(new ConsoleLoggerSettings()
+            {
+                Switches = new Dictionary<string, LogLevel>()
+                    {
+                        { "Default", LogLevel.Trace },
+                        { "System", LogLevel.Information },
+                        { "Microsoft", LogLevel.Information }
+                    }
+            });
+
+            var result = new AppInfo()
             {
                 Crypto = new CryptoProvider(() => new SHA256CryptoServiceProvider()),
                 MessageSerializer = new ProtoBufMessageSerializer(),
@@ -21,6 +32,11 @@ namespace ShareCluster
                 },
                 LoggerFactory = loggerFactory
             };
+
+            result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(), result.Version);
+            result.InstanceHash = new InstanceHash(result.Crypto);
+
+            return result;
         }
 
         public void LogStart()
@@ -37,5 +53,7 @@ namespace ShareCluster
         public ILoggerFactory LoggerFactory { get; set; }
         public string App => "ShareCluster.App";
         public string InstanceName { get; set; }
+        public CompatibilityChecker CompatibilityChecker { get; private set; }
+        public InstanceHash InstanceHash { get; private set; }
     }
 }

@@ -18,7 +18,7 @@ namespace ShareCluster.Packaging.Dto
         public long Size { get; set; }
 
         [ProtoMember(4)]
-        public bool IsLocalCopy { get; set; }
+        public bool IsDownloaded { get; set; }
 
         [ProtoMember(5)]
         public byte[] LocalCopyPackageParts { get; set; }

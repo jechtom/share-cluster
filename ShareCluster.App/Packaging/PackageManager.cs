@@ -1,55 +1,84 @@
-﻿using ShareCluster.Network.Messages;
-using System;
-using System.Linq;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using ShareCluster.Network.Messages;
+using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Packaging
 {
     public class PackageManager
     {
-        private readonly AppInfo appInfo;
         private readonly LocalPackageManager localPackageManager;
-        private readonly Network.PeerManager peerManager;
-        private readonly object packageLock = new object();
         private Dictionary<Hash, PackageReference> packages;
+        private Hash[] packagesHashes;
+        private readonly object packagesLock = new object();
 
-        public PackageManager(AppInfo appInfo, LocalPackageManager localPackageManager, Network.PeerManager peerManager)
+        public PackageManager(LocalPackageManager localPackageManager)
         {
-            this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             this.localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
-            this.peerManager = peerManager ?? throw new ArgumentNullException(nameof(peerManager));
             Init();
         }
+
+        public Hash[] PackagesHashes => packagesHashes;
 
         private void Init()
         {
             packages = new Dictionary<Hash, PackageReference>();
-            foreach (var p in localPackageManager.ListPackages()) packages.Add(p.Meta.PackageHash, p);
+            UpdatePackages(localPackageManager.ListPackages());
         }
 
-        public StatusResponse GetStatus()
+        private void UpdatePackages(IEnumerable<PackageReference> newPackages)
         {
-            lock (packageLock)
+            lock (packagesLock)
             {
-                var result = new StatusResponse();
-                result.Packages = packages.Values.Select(v => v.Meta).ToArray();
-                result.Nodes = peerManager.GetPeersAnnounces().Select(pi => new PeerData() { Address = pi.Address, Announce = pi.Announce }).ToArray();
-                return result;
+                packages = newPackages.ToDictionary(p => p.Meta.PackageHash);
+                packagesHashes = packages.Values.Select(p => p.Meta.PackageHash).ToArray();
             }
         }
 
-        public PackageMetaResponse GetPackageMeta(PackageMetaRequest request)
+        public Hash[] GetMissingPackages(IEnumerable<Hash> packageMeta)
         {
-            lock(packageLock)
+            lock (packagesLock)
             {
-                var result = new PackageMetaResponse();
-                if(packages.TryGetValue(request.PackageHash, out PackageReference val))
+                // check for new
+                var packagesToAdd = packageMeta.Where(pm => !packages.ContainsKey(pm)).ToArray();
+                return packagesToAdd;
+            }
+        }
+
+        public void RegisterPackage(string folderName, PackageMeta meta, Package package)
+        {
+            lock (packagesLock)
+            {
+                var reference = localPackageManager.RegisterPackage(folderName, meta, package);
+                if (packages.ContainsKey(reference.Meta.PackageHash))
                 {
-                    result.Meta = val.Meta;
+                    throw new InvalidOperationException("Registering package with existing hash. Some registration check probably failed.");
                 }
-                return result;
+                UpdatePackages(packages.Values.Concat(new PackageReference[] { reference }));
             }
+        }
+
+        public PackageResponse ReadPackage(Hash packageHash)
+        {
+            PackageReference reference;
+            lock (packagesLock)
+            {
+                if(!packages.TryGetValue(packageHash, out reference))
+                {
+                    return null;
+                }
+            }
+
+            var package = localPackageManager.GetPackage(reference);
+
+            return new PackageResponse()
+            {
+                Meta = reference.Meta,
+                FolderName = reference.SourceFolderName,
+                Package = package
+            };
         }
     }
 }

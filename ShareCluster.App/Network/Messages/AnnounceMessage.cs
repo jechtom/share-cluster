@@ -6,7 +6,7 @@ using ProtoBuf;
 namespace ShareCluster.Network.Messages
 {
     [ProtoContract]
-    public class AnnounceMessage
+    public class AnnounceMessage : IMessage
     {
         [ProtoMember(1)]
         public virtual ClientVersion Version { get; set; }

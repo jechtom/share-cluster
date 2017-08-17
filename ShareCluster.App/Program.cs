@@ -5,12 +5,16 @@ using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using ShareCluster.Network;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ShareCluster
 {
@@ -18,49 +22,41 @@ namespace ShareCluster
     {
         static void Main(string[] args)
         {
+            // instance 1
             var configurationBuilder = new ConfigurationBuilder();
             var configuration = configurationBuilder.Build();
 
-            var appInfo = AppInfo.CreateCurrent(
-                new LoggerFactory().AddConsole(LogLevel.Trace)
-            );
+            var appInfo = AppInfo.CreateCurrent();
             appInfo.PackageRepositoryPath = @"c:\temp\temp";
             appInfo.LogStart();
             appInfo.InstanceName = "Test";
 
             var peerManager = new Network.PeerManager(appInfo);
             var localPackageManager = new Packaging.LocalPackageManager(appInfo);
+            var packageManager = new Packaging.PackageManager(localPackageManager);
+            var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
             
-            var packageManager = new Packaging.PackageManager(appInfo, localPackageManager, peerManager);
-            
-            var webHost = new WebHostBuilder()
-                .UseKestrel()
-                .UseContentRoot(Directory.GetCurrentDirectory())
-                .UseConfiguration(configuration)
-                .ConfigureServices(s =>
-                {
-                    s.AddSingleton(appInfo);
-                    s.AddSingleton(appInfo.LoggerFactory);
-                    s.AddSingleton(appInfo.MessageSerializer);
-                    s.AddSingleton(packageManager);
-                })
-                .ConfigureLogging((hostingContext, logging) => { /* setup logging */  })
-                .UseUrls($"http://+:{appInfo.NetworkSettings.TcpCommunicationPort}")
-                .UseStartup<HttpStartup>()
-                .Build();
+            var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);
+
+            var webHost = new HttpWebHost(appInfo, clusterManager);
             webHost.Start();
 
             peerManager.EnableAutoSearch();
 
-            var client = new HttpApiClient(appInfo.MessageSerializer);
-            var responseStatus = client.GetStatus(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, appInfo.NetworkSettings.TcpCommunicationPort));
+            //var responseStatus = client.GetStatus(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, appInfo.NetworkSettings.TcpCommunicationPort), clusterManager.CreateDiscoveryMessage());
+
+
+            Task.Run(() => { CreateInstance2(); });
+
+
+            //localPackageManager.CreatePackageFromFolder(@"c:\SamplesWCF\");
+
 
             Thread.Sleep(Timeout.InfiniteTimeSpan);
 
             return;
 
-            //localPackageManager.CreatePackageFromFolder(@"c:\My\Courses\WUG 2017 - ASP.NET Core 2 Preview\");
-
+            
             return;
 
             //using (var announcer = new Network.ClusterAnnouncer(settings, clusters))
@@ -73,6 +69,35 @@ namespace ShareCluster
 
             //    Console.ReadLine();
             //}
+        }
+
+        private static void CreateInstance2()
+        {
+            var configurationBuilder = new ConfigurationBuilder();
+            var configuration = configurationBuilder.Build();
+
+            var appInfo = AppInfo.CreateCurrent();
+            appInfo.NetworkSettings.TcpCommunicationPort+=10;
+            appInfo.NetworkSettings.UdpAnnouncePort+=10;
+            appInfo.PackageRepositoryPath = @"c:\temp\temp2";
+            appInfo.LogStart();
+            appInfo.InstanceName = "Test2";
+
+            var peerManager = new Network.PeerManager(appInfo);
+            var localPackageManager = new Packaging.LocalPackageManager(appInfo);
+            var packageManager = new Packaging.PackageManager(localPackageManager);
+            var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
+
+            var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);
+
+            var webHost = new HttpWebHost(appInfo, clusterManager);
+            webHost.Start();
+
+            peerManager.EnableAutoSearch();
+
+            clusterManager.AddPermanentEndpoint(new IPEndPoint(IPAddress.Loopback, 13978));
+
+            Thread.Sleep(Timeout.InfiniteTimeSpan);
         }
     }
 }

@@ -19,17 +19,19 @@ namespace ShareCluster.Network
         private PeerDiscovery discovery;
         private Timer timer;
         private Dictionary<IPEndPoint, PeerInfoDetail> peers;
+        private DiscoveryPeerData[] peersDiscoveryData;
         private readonly object peersLock = new object();
 
         public PeerManager(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
             this.peers = new Dictionary<IPEndPoint, PeerInfoDetail>();
+            this.peersDiscoveryData = new DiscoveryPeerData[0];
             this.logger = app.LoggerFactory.CreateLogger<PeerManager>();
 
             announceMessage = new AnnounceMessage()
             {
-                CorrelationHash = app.Crypto.CreateRandom(),
+                CorrelationHash = app.InstanceHash.Hash,
                 App = app.App,
                 InstanceName = app.InstanceName,
                 Version = app.Version,
@@ -52,7 +54,7 @@ namespace ShareCluster.Network
             }
         }
 
-        
+        public AnnounceMessage AnnounceMessage => announceMessage;
 
         public void EnableAutoSearch()
         {
@@ -60,11 +62,11 @@ namespace ShareCluster.Network
             announceResponseEnabled = true;
             
             // enable announcer
-            announcer = new PeerAnnouncer(app.LoggerFactory, this, app.NetworkSettings, announceMessage);
+            announcer = new PeerAnnouncer(app.LoggerFactory, app.CompatibilityChecker, this, app.NetworkSettings, announceMessage);
             announcer.Start();
 
             // timer discovery
-            discovery = new PeerDiscovery(app.LoggerFactory, app.NetworkSettings, announceMessage, this);
+            discovery = new PeerDiscovery(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, this);
             timer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         }
 
@@ -76,39 +78,63 @@ namespace ShareCluster.Network
                 timer.Change(app.NetworkSettings.DiscoveryTimer, Timeout.InfiniteTimeSpan);
             });
         }
+        
+        public void RegisterPeer(PeerInfo discoveredPeer) => RegisterPeer(new[] { discoveredPeer });
 
-        public PeerInfo[] GetPeersAnnounces()
+        public void RegisterPeer(IEnumerable<PeerInfo> discoveredPeers)
         {
+            List<PeerInfo> newPeers = null;
+
             lock(peersLock)
             {
-                return peers.Values.Select(v => v.Info).ToArray();
+                bool peerDiscoveryChanged = false;
+                foreach (var peer in discoveredPeers)
+                {
+                    if(!peers.TryGetValue(peer.ServiceEndPoint, out PeerInfoDetail detail))
+                    {
+                        peerDiscoveryChanged = true;
+
+                        detail = new PeerInfoDetail();
+                        peers.Add(peer.ServiceEndPoint, detail);
+
+                        logger.LogTrace("Found new peer at {0}; flags: {1}", peer.ServiceEndPoint, 
+                            peer.IsLoopback ? "Loopback" : "",
+                            peer.IsDirectDiscovery ? "DirectDiscovery" : "",
+                            peer.IsOtherPeerDiscovery ? "OtherPeerDiscovery" : "",
+                            peer.IsPermanent ? "Permanent" : ""
+                        );
+
+                        (newPeers ?? (newPeers = new List<PeerInfo>())).Add(peer);
+                    }
+
+                    UpdatePeerDetail(detail, peer);
+                }
+
+                // regenerate prepared list
+                if (peerDiscoveryChanged)
+                {
+                    peersDiscoveryData = peers.Select(p => new DiscoveryPeerData() { ServiceEndpoint = p.Value.Info.ServiceEndPoint }).ToArray();
+                }
+            }
+
+            if(newPeers != null)
+            {
+                PeerFound?.Invoke(newPeers);
             }
         }
 
-        public void RegisterPeer(PeerInfo peer)
+        private void UpdatePeerDetail(PeerInfoDetail detail, PeerInfo peer)
         {
-            if(peer.Announce.CorrelationHash.Equals(announceMessage.CorrelationHash))
+            if(detail.Info == null)
             {
-                return; // own response
+                detail.Info = peer;
             }
-
-            lock(peersLock)
+            else
             {
-                if(peers.ContainsKey(peer.ServiceEndPoint))
-                {
-                    peers[peer.ServiceEndPoint] = new PeerInfoDetail()
-                    {
-                        Info = peer
-                    };
-                }
-                else
-                {
-                    peers.Add(peer.ServiceEndPoint, new PeerInfoDetail()
-                    {
-                        Info = peer
-                    });
-                    logger.LogTrace("Found new peer at {0}", peer.ServiceEndPoint);
-                }
+                detail.Info.IsDirectDiscovery |= peer.IsDirectDiscovery;
+                detail.Info.IsLoopback |= peer.IsLoopback;
+                detail.Info.IsPermanent |= peer.IsPermanent;
+                detail.Info.IsOtherPeerDiscovery |= peer.IsOtherPeerDiscovery;
             }
         }
 
@@ -116,5 +142,9 @@ namespace ShareCluster.Network
         {
             public PeerInfo Info { get; set; }
         }
+
+        public DiscoveryPeerData[] PeersDiscoveryData => peersDiscoveryData;
+
+        public event Action<IEnumerable<PeerInfo>> PeerFound;
     }
 }

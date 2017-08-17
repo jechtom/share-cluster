@@ -12,16 +12,16 @@ namespace ShareCluster.Packaging
         private ILogger<FilePackageReader> logger;
         private CryptoProvider crypto;
         private IMessageSerializer messageSerializer;
-        private ClientVersion version;
+        private CompatibilityChecker compatibilityChecker;
         private string path;
         private Lazy<PackageReference> metadataLazy;
 
-        public FilePackageReader(ILoggerFactory loggerFactory, CryptoProvider crypto, IMessageSerializer messageSerializer, ClientVersion version, string path)
+        public FilePackageReader(ILoggerFactory loggerFactory, CryptoProvider crypto, IMessageSerializer messageSerializer, CompatibilityChecker compatibilityChecker, string path)
         {
             this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<FilePackageReader>();
             this.crypto = crypto ?? throw new ArgumentNullException(nameof(crypto));
             this.messageSerializer = messageSerializer ?? throw new ArgumentNullException(nameof(messageSerializer));
-            this.version = version;
+            this.compatibilityChecker = compatibilityChecker;
             this.path = path;
 
             metadataLazy = new Lazy<PackageReference>(ReadMetadataInternal);
@@ -39,9 +39,9 @@ namespace ShareCluster.Packaging
                 {
                     throw new InvalidOperationException("Cannot deserialize file.");
                 }
-            
+
                 // check compatibility
-                version.ThrowIfNotCompatibleWith(meta.Version);
+                compatibilityChecker.ThrowIfNotCompatibleWith(path, meta.Version);
             }
             catch (Exception e)
             {
@@ -52,13 +52,38 @@ namespace ShareCluster.Packaging
             return new PackageReference()
             {
                 Meta = meta,
-                SourceFolder = path
+                MetaPath = path
             };
         }
 
         public PackageReference ReadMetadata()
         {
             return metadataLazy.Value;
+        }
+
+        public Package ReadPackage()
+        {
+            var packageFile = Path.Combine(path, LocalPackageManager.PackageFileName);
+            Package package;
+            try
+            {
+                package = messageSerializer.Deserialize<Package>(File.ReadAllBytes(packageFile));
+
+                if (package == null)
+                {
+                    throw new InvalidOperationException("Cannot deserialize file.");
+                }
+
+                // check compatibility
+                compatibilityChecker.ThrowIfNotCompatibleWith(path, package.Version);
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning("Cannot read or deserialize data file: {0}. Error: {1}", packageFile, e.Message);
+                return null;
+            }
+
+            return package;
         }
     }
 }

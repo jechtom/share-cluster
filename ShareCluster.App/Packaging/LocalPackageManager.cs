@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
+using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Packaging
 {
@@ -29,26 +30,36 @@ namespace ShareCluster.Packaging
 
         public IEnumerable<PackageReference> ListPackages()
         {
+            EnsurePath();
+
             string[] metaFiles = Directory.GetFiles(PackageRepositoryPath, PackageMetaFileName, SearchOption.AllDirectories);
+            int cnt = 0;
             foreach (var metaFilePath in metaFiles)
             {
                 string path = Path.GetDirectoryName(metaFilePath);
-                var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.Version, path);
+                var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
                 var meta = reader.ReadMetadata();
                 if(meta == null)
                 {
                     continue;
                 }
+                cnt++;
                 yield return meta;
             }
+            logger.LogInformation("Found {0} packages.", cnt);
         }
 
-        public void CreatePackageFromFolder(string folderToProcess)
+        private void EnsurePath()
+        {
+            Directory.CreateDirectory(PackageRepositoryPath);
+        }
+
+        public PackageReference CreatePackageFromFolder(string folderToProcess)
         {
             var operationMeasure = Stopwatch.StartNew();
 
             // storage folder for package
-            Directory.CreateDirectory(PackageRepositoryPath);
+            EnsurePath();
             string packagePath = FileHelper.FindFreeFolderName(Path.Combine(PackageRepositoryPath, FileHelper.GetFileOrDirectoryName(folderToProcess)));
             Directory.CreateDirectory(packagePath);
             string name = Path.GetFileName(packagePath);
@@ -82,10 +93,41 @@ namespace ShareCluster.Packaging
             // close block and write definition and meta file
             filesWriter.CloseCurrentBlock();
             var package = packageBuilder.Build();
-            var meta = filesWriter.WritePackageDefinition(package);
-            
+            var metaReference = filesWriter.WritePackageDefinition(package, isDownloaded: true, expectedHash: null);
+            PackageMeta meta = metaReference.Meta;
+
+
             operationMeasure.Stop();
             logger.LogInformation($"Created package \"{name}\":\nHash: {meta.PackageHash:s16}\nSize: {SizeFormatter.ToString(meta.Size)}\nFiles and directories: {package.Items.Count}\nTime: {operationMeasure.Elapsed}\nFolder: {packagePath}");
+
+            return metaReference;
+        }
+
+        public Package GetPackage(PackageReference reference)
+        {
+            // read
+            string path = Path.GetDirectoryName(reference.MetaPath);
+            var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
+            return reader.ReadPackage();
+        }
+
+        public PackageReference RegisterPackage(string folderName, PackageMeta meta, Package package)
+        {
+            // storage folder for package
+            EnsurePath();
+            string packagePath = FileHelper.FindFreeFolderName(Path.Combine(PackageRepositoryPath, folderName));
+            Directory.CreateDirectory(packagePath);
+            string name = Path.GetFileName(packagePath);
+
+            // builder and writer
+            var packageBuilder = new PackageBuilder();
+            var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
+
+            // writer
+            var newMeta = filesWriter.WritePackageDefinition(package, isDownloaded: false, expectedHash: meta.PackageHash);
+            logger.LogInformation($"New package added to repository. Size: {SizeFormatter.ToString(meta.Size)}. Hashs: {meta.PackageHash:s4}");
+
+            return newMeta;
         }
     }
 }
