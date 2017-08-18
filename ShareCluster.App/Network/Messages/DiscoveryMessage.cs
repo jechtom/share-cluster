@@ -2,6 +2,7 @@
 using ShareCluster.Packaging.Dto;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 
 namespace ShareCluster.Network.Messages
@@ -20,5 +21,8 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(4)]
         public ushort ServicePort { get; set; }
+
+        [ProtoMember(5)]
+        public IPEndPoint PeerEndpoint { get; set; }
     }
 }

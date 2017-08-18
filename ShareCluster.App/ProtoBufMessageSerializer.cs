@@ -10,10 +10,18 @@ namespace ShareCluster
 {
     public class ProtoBufMessageSerializer : IMessageSerializer
     {
-        public ProtoBufMessageSerializer()
+        private readonly bool inspectMessages;
+
+        static ProtoBufMessageSerializer()
         {
+            // these types cannot be serialized - replace then with surrogate on wire
             RuntimeTypeModel.Default[typeof(IPAddress)].SetSurrogate(typeof(IPAddressSurrogate));
             RuntimeTypeModel.Default[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
+        }
+
+        public ProtoBufMessageSerializer(bool inspectMessages)
+        {
+            this.inspectMessages = inspectMessages;
         }
 
         public byte[] Serialize<T>(T value)
@@ -27,9 +35,13 @@ namespace ShareCluster
 
         public T Deserialize<T>(byte[] bytes)
         {
-            using (var memStream = new MemoryStream(bytes))
+            using (var ms = new MemoryStream(bytes))
             {
-                return ProtoBuf.Serializer.Deserialize<T>(memStream);
+                if(inspectMessages)
+                {
+                    InspectOnDeserialization(ms);
+                }
+                return ProtoBuf.Serializer.Deserialize<T>(ms);
             }
         }
 
@@ -40,12 +52,39 @@ namespace ShareCluster
 
         public object Deserialize(Stream stream, Type type)
         {
+            if(inspectMessages)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    ms.Position = 0;
+                    InspectOnDeserialization(ms);
+                    return ProtoBuf.Serializer.Deserialize(type, ms);
+                }
+            }
+
             return ProtoBuf.Serializer.Deserialize(type, stream);
         }
 
         public T Deserialize<T>(Stream stream)
         {
+            if (inspectMessages)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    ms.Position = 0;
+                    InspectOnDeserialization(ms);
+                    return ProtoBuf.Serializer.Deserialize<T>(ms);
+                }
+            }
+
             return ProtoBuf.Serializer.Deserialize<T>(stream);
+        }
+
+        private void InspectOnDeserialization(MemoryStream ms)
+        {
+            ms.Position = 0; // return back for further processing
         }
 
         public string MimeType => "application/protobuf";

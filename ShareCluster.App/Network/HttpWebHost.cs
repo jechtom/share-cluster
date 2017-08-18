@@ -46,7 +46,7 @@ namespace ShareCluster.Network
                     s.AddSingleton(appInfo.InstanceHash);
                     s.AddLogging();
                 })
-                .UseUrls($"http://*:{appInfo.NetworkSettings.TcpCommunicationPort}")
+                .UseUrls($"http://*:{appInfo.NetworkSettings.TcpServicePort}")
                 .UseStartup<HttpStartup>()
                 .Build();
             webHost.Start();

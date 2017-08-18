@@ -33,7 +33,7 @@ namespace ShareCluster
 
             var peerManager = new Network.PeerManager(appInfo);
             var localPackageManager = new Packaging.LocalPackageManager(appInfo);
-            var packageManager = new Packaging.PackageManager(localPackageManager);
+            var packageManager = new Packaging.PackageManager(appInfo.LoggerFactory, localPackageManager);
             var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
             
             var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);
@@ -77,7 +77,7 @@ namespace ShareCluster
             var configuration = configurationBuilder.Build();
 
             var appInfo = AppInfo.CreateCurrent();
-            appInfo.NetworkSettings.TcpCommunicationPort+=10;
+            appInfo.NetworkSettings.TcpServicePort+=10;
             appInfo.NetworkSettings.UdpAnnouncePort+=10;
             appInfo.PackageRepositoryPath = @"c:\temp\temp2";
             appInfo.LogStart();
@@ -85,7 +85,7 @@ namespace ShareCluster
 
             var peerManager = new Network.PeerManager(appInfo);
             var localPackageManager = new Packaging.LocalPackageManager(appInfo);
-            var packageManager = new Packaging.PackageManager(localPackageManager);
+            var packageManager = new Packaging.PackageManager(appInfo.LoggerFactory, localPackageManager);
             var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
 
             var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);

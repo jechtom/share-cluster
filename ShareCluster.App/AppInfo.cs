@@ -16,19 +16,20 @@ namespace ShareCluster
                 Switches = new Dictionary<string, LogLevel>()
                     {
                         { "Default", LogLevel.Trace },
-                        { "System", LogLevel.Information },
-                        { "Microsoft", LogLevel.Information }
+                        { "System", LogLevel.Warning },
+                        { "Microsoft", LogLevel.Warning }
                     }
             });
 
+            var serializer = new ProtoBufMessageSerializer(inspectMessages: false);
             var result = new AppInfo()
             {
                 Crypto = new CryptoProvider(() => new SHA256CryptoServiceProvider()),
-                MessageSerializer = new ProtoBufMessageSerializer(),
+                MessageSerializer = serializer,
                 Version = new ClientVersion(1),
                 NetworkSettings = new Network.NetworkSettings()
                 {
-                    MessageSerializer = new ProtoBufMessageSerializer()
+                    MessageSerializer = serializer
                 },
                 LoggerFactory = loggerFactory
             };
@@ -42,7 +43,7 @@ namespace ShareCluster
         public void LogStart()
         {
             LoggerFactory.CreateLogger<AppInfo>()
-                .LogInformation($"Starting app.\nContract version: {Version}\nAnnounce port: UDP {NetworkSettings.UdpAnnouncePort}\nCommunication port: TCP {NetworkSettings.TcpCommunicationPort}\nPackage repo path: {PackageRepositoryPath}");
+                .LogInformation($"Starting app.\nContract version: {Version}\nAnnounce port: UDP {NetworkSettings.UdpAnnouncePort}\nCommunication port: TCP {NetworkSettings.TcpServicePort}\nPackage repo path: {PackageRepositoryPath}");
         }
 
         public CryptoProvider Crypto { get; private set; }

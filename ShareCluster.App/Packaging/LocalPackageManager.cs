@@ -14,7 +14,8 @@ namespace ShareCluster.Packaging
     {
         public const string PackageFileName = "data.package";
         public const string PackageMetaFileName = "data.meta.package";
-        public const string PackageDataFileNamePrefix = "data-";
+        public const string PackageDataFileNameFormat = "data-{0:000000}";
+        public const long DefaultBlockMaxSize = 1024 * 1024 * 100;
 
         private readonly ILogger<LocalPackageManager> logger;
         private readonly AppInfo app;
@@ -106,8 +107,7 @@ namespace ShareCluster.Packaging
         public Package GetPackage(PackageReference reference)
         {
             // read
-            string path = Path.GetDirectoryName(reference.MetaPath);
-            var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
+            var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, reference.MetaPath);
             return reader.ReadPackage();
         }
 

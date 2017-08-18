@@ -4,18 +4,21 @@ using System.Linq;
 using System.Text;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging.Dto;
+using Microsoft.Extensions.Logging;
 
 namespace ShareCluster.Packaging
 {
     public class PackageManager
     {
+        private readonly ILogger<PackageManager> logger;
         private readonly LocalPackageManager localPackageManager;
         private Dictionary<Hash, PackageReference> packages;
         private Hash[] packagesHashes;
         private readonly object packagesLock = new object();
 
-        public PackageManager(LocalPackageManager localPackageManager)
+        public PackageManager(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
         {
+            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageManager>();
             this.localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             Init();
         }

@@ -28,7 +28,7 @@ namespace ShareCluster.Network
 
         public Messages.PackageResponse GetPackage(IPEndPoint endpoint, Messages.PackageRequest message)
         {
-            return SendRequest<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.Discovery), message);
+            return SendRequest<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.Package), message);
         }
 
         private TRes SendRequest<TRes>(IPEndPoint endpoint,string apiName)

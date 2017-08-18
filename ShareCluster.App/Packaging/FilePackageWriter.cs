@@ -13,7 +13,7 @@ namespace ShareCluster.Packaging
     public class FilePackageWriter
     {
         private int fileBufferSize = 1024 * 80;
-        private long blockMaxSize = 1024 * 1024 * 100;
+        private long blockMaxSize = LocalPackageManager.DefaultBlockMaxSize;
         private long totalBytesRead = 0;
         private BlockWriter currentBlock = null;
         protected readonly ILogger<FilePackageWriter> logger;
@@ -118,7 +118,7 @@ namespace ShareCluster.Packaging
             currentBlock.PackageBlock = builder.CreateAndAddBlock();
             
             // create writer
-            string dataPath = Path.Combine(packageStoragePath, $"{LocalPackageManager.PackageDataFileNamePrefix}{currentBlock.PackageBlock.Index:000000}");
+            string dataPath = Path.Combine(packageStoragePath, string.Format(LocalPackageManager.PackageDataFileNameFormat, currentBlock.PackageBlock.Index));
             currentBlock.FileStream = new FileStream(dataPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: fileBufferSize);
             currentBlock.FileStream.SetLength(blockMaxSize);
             currentBlock.HashAlgorithm = Crypto.CreateHashAlgorithm();

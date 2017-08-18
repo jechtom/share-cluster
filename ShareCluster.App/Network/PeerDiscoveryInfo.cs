@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -22,5 +23,12 @@ namespace ShareCluster.Network
         public bool IsPermanent { get; set; }
         public bool IsDirectDiscovery { get; set; }
         public bool IsOtherPeerDiscovery { get; set; }
+
+        public string StatusString => string.Join(";", new string[] {
+                        IsLoopback ? "Loopback" : null,
+                        IsDirectDiscovery ? "DirectDiscovery" : null,
+                        IsOtherPeerDiscovery ? "OtherPeerDiscovery" : null,
+                        IsPermanent ? "Permanent" : null
+                    }.Where(s => s != null));
     }
 }

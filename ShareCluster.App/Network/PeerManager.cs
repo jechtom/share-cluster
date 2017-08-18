@@ -19,14 +19,16 @@ namespace ShareCluster.Network
         private PeerDiscovery discovery;
         private Timer timer;
         private Dictionary<IPEndPoint, PeerInfoDetail> peers;
-        private DiscoveryPeerData[] peersDiscoveryData;
+        private DiscoveryPeerData[] peersDiscoveryDataArray;
+        private PeerInfo[] peersArray;
         private readonly object peersLock = new object();
 
         public PeerManager(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
             this.peers = new Dictionary<IPEndPoint, PeerInfoDetail>();
-            this.peersDiscoveryData = new DiscoveryPeerData[0];
+            this.peersDiscoveryDataArray = new DiscoveryPeerData[0];
+            this.peersArray = new PeerInfo[0];
             this.logger = app.LoggerFactory.CreateLogger<PeerManager>();
 
             announceMessage = new AnnounceMessage()
@@ -35,7 +37,7 @@ namespace ShareCluster.Network
                 App = app.App,
                 InstanceName = app.InstanceName,
                 Version = app.Version,
-                ServicePort = app.NetworkSettings.TcpCommunicationPort
+                ServicePort = app.NetworkSettings.TcpServicePort
             };
         }
 
@@ -72,7 +74,7 @@ namespace ShareCluster.Network
 
         private void DiscoveryTimerCallback(object state)
         {
-            logger.LogTrace("Starting discovery...");
+            logger.LogTrace("Starting discovery.");
             discovery.Discover().ContinueWith(d =>
             {
                 timer.Change(app.NetworkSettings.DiscoveryTimer, Timeout.InfiniteTimeSpan);
@@ -97,12 +99,7 @@ namespace ShareCluster.Network
                         detail = new PeerInfoDetail();
                         peers.Add(peer.ServiceEndPoint, detail);
 
-                        logger.LogTrace("Found new peer at {0}; flags: {1}", peer.ServiceEndPoint, 
-                            peer.IsLoopback ? "Loopback" : "",
-                            peer.IsDirectDiscovery ? "DirectDiscovery" : "",
-                            peer.IsOtherPeerDiscovery ? "OtherPeerDiscovery" : "",
-                            peer.IsPermanent ? "Permanent" : ""
-                        );
+                        logger.LogTrace("Found new peer at {0}; flags: {1}", peer.ServiceEndPoint, peer.StatusString);
 
                         (newPeers ?? (newPeers = new List<PeerInfo>())).Add(peer);
                     }
@@ -113,7 +110,8 @@ namespace ShareCluster.Network
                 // regenerate prepared list
                 if (peerDiscoveryChanged)
                 {
-                    peersDiscoveryData = peers.Select(p => new DiscoveryPeerData() { ServiceEndpoint = p.Value.Info.ServiceEndPoint }).ToArray();
+                    peersDiscoveryDataArray = peers.Select(p => new DiscoveryPeerData() { ServiceEndpoint = p.Value.Info.ServiceEndPoint }).ToArray();
+                    peersArray = peers.Values.Select(pv => pv.Info).ToArray();
                 }
             }
 
@@ -143,7 +141,9 @@ namespace ShareCluster.Network
             public PeerInfo Info { get; set; }
         }
 
-        public DiscoveryPeerData[] PeersDiscoveryData => peersDiscoveryData;
+        public DiscoveryPeerData[] PeersDiscoveryData => peersDiscoveryDataArray;
+
+        public IEnumerable<PeerInfo> Peers => peersArray;
 
         public event Action<IEnumerable<PeerInfo>> PeerFound;
     }

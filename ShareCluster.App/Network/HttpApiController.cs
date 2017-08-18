@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc;
 using ShareCluster.Network.Messages;
 using System;
 using System.Collections.Generic;
@@ -27,7 +28,13 @@ namespace ShareCluster.Network
         {
             var address = RemoteIpAddress;
             packageManager.ProcessDiscoveryMessage(request, address);
-            return packageManager.CreateDiscoveryMessage();
+            return packageManager.CreateDiscoveryMessage(new IPEndPoint(address, request.Announce.ServicePort));
+        }
+
+        [HttpPost]
+        public async Task Data([FromBody]DataRequest request)
+        {
+            StreamCopyOperation.CopyToAsync()
         }
 
         public IPAddress RemoteIpAddress { get; set; }
