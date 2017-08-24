@@ -9,6 +9,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System.Threading;
+using System.IO;
 
 namespace ShareCluster
 {
@@ -39,6 +40,22 @@ namespace ShareCluster
 
             peerManager.PeerFound += PeerManager_PeerFound;
 
+        }
+
+        public Stream ReadData(DataRequest request)
+        {
+            if(!packageManager.TryGetPackageReference(request.PackageHash, out PackageReference reference))
+            {
+                throw new InvalidOperationException($"Package not found {request.PackageHash:s}");
+            }
+
+            var result = new PackageDataStream(appInfo.LoggerFactory, reference, request.RequestedParts, write: false);
+            return result;
+        }
+
+        public void UpdateStatusToAllPeers()
+        {
+            RefreshStatusForPeers(peerManager.Peers);
         }
 
         private void StatusRefreshTimerTick(object state)
@@ -143,7 +160,7 @@ namespace ShareCluster
                         {
                             PackageHash = newPackageMeta
                         });
-                        packageManager.RegisterPackage(package.FolderName, package.Meta, package.Package);
+                        packageManager.RegisterRemotePackage(package.FolderName, package.Meta, package.Package);
 
                         // auto download of packages
 

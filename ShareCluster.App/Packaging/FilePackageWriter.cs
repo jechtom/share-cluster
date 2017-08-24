@@ -136,10 +136,11 @@ namespace ShareCluster.Packaging
                 serializer.Serialize(package, hashCalculatorStream);
                 hashCalculatorStream.FlushFinalBlock();
                 info.PackageHash = new Hash(hashAlg.Hash);
+                info.Name = package.Name;
                 info.Version = package.Version;
-                info.Size = fileStream.Length + package.Blocks.Sum(b => b.Size);
+                info.Size = package.Blocks.Sum(b => b.Size);
                 info.IsDownloaded = isDownloaded;
-                info.LocalCopyPackageParts = new PackageParts(info.Size, initialState: isDownloaded).BitmapData;
+                info.LocalCopyPackageParts = new PackageSequencer(info.Size, initialState: isDownloaded).BitmapData;
             }
 
             if(expectedHash != null && !info.PackageHash.Equals(expectedHash))
@@ -153,7 +154,7 @@ namespace ShareCluster.Packaging
             return new PackageReference()
             {
                 Meta = info,
-                MetaPath = metaFilePath
+                DirectoryPath = metaFilePath
             };
         }
 

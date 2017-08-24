@@ -39,7 +39,7 @@ namespace ShareCluster.Packaging
                 // add
                 try
                 {
-                    var dirItem = new PackageItem()
+                    var dirItem = new PackageDataItem()
                     {
                         Attributes = File.GetAttributes(path),
                         Name = Path.GetRelativePath(parentPath, path),
@@ -63,7 +63,6 @@ namespace ShareCluster.Packaging
                     {
                         dirs.Enqueue(d);
                     }
-
                     // files
                     foreach (var filePath in Directory.EnumerateFiles(path))
                     {
@@ -71,7 +70,7 @@ namespace ShareCluster.Packaging
                         {
                             // prepare basic info about discovered file
                             var fileInfo = new FileInfo(filePath);
-                            var fileItem = new PackageItem()
+                            var fileItem = new PackageDataItem()
                             {
                                 Attributes = fileInfo.Attributes,
                                 Name = Path.GetRelativePath(parentPath, filePath),

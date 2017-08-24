@@ -12,11 +12,8 @@ namespace ShareCluster.Packaging
 {
     public class LocalPackageManager
     {
-        public const string PackageFileName = "data.package";
-        public const string PackageMetaFileName = "data.meta.package";
-        public const string PackageDataFileNameFormat = "data-{0:000000}";
-        public const long DefaultBlockMaxSize = 1024 * 1024 * 100;
-
+        public const string PackageMetaFileName = "package.meta";
+        
         private readonly ILogger<LocalPackageManager> logger;
         private readonly AppInfo app;
 
@@ -47,7 +44,6 @@ namespace ShareCluster.Packaging
                 cnt++;
                 yield return meta;
             }
-            logger.LogInformation("Found {0} packages.", cnt);
         }
 
         private void EnsurePath()
@@ -67,7 +63,7 @@ namespace ShareCluster.Packaging
 
             logger.LogInformation($"Creating package \"{name}\" from folder: {folderToProcess}");
             
-            var packageBuilder = new PackageBuilder();
+            var packageBuilder = new PackageBuilder(name);
             
             // create writer - transfers physical files to packages
             var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
@@ -97,7 +93,6 @@ namespace ShareCluster.Packaging
             var metaReference = filesWriter.WritePackageDefinition(package, isDownloaded: true, expectedHash: null);
             PackageMeta meta = metaReference.Meta;
 
-
             operationMeasure.Stop();
             logger.LogInformation($"Created package \"{name}\":\nHash: {meta.PackageHash:s16}\nSize: {SizeFormatter.ToString(meta.Size)}\nFiles and directories: {package.Items.Count}\nTime: {operationMeasure.Elapsed}\nFolder: {packagePath}");
 
@@ -107,7 +102,8 @@ namespace ShareCluster.Packaging
         public Package GetPackage(PackageReference reference)
         {
             // read
-            var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, reference.MetaPath);
+            string path = Path.GetDirectoryName(reference.DirectoryPath);
+            var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
             return reader.ReadPackage();
         }
 
@@ -120,7 +116,7 @@ namespace ShareCluster.Packaging
             string name = Path.GetFileName(packagePath);
 
             // builder and writer
-            var packageBuilder = new PackageBuilder();
+            var packageBuilder = new PackageBuilder(package.Name);
             var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
 
             // writer

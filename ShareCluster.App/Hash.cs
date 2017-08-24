@@ -84,7 +84,17 @@ namespace ShareCluster
             return BitConverter.ToString(Data, 0, bytes).Replace("-", string.Empty);
         }
 
-        public static bool TryParse(StringValues valueString, out Hash hash)
+        public static Hash Parse(string valueString)
+        {
+            if(!TryParse(valueString, out Hash result))
+            {
+                throw new FormatException();
+            }
+
+            return result;
+        }
+
+        public static bool TryParse(string valueString, out Hash hash)
         {
             if(!TryConvertHexStringToByteArray(valueString, out byte[] bytes))
             {

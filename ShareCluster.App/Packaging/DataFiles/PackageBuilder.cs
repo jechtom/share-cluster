@@ -9,19 +9,24 @@ using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 using ShareCluster.Packaging.Dto;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.DataFiles
 {
     public class PackageBuilder
     {
         private Package package;
+        private int blockIndex;
         private readonly object _packageLock = new object();
        
         public PackageBuilder()
         {
-            Init();
+            package = new Package()
+            {
+                Items = new List<PackageDataItem>(),
+                Version = new ClientVersion(1)
+            };
         }
 
-        public void AddPackageItem(PackageItem item)
+        public void AddPackageItem(PackageDataItem item)
         {
             lock (_packageLock)
             {
@@ -30,26 +35,11 @@ namespace ShareCluster.Packaging
             }
         }
 
-        private void Init()
-        {
-            package = new Package()
-            {
-                Blocks = new List<PackageBlock>(),
-                Items = new List<PackageItem>(),
-                Version = new ClientVersion(1)
-            };
-        }
-        
-        public PackageBlock CreateAndAddBlock()
+        public int CreateNextBlock()
         {
             lock (_packageLock)
             {
-                var block = new PackageBlock()
-                {
-                    Index = package.Blocks.Count
-                };
-                package.Blocks.Add(block);
-                return block;
+                return blockIndex++;
             }
         }
 

@@ -4,7 +4,7 @@ using System.IO;
 namespace ShareCluster.Packaging.Dto
 {
     [ProtoContract]
-    public class PackageItem
+    public class PackageDataItem
     {
         [ProtoMember(1)]
         public int Index { get; set; }
@@ -15,12 +15,6 @@ namespace ShareCluster.Packaging.Dto
         [ProtoMember(4)]
         public long Size { get; set; }
         [ProtoMember(5)]
-        public Hash Hash { get; set; }
-        [ProtoMember(6)]
-        public int BlockIndex { get; set; }
-        [ProtoMember(7)]
-        public int BlockOffset { get; set; }
-        [ProtoMember(8)]
         public FileAttributes Attributes { get; set; }
     }
 }

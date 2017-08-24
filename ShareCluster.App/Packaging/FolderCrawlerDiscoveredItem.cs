@@ -7,7 +7,7 @@ namespace ShareCluster.Packaging
 {
     public class FolderCrawlerDiscoveredItem
     {
-        public PackageItem FileItem { get; set; }
+        public PackageDataItem FileItem { get; set; }
         public string Path { get; set; }
     }
 }

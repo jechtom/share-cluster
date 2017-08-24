@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster
+namespace ShareCluster.Network
 {
     public class PackageDataDownloader
     {

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.DataFiles
 {
     public class FilePackageReader
     {
@@ -52,7 +52,7 @@ namespace ShareCluster.Packaging
             return new PackageReference()
             {
                 Meta = meta,
-                MetaPath = path
+                DirectoryPath = path
             };
         }
 

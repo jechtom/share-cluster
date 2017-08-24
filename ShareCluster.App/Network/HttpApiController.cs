@@ -4,7 +4,9 @@ using ShareCluster.Network.Messages;
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace ShareCluster.Network
 {
@@ -20,7 +22,8 @@ namespace ShareCluster.Network
         [HttpPost]
         public PackageResponse Package([FromBody]PackageRequest request)
         {
-            return packageManager.GetPackage(request);
+            var result = packageManager.GetPackage(request);
+            return result;
         }
 
         [HttpPost]
@@ -32,9 +35,10 @@ namespace ShareCluster.Network
         }
 
         [HttpPost]
-        public async Task Data([FromBody]DataRequest request)
+        public IActionResult Data([FromBody]DataRequest request)
         {
-            StreamCopyOperation.CopyToAsync()
+            var stream = packageManager.ReadData(request);
+            return new FileStreamResult(stream, "application/octet-stream");
         }
 
         public IPAddress RemoteIpAddress { get; set; }

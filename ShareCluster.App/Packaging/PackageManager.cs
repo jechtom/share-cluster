@@ -25,6 +25,8 @@ namespace ShareCluster.Packaging
 
         public Hash[] PackagesHashes => packagesHashes;
 
+        public LocalPackageManager LocalPackageManager => localPackageManager;
+
         private void Init()
         {
             packages = new Dictionary<Hash, PackageReference>();
@@ -37,6 +39,7 @@ namespace ShareCluster.Packaging
             {
                 packages = newPackages.ToDictionary(p => p.Meta.PackageHash);
                 packagesHashes = packages.Values.Select(p => p.Meta.PackageHash).ToArray();
+                logger.LogInformation("Packages: {0}", packages.Count);
             }
         }
 
@@ -50,16 +53,50 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public void RegisterPackage(string folderName, PackageMeta meta, Package package)
+        public void RegisterLocalPackage(PackageReference package)
+        {
+            // register
+            RegisterPackageInternal(package);
+        }
+
+        public void CreatePackageFromFolder(string path)
+        {
+            var package = localPackageManager.CreatePackageFromFolder(path);
+            RegisterPackageInternal(package);
+        }
+
+        public void RegisterRemotePackage(string folderName, PackageMeta meta, Package package)
+        {
+            // new package - mark as data not downloaded (we have just metadata and package info)
+            meta.IsDownloaded = false;
+            meta.LocalCopyPackageParts = new PackageSequencer(meta.Size, initialState: false).BitmapData;
+
+            // write meta and info to disk and register
+            var reference = localPackageManager.RegisterPackage(folderName, meta, package);
+            RegisterPackageInternal(reference);
+        }
+
+        private void RegisterPackageInternal(PackageReference reference)
         {
             lock (packagesLock)
             {
-                var reference = localPackageManager.RegisterPackage(folderName, meta, package);
                 if (packages.ContainsKey(reference.Meta.PackageHash))
                 {
                     throw new InvalidOperationException("Registering package with existing hash. Some registration check probably failed.");
                 }
                 UpdatePackages(packages.Values.Concat(new PackageReference[] { reference }));
+            }
+        }
+
+        public bool TryGetPackageReference(Hash packageHash, out PackageReference reference)
+        {
+            lock(packagesLock)
+            {
+                if(!packages.TryGetValue(packageHash, out reference))
+                {
+                    return false;
+                }
+                return true;
             }
         }
 

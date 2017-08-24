@@ -1,9 +1,12 @@
-﻿using System;
+﻿using ShareCluster.Packaging;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace ShareCluster.Network
 {
@@ -14,6 +17,10 @@ namespace ShareCluster.Network
         private readonly CompatibilityChecker compatibility;
         private readonly InstanceHash instanceHash;
 
+        //enable to use Fiddler @ localhost: string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
+        string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
+
+
         public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceHash instanceHash)
         {
             this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
@@ -23,48 +30,45 @@ namespace ShareCluster.Network
 
         public Messages.DiscoveryMessage GetStatus(IPEndPoint endpoint, Messages.DiscoveryMessage message)
         {
-            return SendRequest<Messages.DiscoveryMessage, Messages.DiscoveryMessage>(endpoint, nameof(HttpApiController.Discovery), message);
+            return SendRequestAndGetRespone<Messages.DiscoveryMessage, Messages.DiscoveryMessage>(endpoint, nameof(HttpApiController.Discovery), message);
         }
 
         public Messages.PackageResponse GetPackage(IPEndPoint endpoint, Messages.PackageRequest message)
         {
-            return SendRequest<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.Package), message);
+            return SendRequestAndGetRespone<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.Package), message);
         }
 
-        private TRes SendRequest<TRes>(IPEndPoint endpoint,string apiName)
+        public async Task DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Stream streamToWrite)
         {
-            return SendRequest<object, TRes>(endpoint, apiName, null, sendRequest: false, receiveResponse: true);
+            HttpResponseMessage resultMessage = await SendRequest(endpoint, nameof(HttpApiController.Data), message, stream: true);
+            var stream = await resultMessage.Content.ReadAsStreamAsync();
+            await stream.CopyToAsync(streamToWrite);
         }
-
-        private TRes SendRequest<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
+        
+        private async Task<HttpResponseMessage> SendRequest<TReq>(IPEndPoint endpoint, string apiName, TReq req, bool stream = false)
         {
-            return SendRequest<object, TRes>(endpoint, apiName, req, sendRequest: true, receiveResponse: true);
-        }
-
-        private TRes SendRequest<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req, bool sendRequest, bool receiveResponse)
-        {
-            string uri = $"http://{endpoint}/api/{apiName}";
-            byte[] requestBytes = null;
-            if(sendRequest)
-            {
-                requestBytes = serializer.Serialize(req);
-            }
+            string uri = BuildUrl(endpoint, apiName);
+            byte[] requestBytes = serializer.Serialize(req);
 
             var requestContent = new ByteArrayContent(requestBytes ?? new byte[0]);
             requestContent.Headers.ContentType = new MediaTypeHeaderValue(serializer.MimeType);
             requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibility.Version.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());
 
-            var task = appClient.PostAsync(uri, requestContent);
-            var resultMessage = task.Result;
-            resultMessage.EnsureSuccessStatusCode();
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = requestContent;
 
-            if(receiveResponse)
-            {
-                var stream = task.Result.Content.ReadAsStreamAsync().Result;
-                return serializer.Deserialize<TRes>(stream);
-            }
-            return default(TRes);
+            var resultMessage = await appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
+            resultMessage.EnsureSuccessStatusCode();
+            return resultMessage;
+        }
+
+        private TRes SendRequestAndGetRespone<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
+        {
+            var taskSend = SendRequest(endpoint, apiName, req);
+            HttpResponseMessage resultMessage = taskSend.Result;
+            var stream = resultMessage.Content.ReadAsStreamAsync().Result;
+            return serializer.Deserialize<TRes>(stream);
         }
     }
 }
