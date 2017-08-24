@@ -23,8 +23,15 @@ namespace ShareCluster.Packaging.DataFiles
             logger.LogInformation($"Allocating {SizeFormatter.ToString(length)} for package data in {path}");
             Directory.CreateDirectory(path);
 
-            // TODO check disk space and throw error if not enough
+            // check disk space and throw error if not enough
+            var driveInfo = new DriveInfo(Directory.GetDirectoryRoot(path));
+            long freeSpace = driveInfo.TotalFreeSpace;
+            if(freeSpace < length)
+            {
+                throw new InvalidOperationException($"There is not enough disk space on drive {driveInfo.Name}. Free space is {SizeFormatter.ToString(freeSpace)} but required is {SizeFormatter.ToString(length)}.");
+            }
 
+            // prepare parts
             var parts = sequencer.GetDataFilesForSize(path, length).ToArray();
 
             if (!overwrite)
