@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace ShareCluster.Packaging.DataFiles
+namespace ShareCluster.Packaging
 {
     public class SwitchStream : Stream
     {

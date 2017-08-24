@@ -1,5 +1,4 @@
 using ShareCluster.Packaging;
-using ShareCluster.Packaging.DataFiles;
 using System;
 using System.Linq;
 using Xunit;
@@ -17,12 +16,14 @@ namespace ShareCluster.Tests
             long testSize = PackagePartsSequencer.DefaultDataFileSize * 120 / 100;
             var parts = sequencer.GetDataFilesForSize(@"c:\example", testSize).ToArray();
             Assert.Equal(2, parts.Count());
-            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[0].Length);
-            Assert.Equal(testSize - PackagePartsSequencer.DefaultDataFileSize, parts[1].Length);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[0].PartLength);
+            Assert.Equal(testSize - PackagePartsSequencer.DefaultDataFileSize, parts[1].PartLength);
             Assert.Equal(0, parts[0].DataFileIndex);
             Assert.Equal(1, parts[1].DataFileIndex);
             Assert.Equal(0, parts[0].SegmentOffsetInDataFile);
             Assert.Equal(0, parts[1].SegmentOffsetInDataFile);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[0].DataFileLength);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize - testSize, parts[1].DataFileLength);
         }
 
         [Fact]
@@ -34,12 +35,14 @@ namespace ShareCluster.Tests
             long testSize = PackagePartsSequencer.DefaultDataFileSize * 2; // two full files
             var parts = sequencer.GetDataFilesForSize(@"c:\example", testSize).ToArray();
             Assert.Equal(2, parts.Count());
-            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[0].Length);
-            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[1].Length);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[0].PartLength);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[1].PartLength);
             Assert.Equal(0, parts[0].DataFileIndex);
             Assert.Equal(1, parts[1].DataFileIndex);
             Assert.Equal(0, parts[0].SegmentOffsetInDataFile);
             Assert.Equal(0, parts[1].SegmentOffsetInDataFile);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[0].DataFileLength);
+            Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, parts[1].DataFileLength);
         }
 
         [Fact]
@@ -51,8 +54,8 @@ namespace ShareCluster.Tests
             long testSize = PackagePartsSequencer.DefaultSegmentSize * 120 / 100;
             var parts = sequencer.GetPartsForSize(@"c:\example", testSize).ToArray();
             Assert.Equal(2, parts.Count());
-            Assert.Equal(PackagePartsSequencer.DefaultSegmentSize, parts[0].Length);
-            Assert.Equal(testSize - PackagePartsSequencer.DefaultSegmentSize, parts[1].Length);
+            Assert.Equal(PackagePartsSequencer.DefaultSegmentSize, parts[0].PartLength);
+            Assert.Equal(testSize - PackagePartsSequencer.DefaultSegmentSize, parts[1].PartLength);
             Assert.Equal(0, parts[0].DataFileIndex);
             Assert.Equal(0, parts[1].DataFileIndex);
             Assert.Equal(0, parts[0].SegmentOffsetInDataFile);
@@ -68,8 +71,8 @@ namespace ShareCluster.Tests
             long testSize = PackagePartsSequencer.DefaultSegmentSize * 2; // two full segments
             var parts = sequencer.GetPartsForSize(@"c:\example", testSize).ToArray();
             Assert.Equal(2, parts.Count());
-            Assert.Equal(PackagePartsSequencer.DefaultSegmentSize, parts[0].Length);
-            Assert.Equal(PackagePartsSequencer.DefaultSegmentSize, parts[1].Length);
+            Assert.Equal(PackagePartsSequencer.DefaultSegmentSize, parts[0].PartLength);
+            Assert.Equal(PackagePartsSequencer.DefaultSegmentSize, parts[1].PartLength);
             Assert.Equal(0, parts[0].DataFileIndex);
             Assert.Equal(0, parts[1].DataFileIndex);
             Assert.Equal(0, parts[0].SegmentOffsetInDataFile);
@@ -108,16 +111,26 @@ namespace ShareCluster.Tests
 
                     // expected offsets
                     Assert.Equal(fileIndex, part.DataFileIndex);
-                    Assert.Equal(segmentIndex, part.SegmentIndexInDataFile);
                     Assert.Equal(segmentIndex + fileIndex * PackagePartsSequencer.SegmentsPerDataFile, part.SegmentIndex);
                     Assert.Equal(segmentIndex * PackagePartsSequencer.DefaultSegmentSize, part.SegmentOffsetInDataFile);
+
+                    if (fileIndex < 2)
+                    {
+                        // previous full files
+                        Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, part.DataFileLength);
+                    }
+                    else
+                    {
+                        // last file
+                        Assert.Equal(testSize % PackagePartsSequencer.DefaultDataFileSize, part.DataFileLength);
+                    }
                 }
             }
 
-            // expected sizes
-            Assert.Equal(testSize, parts.Sum(a => a.Length));
-            Assert.All(parts.Take(parts.Length - 1), a => Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, a.Length));
-            Assert.Equal(testSize % PackagePartsSequencer.DefaultSegmentSize, parts.Last().Length); // last segment size
+            // expected sizes - segment sizes
+            Assert.Equal(testSize, parts.Sum(a => a.PartLength));
+            Assert.All(parts.Take(parts.Length - 1), a => Assert.Equal(PackagePartsSequencer.DefaultDataFileSize, a.PartLength));
+            Assert.Equal(testSize % PackagePartsSequencer.DefaultSegmentSize, parts.Last().PartLength); // last segment size
         }
 
         [Fact]
@@ -151,7 +164,7 @@ namespace ShareCluster.Tests
 
             // basic checks
             Assert.Equal(segmentIndexes.Length, parts.Length);
-            Assert.Equal(testSubsetSize, parts.Sum(p => p.Length));
+            Assert.Equal(testSubsetSize, parts.Sum(p => p.PartLength));
 
             // check for correct file indexes
             Assert.Equal(0, parts[0].DataFileIndex);
@@ -164,7 +177,6 @@ namespace ShareCluster.Tests
             for (int i = 0; i < segmentIndexes.Length; i++)
             {
                 Assert.Equal(segmentIndexes[i], parts[i].SegmentIndex);
-                Assert.Equal(segmentIndexes[i] % PackagePartsSequencer.SegmentsPerDataFile, parts[i].SegmentIndexInDataFile);
             }
         }
     }

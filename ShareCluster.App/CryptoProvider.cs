@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -34,6 +35,22 @@ namespace ShareCluster
             var result = new byte[BytesLength];
             randomGenerator.GetBytes(result);
             return new Hash(result);
+        }
+
+        public Hash HashFromHashes(IEnumerable<Hash> hashes)
+        {
+            using(var hashAlg = CreateHashAlgorithm())
+            using (var cryptoStream = new CryptoStream(Stream.Null, hashAlg, CryptoStreamMode.Write))
+            {
+                foreach (var hash in hashes)
+                {
+                    cryptoStream.Write(hash.Data, 0, hash.Data.Length);
+                }
+
+                // compute and return
+                cryptoStream.FlushFinalBlock();
+                return new Hash(hashAlg.Hash);
+            }
         }
     }
 }

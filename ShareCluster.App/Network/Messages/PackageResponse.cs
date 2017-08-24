@@ -10,11 +10,5 @@ namespace ShareCluster.Network.Messages
     {
         [ProtoMember(1)]
         public Packaging.Dto.PackageMeta Meta { get; set; }
-
-        [ProtoMember(2)]
-        public Packaging.Dto.Package Package { get; set; }
-
-        [ProtoMember(3)]
-        public string FolderName { get; set; }
     }
 }

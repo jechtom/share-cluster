@@ -49,12 +49,13 @@ namespace ShareCluster
 
             for (int i = 0; i < 1; i++)
             {
-                packageManager.CreatePackageFromFolder(@"C:\temp\p1"); // build immutable copy
+                //packageManager.CreatePackageFromFolder(@"c:\My\Repos\BrowserNet\"); // build immutable copy
+                packageManager.CreatePackageFromFolder(@"c:\SamplesWCF\"); // build immutable copy
                 clusterManager.UpdateStatusToAllPeers(); // notify about new package
 
             }
 
-            Task.Run(() => { CreateInstance2(); });
+            //Task.Run(() => { CreateInstance2(); });
             
 
             Thread.Sleep(Timeout.InfiniteTimeSpan);
@@ -111,19 +112,19 @@ namespace ShareCluster
             appInfo.LoggerFactory.CreateLogger("Test").LogInformation("Starting downloading...");
 
             var p = localPackageManager.ListPackages().First();
-            int[] parts = Enumerable.Range(0, new PackageSequencer(p.Meta.Size, p.Meta.IsDownloaded).PartsCount).ToArray();
+            //int[] parts = Enumerable.Range(0, new PackageSequencer(p.PackageId.Size, p.PackageId.IsDownloaded).PartsCount).ToArray();
 
-            var allocator = new PackageDataAllocator(appInfo.LoggerFactory);
-            allocator.Allocate(p, overwrite: true);
+            //var allocator = new PackageDataAllocator(appInfo.LoggerFactory);
+            //allocator.Allocate(p, overwrite: true);
 
-            using (var stream = new PackageDataStream(appInfo.LoggerFactory, p, parts, write: true))
-            {
-                client.DownloadPartsAsync(new IPEndPoint(IPAddress.Loopback, 13978), new Network.Messages.DataRequest()
-                {
-                    PackageHash = p.Meta.PackageHash,
-                    RequestedParts = parts
-                }, stream).Wait();
-            }
+            //using (var stream = new PackageDataStream(appInfo.LoggerFactory, p, parts, write: true))
+            //{
+            //    client.DownloadPartsAsync(new IPEndPoint(IPAddress.Loopback, 13978), new Network.Messages.DataRequest()
+            //    {
+            //        PackageHash = p.PackageId.PackageHash,
+            //        RequestedParts = parts
+            //    }, stream).Wait();
+            //}
 
             Thread.Sleep(Timeout.InfiniteTimeSpan);
         }

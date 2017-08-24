@@ -49,7 +49,8 @@ namespace ShareCluster
                 throw new InvalidOperationException($"Package not found {request.PackageHash:s}");
             }
 
-            var result = new PackageDataStream(appInfo.LoggerFactory, reference, request.RequestedParts, write: false);
+            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, appInfo.Sequencer, reference, request.RequestedParts);
+            var result = new PackageDataStream(appInfo.LoggerFactory, controller);
             return result;
         }
 
@@ -160,7 +161,9 @@ namespace ShareCluster
                         {
                             PackageHash = newPackageMeta
                         });
-                        packageManager.RegisterRemotePackage(package.FolderName, package.Meta, package.Package);
+
+                        throw new NotImplementedException();
+                        //packageManager.RegisterRemotePackage(package.FolderName, package.Meta, package.Package);
 
                         // auto download of packages
 

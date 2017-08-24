@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using ShareCluster.Packaging;
 
 namespace ShareCluster
 {
@@ -24,7 +25,7 @@ namespace ShareCluster
             var serializer = new ProtoBufMessageSerializer(inspectMessages: false);
             var result = new AppInfo()
             {
-                Crypto = new CryptoProvider(() => new SHA256CryptoServiceProvider()),
+                Crypto = new CryptoProvider(() => new SHA256Managed()),
                 MessageSerializer = serializer,
                 Version = new ClientVersion(1),
                 NetworkSettings = new Network.NetworkSettings()
@@ -36,6 +37,7 @@ namespace ShareCluster
 
             result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(), result.Version);
             result.InstanceHash = new InstanceHash(result.Crypto);
+            result.Sequencer = new PackagePartsSequencer();
 
             return result;
         }
@@ -56,5 +58,6 @@ namespace ShareCluster
         public string InstanceName { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
         public InstanceHash InstanceHash { get; private set; }
+        public PackagePartsSequencer Sequencer { get; private set; }
     }
 }

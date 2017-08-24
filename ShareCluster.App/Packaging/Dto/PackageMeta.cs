@@ -18,7 +18,7 @@ namespace ShareCluster.Packaging.Dto
         public Hash PackageHash { get; set; }
 
         [ProtoMember(4)]
-        public Hash[] PackagePartsHash { get; set; }
+        public Hash[] PackageSegmentsHash { get; set; }
 
         [ProtoMember(5)]
         public DateTime Created { get; set; }

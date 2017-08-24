@@ -37,8 +37,8 @@ namespace ShareCluster.Packaging
         {
             lock (packagesLock)
             {
-                packages = newPackages.ToDictionary(p => p.Meta.PackageHash);
-                packagesHashes = packages.Values.Select(p => p.Meta.PackageHash).ToArray();
+                packages = newPackages.ToDictionary(p => p.PackageId.PackageHash);
+                packagesHashes = packages.Values.Select(p => p.PackageId.PackageHash).ToArray();
                 logger.LogInformation("Packages: {0}", packages.Count);
             }
         }
@@ -65,22 +65,22 @@ namespace ShareCluster.Packaging
             RegisterPackageInternal(package);
         }
 
-        public void RegisterRemotePackage(string folderName, PackageMeta meta, Package package)
-        {
-            // new package - mark as data not downloaded (we have just metadata and package info)
-            meta.IsDownloaded = false;
-            meta.LocalCopyPackageParts = new PackageSequencer(meta.Size, initialState: false).BitmapData;
+        //public void RegisterRemotePackage(string folderName, PackageMeta meta, Package package)
+        //{
+        //    // new package - mark as data not downloaded (we have just metadata and package info)
+        //    meta.IsDownloaded = false;
+        //    meta.LocalCopyPackageParts = new PackageSequencer(meta.Size, initialState: false).BitmapData;
 
-            // write meta and info to disk and register
-            var reference = localPackageManager.RegisterPackage(folderName, meta, package);
-            RegisterPackageInternal(reference);
-        }
+        //    // write meta and info to disk and register
+        //    var reference = localPackageManager.RegisterPackage(folderName, meta, package);
+        //    RegisterPackageInternal(reference);
+        //}
 
         private void RegisterPackageInternal(PackageReference reference)
         {
             lock (packagesLock)
             {
-                if (packages.ContainsKey(reference.Meta.PackageHash))
+                if (packages.ContainsKey(reference.PackageId.PackageHash))
                 {
                     throw new InvalidOperationException("Registering package with existing hash. Some registration check probably failed.");
                 }
@@ -111,14 +111,16 @@ namespace ShareCluster.Packaging
                 }
             }
 
-            var package = localPackageManager.GetPackage(reference);
+            throw new NotImplementedException();
 
-            return new PackageResponse()
-            {
-                Meta = reference.Meta,
-                FolderName = reference.SourceFolderName,
-                Package = package
-            };
+            //var package = localPackageManager.GetPackage(reference);
+
+            //return new PackageResponse()
+            //{
+            //    Meta = reference.PackageId,
+            //    FolderName = reference.SourceFolderName,
+            //    Package = package
+            //};
         }
     }
 }

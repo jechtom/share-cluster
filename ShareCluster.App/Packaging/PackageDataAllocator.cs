@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Linq;
 
-namespace ShareCluster.Packaging.DataFiles
+namespace ShareCluster.Packaging
 {
     public class PackageDataAllocator
     {
@@ -51,7 +51,7 @@ namespace ShareCluster.Packaging.DataFiles
             {
                 using (var fs = new FileStream(path, overwrite ? FileMode.OpenOrCreate : FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
-                    fs.SetLength(part.Length);
+                    fs.SetLength(part.PartLength);
                 }
             }
 

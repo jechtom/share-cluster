@@ -6,8 +6,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ShareCluster.Packaging.DataFiles
+namespace ShareCluster.Packaging
 {
+    /// <summary>
+    /// Provides customizable stream build up from different parts.
+    /// </summary>
+    /// <remarks>
+    /// This class is used to access package data splitted to data files as one stream and also to access different requested parts of data files as one stream.
+    /// </remarks>
     public class PackageDataStream : Stream
     {
         ILogger<PackageDataStream> logger;
@@ -56,7 +62,12 @@ namespace ShareCluster.Packaging.DataFiles
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            throw new NotSupportedException("Only async operation is allowed.");
+            if (CanRead)
+            {
+                throw new InvalidOperationException("Read is not supported for this stream configuration.");
+            }
+
+            return ReadOrWrite(false, buffer, offset, count);
         }
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -71,7 +82,12 @@ namespace ShareCluster.Packaging.DataFiles
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            throw new NotSupportedException("Only async operation is allowed.");
+            if (!CanWrite)
+            {
+                throw new InvalidOperationException("Write is not supported for this stream configuration.");
+            }
+
+            ReadOrWrite(true, buffer, offset, count);
         }
 
         public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -82,7 +98,6 @@ namespace ShareCluster.Packaging.DataFiles
             }
 
             await ReadOrWriteAsync(true, buffer, offset, count, cancellationToken);
-            return;
         }
 
         private async Task<int> ReadOrWriteAsync(bool write, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -94,19 +109,56 @@ namespace ShareCluster.Packaging.DataFiles
                 if (!ResolveCurrentItemAndEnsureStream()) break;
                 
                 // how much we should read until reaching end of sequence item or requested bytes count
-                int bytesToEndOfCurrentItem = (int)(currentItem.NextSequencePosition - position);
+                int bytesToEndOfCurrentItem = (int)(nextPartPosition - position);
                 int tryProcessBytes = Math.Min(count, bytesToEndOfCurrentItem);
 
-                // read
+                // write.read
                 int bytesProcessed;
                 if (write)
                 {
-                    await currentItem.Stream.WriteAsync(buffer, offset, tryProcessBytes, cancellationToken);
+                    await currentPart.Stream.WriteAsync(buffer, offset, tryProcessBytes, cancellationToken);
                     bytesProcessed = tryProcessBytes;
                 }
                 else
                 {
-                    bytesProcessed = await currentItem.Stream.ReadAsync(buffer, offset, tryProcessBytes, cancellationToken);
+                    bytesProcessed = await currentPart.Stream.ReadAsync(buffer, offset, tryProcessBytes, cancellationToken);
+                }
+
+                // advance counters
+                bytesProcessedTotal += bytesProcessed;
+                position += bytesProcessed;
+
+                // remove range from current range
+                offset += bytesProcessed;
+                count -= bytesProcessed;
+            }
+
+            return bytesProcessedTotal;
+        }
+
+
+        private int ReadOrWrite(bool write, byte[] buffer, int offset, int count)
+        {
+            int bytesProcessedTotal = 0;
+
+            while (count > 0)
+            {
+                if (!ResolveCurrentItemAndEnsureStream()) break;
+
+                // how much we should read until reaching end of sequence item or requested bytes count
+                int bytesToEndOfCurrentItem = (int)(nextPartPosition - position);
+                int tryProcessBytes = Math.Min(count, bytesToEndOfCurrentItem);
+
+                // write.read
+                int bytesProcessed;
+                if (write)
+                {
+                    currentPart.Stream.Write(buffer, offset, tryProcessBytes);
+                    bytesProcessed = tryProcessBytes;
+                }
+                else
+                {
+                    bytesProcessed = currentPart.Stream.Read(buffer, offset, tryProcessBytes);
                 }
 
                 // advance counters
@@ -133,21 +185,13 @@ namespace ShareCluster.Packaging.DataFiles
 
         protected override void Dispose(bool disposing)
         {
-            CloseStream();
+            controller.Dispose();
             base.Dispose(disposing);
         }
 
         public override void Close()
         {
-            CloseStream();
-        }
-
-        private void CloseStream()
-        {
-            if(currentPart != null)
-            {
-                controller.OnStreamPartChange(currentPart, null, closedBeforeReachEnd: true)
-            }
+            controller.OnStreamClosed();
         }
 
         private bool ResolveCurrentItemAndEnsureStream()
@@ -162,19 +206,17 @@ namespace ShareCluster.Packaging.DataFiles
             if (!partsSource.MoveNext())
             {
                 // nothing more to read
-                controller.OnStreamPartChange(currentPart, null, closedBeforeReachEnd: false);
+                controller.OnStreamPartChange(currentPart, null);
                 currentPart = null;
                 return false;
             }
 
             // new part
-            controller.OnStreamPartChange(currentPart, partsSource.Current, closedBeforeReachEnd: false);
+            controller.OnStreamPartChange(currentPart, partsSource.Current);
             currentPart = partsSource.Current;
-
-            // seek to correct position in block file
-            currentPart.Stream.Seek(currentPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
-            if (currentPart.Length == 0) throw new InvalidOperationException("Zero length part is invalid.");
-            nextPartPosition += currentPart.Length;
+            if (currentPart.PartLength == 0) throw new InvalidOperationException("Zero length part is invalid.");
+            if (currentPart.Stream == null) throw new InvalidOperationException("Stream is not set up for new part.");
+            nextPartPosition += currentPart.PartLength;
             return true;
         }
     }

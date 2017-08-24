@@ -7,20 +7,22 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 using ShareCluster.Packaging.Dto;
+using System.IO.Compression;
+using System.Linq;
 
 namespace ShareCluster.Packaging
 {
     public class LocalPackageManager
     {
-        public const string PackageMetaFileName = "package.meta";
-        
+        public const string PackageIdFileName = "package.id";
+
         private readonly ILogger<LocalPackageManager> logger;
         private readonly AppInfo app;
 
         public LocalPackageManager(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
-            this.logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
+            logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
             PackageRepositoryPath = app.PackageRepositoryPath;
         }
         
@@ -30,19 +32,17 @@ namespace ShareCluster.Packaging
         {
             EnsurePath();
 
-            string[] metaFiles = Directory.GetFiles(PackageRepositoryPath, PackageMetaFileName, SearchOption.AllDirectories);
+            string[] directories = Directory.GetDirectories(PackageRepositoryPath);
             int cnt = 0;
-            foreach (var metaFilePath in metaFiles)
+            foreach (var packageDir in directories)
             {
-                string path = Path.GetDirectoryName(metaFilePath);
-                var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
-                var meta = reader.ReadMetadata();
-                if(meta == null)
+                var id = TryReadPackageIdFile(packageDir);
+                if(id == null)
                 {
                     continue;
                 }
                 cnt++;
-                yield return meta;
+                yield return id;
             }
         }
 
@@ -57,73 +57,102 @@ namespace ShareCluster.Packaging
 
             // storage folder for package
             EnsurePath();
-            string packagePath = FileHelper.FindFreeFolderName(Path.Combine(PackageRepositoryPath, FileHelper.GetFileOrDirectoryName(folderToProcess)));
-            Directory.CreateDirectory(packagePath);
-            string name = Path.GetFileName(packagePath);
+            string sourceFolderName = FileHelper.GetFileOrDirectoryName(folderToProcess);
+            string packagePathTemp = Path.Combine(PackageRepositoryPath, "_tmp-" + app.Crypto.CreateRandom().ToString());
+            DirectoryInfo di = Directory.CreateDirectory(packagePathTemp);
 
-            logger.LogInformation($"Creating package \"{name}\" from folder: {folderToProcess}");
-            
-            var packageBuilder = new PackageBuilder(name);
-            
-            // create writer - transfers physical files to packages
-            var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
+            logger.LogInformation($"Creating package \"{sourceFolderName}\" from folder: {folderToProcess}");
 
-            // create parraler writer block
-            var writeFileBlock = new ActionBlock<FolderCrawlerDiscoveredItem>(
-                (i) => filesWriter.WriteFileToPackageData(i),
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 4 }
-            );
+            // create package archive
+            PackageId packageId;
+            int entriesCount;
+            using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, app.Sequencer, packagePathTemp))
+            {
+                using (var packageStream = new PackageDataStream(app.LoggerFactory, controller))
+                using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Create, leaveOpen: false))
+                {
+                    var helper = new ZipArchiveHelper(zipArchive);
+                    helper.DoCreateFromFolder(folderToProcess);
+                    entriesCount = helper.EntriesCount;
+                }
+                packageId = controller.PackageId;
+            }
 
-            // file system crawler (to read files and folders)
-            var folderCrawlerSource = new FolderCrawler(folderToProcess, packageBuilder, app.LoggerFactory);
+            // rename folder
+            string packagePath = Path.Combine(PackageRepositoryPath, packageId.PackageHash.ToString());
 
-            // buffer crawler output
-            var buffer = new BufferBlock<FolderCrawlerDiscoveredItem>();
-            buffer.LinkTo(writeFileBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+            if(Directory.Exists(packagePath))
+            {
+                throw new InvalidOperationException($"Folder for package {packageId.PackageHash:s} already exists. {packagePath}");
+            }
 
-            // run
-            folderCrawlerSource.Run(buffer);
+            Directory.Move(packagePathTemp, packagePath);
 
-            // wait for last block
-            writeFileBlock.Completion.Wait();
-
-            // close block and write definition and meta file
-            filesWriter.CloseCurrentBlock();
-            var package = packageBuilder.Build();
-            var metaReference = filesWriter.WritePackageDefinition(package, isDownloaded: true, expectedHash: null);
-            PackageMeta meta = metaReference.Meta;
+            // store package Id
+            string packageIdPath = Path.Combine(packagePath, PackageIdFileName);
+            File.WriteAllBytes(packageIdPath, app.MessageSerializer.Serialize(packageId));
 
             operationMeasure.Stop();
-            logger.LogInformation($"Created package \"{name}\":\nHash: {meta.PackageHash:s16}\nSize: {SizeFormatter.ToString(meta.Size)}\nFiles and directories: {package.Items.Count}\nTime: {operationMeasure.Elapsed}\nFolder: {packagePath}");
+            logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageId.PackageHash}\nSize: {SizeFormatter.ToString(packageId.Size)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
-            return metaReference;
+            return new PackageReference(packagePath, packageId);
         }
 
-        public Package GetPackage(PackageReference reference)
+        private PackageReference TryReadPackageIdFile(string directoryPath)
         {
-            // read
-            string path = Path.GetDirectoryName(reference.DirectoryPath);
-            var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
-            return reader.ReadPackage();
+            PackageId id;
+            string idPath = Path.Combine(directoryPath, PackageIdFileName);
+
+            if (!File.Exists(idPath)) return null;
+
+            try
+            {
+                using (var fileStream = new FileStream(idPath, FileMode.Open, FileAccess.Read))
+                {
+                    id = app.MessageSerializer.Deserialize<PackageId>(fileStream) ?? throw new InvalidOperationException("Deserialized object is null.");
+                }
+            }
+            catch
+            {
+                logger.LogWarning($"Package at {directoryPath} cannot be deserialized.");
+                return null;
+            }
+            
+            if (!app.CompatibilityChecker.IsCompatibleWith($"Package at {directoryPath}", id.Version))
+            {
+                return null;
+            }
+
+            return new PackageReference(directoryPath, id);
         }
 
-        public PackageReference RegisterPackage(string folderName, PackageMeta meta, Package package)
+        public void GetPackage(PackageReference reference)
         {
-            // storage folder for package
-            EnsurePath();
-            string packagePath = FileHelper.FindFreeFolderName(Path.Combine(PackageRepositoryPath, folderName));
-            Directory.CreateDirectory(packagePath);
-            string name = Path.GetFileName(packagePath);
+            throw new NotImplementedException();
+            //// read
+            //string path = Path.GetDirectoryName(reference.DirectoryPath);
+            //var reader = new FilePackageReader(app.LoggerFactory, app.Crypto, app.MessageSerializer, app.CompatibilityChecker, path);
+            //return reader.ReadPackage();
+        }
 
-            // builder and writer
-            var packageBuilder = new PackageBuilder(package.Name);
-            var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
+        public PackageReference RegisterPackage(string folderName, PackageMeta meta)
+        {
+            throw new NotImplementedException();
+            //// storage folder for package
+            //EnsurePath();
+            //string packagePath = FileHelper.FindFreeFolderName(Path.Combine(PackageRepositoryPath, folderName));
+            //Directory.CreateDirectory(packagePath);
+            //string name = Path.GetFileName(packagePath);
 
-            // writer
-            var newMeta = filesWriter.WritePackageDefinition(package, isDownloaded: false, expectedHash: meta.PackageHash);
-            logger.LogInformation($"New package added to repository. Size: {SizeFormatter.ToString(meta.Size)}. Hashs: {meta.PackageHash:s4}");
+            //// builder and writer
+            //var packageBuilder = new PackageBuilder(package.Name);
+            //var filesWriter = new FilePackageWriterFromPhysicalFiles(packageBuilder, app.Crypto, app.MessageSerializer, packagePath, app.LoggerFactory);
 
-            return newMeta;
+            //// writer
+            //var newMeta = filesWriter.WritePackageDefinition(package, isDownloaded: false, expectedHash: meta.PackageHash);
+            //logger.LogInformation($"New package added to repository. Size: {SizeFormatter.ToString(meta.Size)}. Hashs: {meta.PackageHash:s4}");
+
+            //return newMeta;
         }
     }
 }
