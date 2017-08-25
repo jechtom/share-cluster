@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Diagnostics;
 
 namespace ShareCluster.Network
 {
@@ -13,77 +14,105 @@ namespace ShareCluster.Network
     {
         private readonly AppInfo app;
         private readonly ILogger<PeerManager> logger;
-        private readonly AnnounceMessage announceMessage;
         private bool announceResponseEnabled = false;
-        private PeerAnnouncer announcer;
-        private PeerDiscovery discovery;
-        private Timer timer;
+        private UdpPeerAnnouncer udpAnnouncer;
+        private UdpPeerDiscovery udpDiscovery;
+        private Timer udpDiscoveryTimer;
         private Dictionary<IPEndPoint, PeerInfoDetail> peers;
+        private Timer cleanUpTimer;
+        private readonly TimeSpan cleanUpTimerInterval = TimeSpan.FromMinutes(1);
+        private readonly object peersLock = new object();
+
         private DiscoveryPeerData[] peersDiscoveryDataArray;
         private PeerInfo[] peersArray;
-        private readonly object peersLock = new object();
 
         public PeerManager(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
-            this.peers = new Dictionary<IPEndPoint, PeerInfoDetail>();
-            this.peersDiscoveryDataArray = new DiscoveryPeerData[0];
-            this.peersArray = new PeerInfo[0];
-            this.logger = app.LoggerFactory.CreateLogger<PeerManager>();
-
-            announceMessage = new AnnounceMessage()
-            {
-                CorrelationHash = app.InstanceHash.Hash,
-                App = app.App,
-                InstanceName = app.InstanceName,
-                Version = app.Version,
-                ServicePort = app.NetworkSettings.TcpServicePort
-            };
+            peers = new Dictionary<IPEndPoint, PeerInfoDetail>();
+            peersDiscoveryDataArray = new DiscoveryPeerData[0];
+            peersArray = new PeerInfo[0];
+            logger = app.LoggerFactory.CreateLogger<PeerManager>();
+            cleanUpTimer = new Timer(CleanupTimerCallback, null, cleanUpTimerInterval, Timeout.InfiniteTimeSpan);
         }
 
         public void Dispose()
         {
-            if (announcer != null)
+            if (udpAnnouncer != null)
             {
-                announcer.Dispose();
-                announcer = null;
+                udpAnnouncer.Dispose();
+                udpAnnouncer = null;
             }
 
-            if(timer != null)
+            if(udpDiscoveryTimer != null)
             { 
-                timer.Dispose();
-                timer = null;
+                udpDiscoveryTimer.Dispose();
+                udpDiscoveryTimer = null;
+            }
+
+            if(cleanUpTimer != null)
+            {
+                cleanUpTimer.Dispose();
+                cleanUpTimer = null;
             }
         }
-
-        public AnnounceMessage AnnounceMessage => announceMessage;
 
         public void EnableAutoSearch()
         {
             if (announceResponseEnabled) return;
             announceResponseEnabled = true;
-            
+
+            var announceMessage = new DiscoveryAnnounceMessage()
+            {
+                InstanceHash = app.InstanceHash.Hash,
+                Version = app.Version,
+                ServicePort = app.NetworkSettings.TcpServicePort
+            };
+
             // enable announcer
-            announcer = new PeerAnnouncer(app.LoggerFactory, app.CompatibilityChecker, this, app.NetworkSettings, announceMessage);
-            announcer.Start();
+            udpAnnouncer = new UdpPeerAnnouncer(app.LoggerFactory, app.CompatibilityChecker, this, app.NetworkSettings, announceMessage);
+            udpAnnouncer.Start();
 
             // timer discovery
-            discovery = new PeerDiscovery(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, this);
-            timer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            udpDiscovery = new UdpPeerDiscovery(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, this);
+            udpDiscoveryTimer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         }
 
         private void DiscoveryTimerCallback(object state)
         {
-            logger.LogTrace("Starting discovery.");
-            discovery.Discover().ContinueWith(d =>
+            logger.LogTrace("Starting UDP peer discovery.");
+            udpDiscovery.Discover().ContinueWith(d =>
             {
-                timer.Change(app.NetworkSettings.DiscoveryTimer, Timeout.InfiniteTimeSpan);
+                // plan next round
+                try { udpDiscoveryTimer?.Change(app.NetworkSettings.UdpDiscoveryTimer, Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
             });
         }
-        
-        public void RegisterPeer(PeerInfo discoveredPeer) => RegisterPeer(new[] { discoveredPeer });
 
-        public void RegisterPeer(IEnumerable<PeerInfo> discoveredPeers)
+        private void CleanupTimerCallback(object state)
+        {
+            lock(peersArray)
+            {
+                // TODO update this behavior to remove failing clients, not just inactive
+
+                var inactivePeers = peers.Where(p => p.Value.LastActivity.Elapsed > app.NetworkSettings.DisableInactivePeerAfter).ToArray();
+                if (inactivePeers.Length == 0) return;
+
+                for (int i = 0; i < inactivePeers.Length; i++)
+                {
+                    var inactivePeer = inactivePeers[i];
+                    peers.Remove(inactivePeer.Key);
+                }
+
+                logger.LogTrace("{0} inactive peer(s) removed", inactivePeers.Length);
+            }
+
+            // plan next round
+            try { udpDiscoveryTimer?.Change(cleanUpTimerInterval, Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
+        }
+
+        public void RegisterPeer(PeerInfo discoveredPeer) => RegisterPeers(new[] { discoveredPeer });
+
+        public void RegisterPeers(IEnumerable<PeerInfo> discoveredPeers)
         {
             List<PeerInfo> newPeers = null;
 
@@ -117,7 +146,7 @@ namespace ShareCluster.Network
 
             if(newPeers != null)
             {
-                PeerFound?.Invoke(newPeers);
+                PeersFound?.Invoke(newPeers);
             }
         }
 
@@ -134,17 +163,27 @@ namespace ShareCluster.Network
                 detail.Info.IsPermanent |= peer.IsPermanent;
                 detail.Info.IsOtherPeerDiscovery |= peer.IsOtherPeerDiscovery;
             }
+
+            detail.LastActivity.Restart();
         }
 
         private class PeerInfoDetail
         {
+            public PeerInfoDetail()
+            {
+                LastActivity = new Stopwatch();
+                IsEnabled = true;
+            }
+
             public PeerInfo Info { get; set; }
+            public Stopwatch LastActivity { get; set; }
+            public bool IsEnabled { get; set; }
         }
 
         public DiscoveryPeerData[] PeersDiscoveryData => peersDiscoveryDataArray;
 
         public IEnumerable<PeerInfo> Peers => peersArray;
 
-        public event Action<IEnumerable<PeerInfo>> PeerFound;
+        public event Action<IEnumerable<PeerInfo>> PeersFound;
     }
 }

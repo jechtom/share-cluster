@@ -10,10 +10,11 @@ namespace ShareCluster.Packaging.Dto
     /// Identifies package by hash of its parts. This does NOT include local storage and metadata information.
     /// </summary>
     [ProtoContract]
-    public class PackageId
+    public class PackageHashes : IPackageInfoDto
     {
+        public PackageHashes() { }
 
-        public PackageId(ClientVersion version, IEnumerable<Hash> segmentHashes, CryptoProvider cryptoProvider, long size)
+        public PackageHashes(ClientVersion version, IEnumerable<Hash> segmentHashes, CryptoProvider cryptoProvider, long size)
         {
             if (cryptoProvider == null)
             {
@@ -22,7 +23,7 @@ namespace ShareCluster.Packaging.Dto
 
             Version = version;
             PackageSegmentsHashes = segmentHashes.ToArray();
-            PackageHash = cryptoProvider.HashFromHashes(PackageSegmentsHashes);
+            PackageId = cryptoProvider.HashFromHashes(PackageSegmentsHashes);
             Size = size;
         }
 
@@ -30,7 +31,7 @@ namespace ShareCluster.Packaging.Dto
         public ClientVersion Version { get; }
 
         [ProtoMember(2)]
-        public Hash PackageHash { get; }
+        public Hash PackageId { get; }
 
         [ProtoMember(3)]
         public long Size { get; }

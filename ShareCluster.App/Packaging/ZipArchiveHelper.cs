@@ -14,7 +14,7 @@ namespace ShareCluster.Packaging
         private const char PathSeparator = '/';
         private ZipArchive archive;
 
-        public int EntriesCount { get; internal set; }
+        public int EntriesCount { get; private set; }
 
         public ZipArchiveHelper(ZipArchive archive)
         {
@@ -39,6 +39,8 @@ namespace ShareCluster.Packaging
             {
                 foreach (FileSystemInfo file in di.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
+                    EntriesCount++;
+
                     int entryNameLength = file.FullName.Length - basePath.Length;
                     Debug.Assert(entryNameLength > 0);
 

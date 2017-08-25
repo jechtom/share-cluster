@@ -11,19 +11,19 @@ using ShareCluster.Network.Messages;
 
 namespace ShareCluster.Network
 {
-    public class PeerDiscovery
+    public class UdpPeerDiscovery
     {
-        private readonly ILogger<PeerDiscovery> logger;
+        private readonly ILogger<UdpPeerDiscovery> logger;
         private readonly CompatibilityChecker compatibilityChecker;
         private readonly NetworkSettings settings;
-        private readonly AnnounceMessage announce;
+        private readonly DiscoveryAnnounceMessage announce;
         private readonly IPeerRegistry registry;
         private readonly byte[] announceBytes;
         private UdpClient client;
 
-        public PeerDiscovery(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, NetworkSettings settings, AnnounceMessage announce, IPeerRegistry registry)
+        public UdpPeerDiscovery(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, NetworkSettings settings, DiscoveryAnnounceMessage announce, IPeerRegistry registry)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PeerDiscovery>();
+            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscovery>();
             this.compatibilityChecker = compatibilityChecker;
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.announce = announce ?? throw new ArgumentNullException(nameof(announce));
@@ -46,11 +46,11 @@ namespace ShareCluster.Network
                 var timeout = new CancellationTokenSource(settings.DiscoveryTimeout);
                 while(!timeout.IsCancellationRequested)
                 {
-                    AnnounceMessage response = null; 
+                    DiscoveryAnnounceMessage response = null; 
                     try
                     {
                         var responseData = await client.ReceiveAsync().WithCancellation(timeout.Token);
-                        response = settings.MessageSerializer.Deserialize<AnnounceMessage>(responseData.Buffer);
+                        response = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(responseData.Buffer);
                         var endpoint = new IPEndPoint(responseData.RemoteEndPoint.Address, response.ServicePort);
                         if(!compatibilityChecker.IsCompatibleWith(endpoint, response.Version)) continue;
                         registry.RegisterPeer(new PeerInfo(endpoint, isDirectDiscovery: true));

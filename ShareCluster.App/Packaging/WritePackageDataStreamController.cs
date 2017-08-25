@@ -18,12 +18,12 @@ namespace ShareCluster.Packaging
         private readonly CryptoProvider cryptoProvider;
         private readonly PackagePartsSequencer sequencer;
         private readonly string packageRootPath;
-        private readonly Dto.PackageId packageId;
+        private readonly Dto.PackageHashes packageId;
         private readonly PackageDataStreamPart[] parts;
         private CurrentPart currentPart;
         private bool isDisposed;
 
-        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackagePartsSequencer sequencer, string packageRootPath, Dto.PackageId packageId, int[] segmentsToWrite)
+        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackagePartsSequencer sequencer, string packageRootPath, Dto.PackageHashes packageId, int[] segmentsToWrite)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));

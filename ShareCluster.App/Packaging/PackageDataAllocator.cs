@@ -49,7 +49,7 @@ namespace ShareCluster.Packaging
             // allocate
             foreach (var part in parts)
             {
-                using (var fs = new FileStream(path, overwrite ? FileMode.OpenOrCreate : FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                using (var fs = new FileStream(part.Path, overwrite ? FileMode.OpenOrCreate : FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
                     fs.SetLength(part.PartLength);
                 }

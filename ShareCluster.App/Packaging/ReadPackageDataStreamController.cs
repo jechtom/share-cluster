@@ -21,13 +21,13 @@ namespace ShareCluster.Packaging
         private CurrentPart currentPart;
         private bool isDisposed;
 
-        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, PackagePartsSequencer sequencer, PackageReference package, int[] requestedSegments)
+        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, PackagePartsSequencer sequencer, PackageReference package, Dto.PackageHashes packageHashes, int[] requestedSegments)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ReadPackageDataStreamController>();
             this.sequencer = sequencer ?? throw new ArgumentNullException(nameof(sequencer));
             this.package = package ?? throw new ArgumentNullException(nameof(package));
 
-            parts = sequencer.GetPartsForSpecificSegments(package, requestedSegments).ToArray();
+            parts = sequencer.GetPartsForSpecificSegments(package, packageHashes, requestedSegments).ToArray();
             Length = parts.Sum(p => p.PartLength);
         }
 

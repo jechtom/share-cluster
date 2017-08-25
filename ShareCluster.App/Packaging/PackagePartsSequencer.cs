@@ -53,6 +53,11 @@ namespace ShareCluster.Packaging
             }
         }
 
+        public int GetSegmentsCountForSize(long size)
+        {
+            return (int)((size + DefaultSegmentSize - 1) / DefaultSegmentSize);
+        }
+
         public IEnumerable<PackageDataStreamPart> GetPartsInfinite(string packageRootPath)
         {
             return GetPartsInternal(packageRootPath, length: null, requestedSegments: null);
@@ -63,13 +68,19 @@ namespace ShareCluster.Packaging
             return GetPartsInternal(packageRootPath, length: length, requestedSegments: null);
         }
 
-        public IEnumerable<PackageDataStreamPart> GetPartsForSpecificSegments(PackageReference package, int[] requestedSegments)
+        public IEnumerable<PackageDataStreamPart> GetPartsForSpecificSegments(PackageReference reference, Dto.PackageHashes packageHashes, int[] requestedSegments)
         {
-            if (package == null)
+            if (reference == null)
             {
-                throw new ArgumentNullException(nameof(package));
+                throw new ArgumentNullException(nameof(reference));
             }
-            return GetPartsForSpecificSegments(package.FolderPath, package.PackageId.Size, requestedSegments);
+
+            if (packageHashes == null)
+            {
+                throw new ArgumentNullException(nameof(packageHashes));
+            }
+
+            return GetPartsForSpecificSegments(reference.FolderPath, packageHashes.Size, requestedSegments);
         }
 
         public IEnumerable<PackageDataStreamPart> GetPartsForSpecificSegments(string packageRootPath, long length, int[] requestedSegments)

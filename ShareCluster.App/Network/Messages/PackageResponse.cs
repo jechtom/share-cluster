@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Network.Messages
 {
@@ -9,6 +10,6 @@ namespace ShareCluster.Network.Messages
     public class PackageResponse : IMessage
     {
         [ProtoMember(1)]
-        public Packaging.Dto.PackageMeta Meta { get; set; }
+        public PackageHashes Hashes { get; set; }
     }
 }

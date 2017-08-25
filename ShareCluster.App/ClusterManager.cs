@@ -38,18 +38,18 @@ namespace ShareCluster
             TimeSpan statusRefreshTimerInterval = appInfo.NetworkSettings.UpdateStatusTimer;
             statusRefreshTimer.Change(statusRefreshTimerInterval, statusRefreshTimerInterval);
 
-            peerManager.PeerFound += PeerManager_PeerFound;
+            peerManager.PeersFound += PeerManager_PeerFound;
 
         }
 
         public Stream ReadData(DataRequest request)
         {
-            if(!packageManager.TryGetPackageReference(request.PackageHash, out PackageReference reference))
+            if(!packageManager.TryGetPackageReference(request.PackageHash, out LocalPackageInfo package))
             {
                 throw new InvalidOperationException($"Package not found {request.PackageHash:s}");
             }
 
-            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, appInfo.Sequencer, reference, request.RequestedParts);
+            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, appInfo.Sequencer, package.Reference, package.Hashes, request.RequestedParts);
             var result = new PackageDataStream(appInfo.LoggerFactory, controller);
             return result;
         }
@@ -106,8 +106,9 @@ namespace ShareCluster
             lock(clusterNodeLock)
             {
                 var result = new DiscoveryMessage();
-                result.Announce = peerManager.AnnounceMessage;
-                result.KnownPackages = packageManager.PackagesHashes;
+                result.Version = appInfo.Version;
+                result.InstanceHash = appInfo.InstanceHash.Hash;
+                result.KnownPackages = packageManager.PackagesMetadata;
                 result.KnownPeers = peerManager.PeersDiscoveryData;
                 result.ServicePort = appInfo.NetworkSettings.TcpServicePort;
                 result.PeerEndpoint = endpoint;
@@ -118,7 +119,7 @@ namespace ShareCluster
         public void ProcessDiscoveryMessage(DiscoveryMessage message, IPAddress address)
         {
             // is this request from myself?
-            bool isLoopback = appInfo.InstanceHash.Hash.Equals(message.Announce.CorrelationHash);
+            bool isLoopback = appInfo.InstanceHash.Hash.Equals(message.InstanceHash);
 
             var endPoint = new IPEndPoint(address, message.ServicePort);
 
@@ -138,53 +139,67 @@ namespace ShareCluster
                 return discoveredPeer;
             });
                 
-            peerManager.RegisterPeer(discoveredPeers);
+            peerManager.RegisterPeers(discoveredPeers);
 
-            // register packages
-            Hash[] newPackages = packageManager.GetMissingPackages(message.KnownPackages ?? new Hash[0]);
+            // register discovered packages
+            if (message.KnownPackages?.Any() == true)
+            {
+                packageManager.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp)));
+            }
+        }
 
-            lock(clusterNodeLock)
+        public void StartDownloadDiscoveredPackage(DiscoveredPackage packageToDownload)
+        {
+            lock (clusterNodeLock)
             {
                 // ignore already in progress
-                newPackages = newPackages.Where(packagesInDownload.Add).ToArray();
+                if (!packagesInDownload.Add(packageToDownload.PackageId)) return;
             }
 
-            // download in task
-            if (newPackages.Any())
+            try
             {
-                Task.Run(() =>
+                PackageResponse response = null;
+
+                // download package segments
+                while (true)
                 {
-                    foreach (var newPackageMeta in newPackages)
+                    var endpoint = packageToDownload.GetPrefferedEndpoint(); // store it, it can change
+                    if (endpoint == null) throw new InvalidOperationException("No working endpoints available for this package. Try again later.");
+
+                    // download package
+                    logger.LogInformation($"Downloading hashes of package {packageToDownload.PackageId:s} \"{packageToDownload.Name}\" from {endpoint}");
+                    try
                     {
-                        logger.LogInformation($"Downloading info of package {new Hash(newPackageMeta.Data):s}.");
-                        var package = client.GetPackage(endPoint, new PackageRequest()
-                        {
-                            PackageHash = newPackageMeta
-                        });
-
-                        throw new NotImplementedException();
-                        //packageManager.RegisterRemotePackage(package.FolderName, package.Meta, package.Package);
-
-                        // auto download of packages
-
+                        response = client.GetPackage(endpoint, new PackageRequest(packageToDownload.PackageId));
+                        break;
                     }
-                }).ContinueWith(c =>
-                {
-                    // remove from list and read error
-                    lock (clusterNodeLock)
+                    catch (Exception e)
                     {
-                        foreach (var package in newPackages)
-                        {
-                            packagesInDownload.Remove(package);
-                        }
+                        packageToDownload.MarkEndpointAsFaulted(endpoint);
+                        logger.LogTrace(e, $"Can't contact endpoint {endpoint}.");
                     }
+                }
 
-                    if (c.IsFaulted)
-                    {
-                        logger.LogError(c.Exception, "API GetPackage failed.");
-                    }
-                });
+                // save to local storage
+                var localPackage = packageManager.AddPackageToDownload(response.Hashes, packageToDownload.Meta);
+                StartDownloadPackage(localPackage);
             }
+            catch(Exception e)
+            {
+                logger.LogError(e, "Can't download package.");
+            }
+            finally
+            {
+                lock (clusterNodeLock)
+                {
+                    packagesInDownload.Remove(packageToDownload.PackageId);
+                }
+            }
+        }
+
+        public void StartDownloadPackage(LocalPackageInfo localPackage)
+        {
+            throw new NotImplementedException();
         }
 
         public void AddPermanentEndpoint(IPEndPoint iPEndPoint)
@@ -194,7 +209,15 @@ namespace ShareCluster
 
         public PackageResponse GetPackage(PackageRequest request)
         {
-            return packageManager.ReadPackage(request.PackageHash);
+            if (!packageManager.TryGetPackageReference(request.PackageId, out LocalPackageInfo package))
+            {
+                throw new InvalidOperationException($"Package not found {request.PackageId:s}");
+            }
+
+            return new PackageResponse()
+            {
+                Hashes = package.Hashes
+            };
         }
     }
 }

@@ -10,7 +10,8 @@ namespace ShareCluster.Network
         public UInt16 TcpServicePort { get; set; } = 13978;
         public TimeSpan DiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
         public IMessageSerializer MessageSerializer { get; set; }
-        public TimeSpan DiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(5);
+        public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(1);
+        public TimeSpan DisableInactivePeerAfter { get; internal set; } = TimeSpan.FromMinutes(5);
         public TimeSpan UpdateStatusTimer { get; internal set; } = TimeSpan.FromMinutes(5);
     }
 }

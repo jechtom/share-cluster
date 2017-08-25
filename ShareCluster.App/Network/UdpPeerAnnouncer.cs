@@ -12,21 +12,21 @@ using Microsoft.Extensions.Logging;
 
 namespace ShareCluster.Network
 {
-    public class PeerAnnouncer : IDisposable
+    public class UdpPeerAnnouncer : IDisposable
     {
-        private readonly ILogger<PeerAnnouncer> logger;
+        private readonly ILogger<UdpPeerAnnouncer> logger;
         private readonly CompatibilityChecker compatibilityChecker;
         private readonly IPeerRegistry registry;
         private readonly NetworkSettings settings;
-        private readonly AnnounceMessage announce;
+        private readonly DiscoveryAnnounceMessage announce;
         private readonly byte[] announceBytes;
         private UdpClient client;
         private CancellationTokenSource cancel;
         private Task task;
 
-        public PeerAnnouncer(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, AnnounceMessage announce)
+        public UdpPeerAnnouncer(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, DiscoveryAnnounceMessage announce)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PeerAnnouncer>();
+            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerAnnouncer>();
             this.compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
             this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -61,9 +61,9 @@ namespace ShareCluster.Network
                 var rec = await client.ReceiveAsync().WithCancellation(cancel.Token);
                 try
                 {
-                    AnnounceMessage messageReq;
-                    messageReq = settings.MessageSerializer.Deserialize<AnnounceMessage>(rec.Buffer);
-                    if(messageReq.CorrelationHash.Equals(announce.CorrelationHash))
+                    DiscoveryAnnounceMessage messageReq;
+                    messageReq = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(rec.Buffer);
+                    if(messageReq.InstanceHash.Equals(announce.InstanceHash))
                     {
                         continue; // own request
                     }

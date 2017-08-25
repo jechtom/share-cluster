@@ -17,6 +17,7 @@ namespace ShareCluster
             // these types cannot be serialized - replace then with surrogate on wire
             RuntimeTypeModel.Default[typeof(IPAddress)].SetSurrogate(typeof(IPAddressSurrogate));
             RuntimeTypeModel.Default[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
+            RuntimeTypeModel.Default.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
         }
 
         public ProtoBufMessageSerializer(bool inspectMessages)
@@ -139,6 +140,23 @@ namespace ShareCluster
                     return null;
                 }
                 return new IPEndPointSurrogate() { Address = value.Address, Port = value.Port };
+            }
+        }
+
+        [ProtoContract]
+        public class DateTimeOffsetSurrogate
+        {
+            [ProtoMember(1)]
+            public string DateTimeString { get; set; }
+
+            public static implicit operator DateTimeOffsetSurrogate(DateTimeOffset value)
+            {
+                return new DateTimeOffsetSurrogate { DateTimeString = value.ToString("u") };
+            }
+
+            public static implicit operator DateTimeOffset(DateTimeOffsetSurrogate value)
+            {
+                return DateTimeOffset.Parse(value.DateTimeString);
             }
         }
     }

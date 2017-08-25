@@ -19,7 +19,7 @@ namespace ShareCluster.Packaging
         private readonly PackagePartsSequencer sequencer;
         private readonly string packageRootPath;
         private readonly List<Hash> segmentHashes;
-        private Dto.PackageId packageId;
+        private Dto.PackageHashes packageId;
         private CurrentPart currentPart;
         private long totalSize;
         private bool isDisposed;
@@ -41,7 +41,7 @@ namespace ShareCluster.Packaging
 
         public long? Length => null; // don't know how much data there will be
 
-        public Dto.PackageId PackageId => packageId ?? throw new InvalidOperationException("Package data are not available at the moment.");
+        public Dto.PackageHashes PackageId => packageId ?? throw new InvalidOperationException("Package data are not available at the moment.");
 
         public IEnumerable<PackageDataStreamPart> EnumerateParts()
         {
@@ -144,8 +144,8 @@ namespace ShareCluster.Packaging
             DisposeCurrentPart();
 
             // build result
-            packageId = new Dto.PackageId(version, segmentHashes, cryptoProvider, totalSize);
-            logger.LogDebug($"Closed package data files. Written {SizeFormatter.ToString(totalSize)}. Hash is {packageId.PackageHash:s}.");
+            packageId = new Dto.PackageHashes(version, segmentHashes, cryptoProvider, totalSize);
+            logger.LogDebug($"Closed package data files. Written {SizeFormatter.ToString(totalSize)}. Hash is {packageId.PackageId:s}.");
             isClosed = true;
         }
 

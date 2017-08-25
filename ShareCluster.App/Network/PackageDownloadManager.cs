@@ -9,15 +9,15 @@ namespace ShareCluster.Network
 {
     public class PackageDownloadManager
     {
+        private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<PackageDownloadManager> logger;
-        private readonly PackageManager packageManager;
         private readonly HttpApiClient client;
         private readonly List<PackageDownloadStatus> downloads;
 
-        public PackageDownloadManager(ILoggerFactory loggerFactory, PackageManager packageManager, HttpApiClient client)
+        public PackageDownloadManager(ILoggerFactory loggerFactory, HttpApiClient client)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDownloadManager>();
-            this.packageManager = packageManager ?? throw new ArgumentNullException(nameof(packageManager));
+            this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            logger = loggerFactory.CreateLogger<PackageDownloadManager>();
             this.client = client ?? throw new ArgumentNullException(nameof(client));
 
             downloads = new List<PackageDownloadStatus>();
@@ -28,6 +28,11 @@ namespace ShareCluster.Network
         public void RestoreUnfinishedDownloads()
         {
             
+        }
+
+        public PackageDataDownloader CreateAndAssignDownloaderFor(LocalPackageInfo item)
+        {
+            return new PackageDataDownloader(loggerFactory, this, item);
         }
     }
 }

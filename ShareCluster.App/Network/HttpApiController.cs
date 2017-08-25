@@ -31,7 +31,7 @@ namespace ShareCluster.Network
         {
             var address = RemoteIpAddress;
             packageManager.ProcessDiscoveryMessage(request, address);
-            return packageManager.CreateDiscoveryMessage(new IPEndPoint(address, request.Announce.ServicePort));
+            return packageManager.CreateDiscoveryMessage(new IPEndPoint(address, request.ServicePort));
         }
 
         [HttpPost]

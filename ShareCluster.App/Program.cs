@@ -50,12 +50,12 @@ namespace ShareCluster
             for (int i = 0; i < 1; i++)
             {
                 //packageManager.CreatePackageFromFolder(@"c:\My\Repos\BrowserNet\"); // build immutable copy
-                packageManager.CreatePackageFromFolder(@"c:\SamplesWCF\"); // build immutable copy
+                //packageManager.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
                 clusterManager.UpdateStatusToAllPeers(); // notify about new package
 
             }
 
-            //Task.Run(() => { CreateInstance2(); });
+            Task.Run(() => { CreateInstance2(); });
             
 
             Thread.Sleep(Timeout.InfiniteTimeSpan);
@@ -91,7 +91,8 @@ namespace ShareCluster
 
             var peerManager = new Network.PeerManager(appInfo);
             var localPackageManager = new Packaging.LocalPackageManager(appInfo);
-            var packageManager = new Packaging.PackageManager(appInfo.LoggerFactory, localPackageManager);
+            var downloadManager=new PackageDownloadManager(appInfo.LoggerFactory, appInfo.)
+            var packageManager = new Packaging.PackageManager(appInfo.LoggerFactory, localPackageManager, downloadManager);
             var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
 
             var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);
@@ -104,14 +105,18 @@ namespace ShareCluster
             clusterManager.AddPermanentEndpoint(new IPEndPoint(IPAddress.Loopback, 13978));
 
 
-            while(!localPackageManager.ListPackages().Any())
+            while(!packageManager.DiscoveredPackages.Any())
             {
                 Thread.Sleep(2000);
             }
 
             appInfo.LoggerFactory.CreateLogger("Test").LogInformation("Starting downloading...");
 
-            var p = localPackageManager.ListPackages().First();
+            var disco = packageManager.DiscoveredPackages.First();
+            clusterManager.StartDownloadDiscoveredPackage(disco);
+
+
+            //var p = localPackageManager.ListPackages().First();
             //int[] parts = Enumerable.Range(0, new PackageSequencer(p.PackageId.Size, p.PackageId.IsDownloaded).PartsCount).ToArray();
 
             //var allocator = new PackageDataAllocator(appInfo.LoggerFactory);

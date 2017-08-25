@@ -7,16 +7,14 @@ namespace ShareCluster.Packaging
 {
     public class PackageReference
     {
-        private string directoryPath;
-        private PackageId id;
 
-        public PackageReference(string directoryPath, PackageId id)
+        public PackageReference(string directoryPath, Hash id)
         {
-            this.directoryPath = directoryPath;
-            this.id = id;
+            FolderPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
+            Id = id;
         }
 
-        public PackageId PackageId { get; set; }
+        public Hash Id { get; set; }
         public string FolderPath { get; set; }
     }
 }

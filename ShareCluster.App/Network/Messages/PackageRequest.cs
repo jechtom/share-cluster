@@ -8,7 +8,14 @@ namespace ShareCluster.Network.Messages
     [ProtoContract]
     public class PackageRequest : IMessage
     {
+        public PackageRequest() { }
+
+        public PackageRequest(Hash packageId)
+        {
+            PackageId = packageId;
+        }
+
         [ProtoMember(1)]
-        public Hash PackageHash { get; set; }
+        public Hash PackageId { get; set; }
     }
 }

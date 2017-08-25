@@ -5,22 +5,19 @@ using ProtoBuf;
 
 namespace ShareCluster.Network.Messages
 {
+    /// <summary>
+    /// Message used to discover direct peer endpoint for UDP discovery.
+    /// </summary>
     [ProtoContract]
-    public class AnnounceMessage : IMessage
+    public class DiscoveryAnnounceMessage : IMessage
     {
         [ProtoMember(1)]
         public virtual ClientVersion Version { get; set; }
-
+        
         [ProtoMember(2)]
-        public virtual string App { get; set; }
-
-        [ProtoMember(3)]
-        public virtual string InstanceName { get; set; }
-
-        [ProtoMember(4)]
         public virtual ushort ServicePort { get; set; }
 
-        [ProtoMember(5)]
-        public virtual Hash CorrelationHash { get; set; }
+        [ProtoMember(3)]
+        public virtual Hash InstanceHash { get; set; }
     }
 }
