@@ -28,6 +28,11 @@ namespace ShareCluster.Network
             this.instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
         }
 
+        public Messages.PackageStatusResponse GetPackageStatus(IPEndPoint endpoint, Messages.PackageStatusRequest message)
+        {
+            return SendRequestAndGetRespone<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.PackageStatus), message);
+        }
+
         public Messages.DiscoveryMessage GetStatus(IPEndPoint endpoint, Messages.DiscoveryMessage message)
         {
             return SendRequestAndGetRespone<Messages.DiscoveryMessage, Messages.DiscoveryMessage>(endpoint, nameof(HttpApiController.Discovery), message);

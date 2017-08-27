@@ -27,6 +27,13 @@ namespace ShareCluster.Network
         }
 
         [HttpPost]
+        public PackageStatusResponse PackageStatus([FromBody]PackageStatusRequest request)
+        {
+            var result = packageManager.GetPackageStatus(request);
+            return result;
+        }
+
+        [HttpPost]
         public DiscoveryMessage Discovery([FromBody]DiscoveryMessage request)
         {
             var address = RemoteIpAddress;

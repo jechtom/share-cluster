@@ -16,7 +16,6 @@ namespace ShareCluster.Packaging
     {
         private readonly ILogger<PackageManager> logger;
         private readonly LocalPackageManager localPackageManager;
-        private readonly PackageDownloadManager downloadManager;
         private Dictionary<Hash, LocalPackageInfo> localPackages;
         private Dictionary<Hash, DiscoveredPackage> discoveredPackages;
         private readonly object packagesLock = new object();
@@ -26,11 +25,10 @@ namespace ShareCluster.Packaging
         private DiscoveredPackage[] discoveredPackagesArray;
 
 
-        public PackageManager(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager, PackageDownloadManager downloadManager)
+        public PackageManager(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
         {
             this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageManager>();
             this.localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
-            this.downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
             Init();
         }
 

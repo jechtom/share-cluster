@@ -18,17 +18,11 @@ namespace ShareCluster.Packaging
             if (!Reference.Id.Equals(Metadata.PackageId)) throw new ArgumentException("Invalid hash.", nameof(metadata));
         }
 
-        public void AssignDownloader(PackageDataDownloader packageDataDownloader)
-        {
-            Downloader = packageDataDownloader ?? throw new ArgumentNullException(nameof(packageDataDownloader));
-        }
-
         public Hash Id => Reference.Id;
         public PackageReference Reference { get; }
         public PackageDownloadStatus DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }
         public Dto.PackageMeta Metadata { get; }
-        public Network.PackageDataDownloader Downloader { get; private set; }
     }
 }
 

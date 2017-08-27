@@ -24,7 +24,8 @@ namespace ShareCluster.Network
         }
 
         public int MaximumDownloadSlots { get; set; } = 5;
-        
+        public int FreeUploadSlots { get; private set; } = 5; // TODO restrict
+
         public void RestoreUnfinishedDownloads()
         {
             

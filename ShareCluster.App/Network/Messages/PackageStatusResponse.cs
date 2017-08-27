@@ -2,17 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Network.Messages
 {
     [ProtoContract]
-    public class PackageResponse : IMessage
+    public class PackageStatusResponse : IMessage
     {
         [ProtoMember(1)]
-        public PackageHashes Hashes { get; set; }
+        public PackageStatusDetail[] Packages { get; set; }
 
         [ProtoMember(2)]
-        public long BytesDownloaded { get; set; }
+        public int FreeSlots { get; set; }
     }
 }

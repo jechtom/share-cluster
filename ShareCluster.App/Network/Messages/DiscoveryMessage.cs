@@ -11,21 +11,18 @@ namespace ShareCluster.Network.Messages
     public class DiscoveryMessage : IMessage
     {
         [ProtoMember(1)]
-        public ClientVersion Version { get; set; }
-
-        [ProtoMember(2)]
         public virtual Hash InstanceHash { get; set; }
 
-        [ProtoMember(3)]
+        [ProtoMember(2)]
         public DiscoveryPeerData[] KnownPeers { get; set; }
 
-        [ProtoMember(4)]
+        [ProtoMember(3)]
         public PackageMeta[] KnownPackages { get; set; }
 
-        [ProtoMember(5)]
+        [ProtoMember(4)]
         public ushort ServicePort { get; set; }
 
-        [ProtoMember(6)]
+        [ProtoMember(5)]
         public IPEndPoint PeerEndpoint { get; set; }
     }
 }

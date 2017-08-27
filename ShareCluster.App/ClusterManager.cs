@@ -20,17 +20,19 @@ namespace ShareCluster
         private readonly PackageManager packageManager;
         private readonly PeerManager peerManager;
         private readonly HttpApiClient client;
+        private readonly PackageDownloadManager downloadManager;
         private readonly HashSet<Hash> packagesInDownload = new HashSet<Hash>();
         private readonly object clusterNodeLock = new object();
         private readonly Timer statusRefreshTimer;
 
 
-        public ClusterManager(AppInfo appInfo, PackageManager packageManager, PeerManager peerManager, HttpApiClient client)
+        public ClusterManager(AppInfo appInfo, PackageManager packageManager, PeerManager peerManager, HttpApiClient client, PackageDownloadManager downloadManager)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             this.packageManager = packageManager ?? throw new ArgumentNullException(nameof(packageManager));
             this.peerManager = peerManager ?? throw new ArgumentNullException(nameof(peerManager));
             this.client = client ?? throw new ArgumentNullException(nameof(client));
+            this.downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
             this.logger = appInfo.LoggerFactory.CreateLogger<ClusterManager>();
 
             // refresh status timer (to read new packages and peers)
@@ -40,6 +42,34 @@ namespace ShareCluster
 
             peerManager.PeersFound += PeerManager_PeerFound;
 
+        }
+
+        public PackageStatusResponse GetPackageStatus(PackageStatusRequest request)
+        {
+            var packages = new PackageStatusDetail[request.PackageIds.Length];
+            for (int i = 0; i < request.PackageIds.Length; i++)
+            {
+                var detail = new PackageStatusDetail();
+                Hash id = request.PackageIds[i];
+                packages[i] = detail;
+                if (!packageManager.TryGetPackageReference(id, out LocalPackageInfo info))
+                {
+                    detail.IsFound = false;
+                    continue;
+                }
+
+                // found 
+                detail.IsFound = true;
+                detail.BytesDownloaded = info.DownloadStatus.Data.DownloadedBytes;
+                detail.SegmentsBitmap = info.DownloadStatus.Data.SegmentsBitmap;
+            }
+
+            var result = new PackageStatusResponse()
+            {
+                FreeSlots = downloadManager.FreeUploadSlots,
+                Packages = packages
+            };
+            return result;
         }
 
         public Stream ReadData(DataRequest request)
@@ -106,7 +136,6 @@ namespace ShareCluster
             lock(clusterNodeLock)
             {
                 var result = new DiscoveryMessage();
-                result.Version = appInfo.Version;
                 result.InstanceHash = appInfo.InstanceHash.Hash;
                 result.KnownPackages = packageManager.PackagesMetadata;
                 result.KnownPeers = peerManager.PeersDiscoveryData;
@@ -216,7 +245,8 @@ namespace ShareCluster
 
             return new PackageResponse()
             {
-                Hashes = package.Hashes
+                Hashes = package.Hashes,
+                BytesDownloaded = package.DownloadStatus.Data.DownloadedBytes
             };
         }
     }
