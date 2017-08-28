@@ -7,7 +7,7 @@ namespace ShareCluster.Packaging
 {
     public class LocalPackageInfo
     {
-        public LocalPackageInfo(PackageReference reference, PackageDownloadStatus downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata)
+        public LocalPackageInfo(PackageReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata)
         {
             Reference = reference ?? throw new ArgumentNullException(nameof(reference));
             DownloadStatus = downloadStatus ?? throw new ArgumentNullException(nameof(downloadStatus));
@@ -20,7 +20,7 @@ namespace ShareCluster.Packaging
 
         public Hash Id => Reference.Id;
         public PackageReference Reference { get; }
-        public PackageDownloadStatus DownloadStatus { get; }
+        public PackageDownloadInfo DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }
         public Dto.PackageMeta Metadata { get; }
     }

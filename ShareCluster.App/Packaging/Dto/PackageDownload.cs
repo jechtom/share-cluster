@@ -15,7 +15,7 @@ namespace ShareCluster.Packaging.Dto
         public Hash PackageId { get; set; }
 
         [ProtoMember(3)]
-        public bool IsDownloading { get; set; }
+        public bool ResumeDownload { get; set; }
 
         [ProtoMember(4)]
         public long Size { get; set; }

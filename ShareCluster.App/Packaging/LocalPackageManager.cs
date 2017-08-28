@@ -112,7 +112,7 @@ namespace ShareCluster.Packaging
             UpdateHashes(packageHashes, directoryPath: buildDirectory.FullName);
 
             // store download status
-            PackageDownloadStatus downloadStatus = PackageDownloadStatus.CreateForCreatedPackage(app.Version, packageHashes);
+            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(app.Version, packageHashes);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
             // store metadata
@@ -148,10 +148,10 @@ namespace ShareCluster.Packaging
             return dto;
         }
 
-        public PackageDownloadStatus ReadPackageDownloadStatus(PackageReference reference)
+        public PackageDownloadInfo ReadPackageDownloadStatus(PackageReference reference)
         {
             var dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
-            var result = new PackageDownloadStatus(dto);
+            var result = new PackageDownloadInfo(dto);
             return result;
         }
 
@@ -215,7 +215,7 @@ namespace ShareCluster.Packaging
             Directory.CreateDirectory(packagePath);
 
             // store data
-            PackageDownloadStatus downloadStatus = PackageDownloadStatus.CreateForReadyForDownloadPackage(app.Version, hashes, startDownload: false);
+            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.Version, hashes, startDownload: false);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);
             UpdateMetadata(metadata);
@@ -232,7 +232,7 @@ namespace ShareCluster.Packaging
             return result;
         }
 
-        public void UpdateDownloadStatus(PackageDownloadStatus status, string directoryPath = null)
+        public void UpdateDownloadStatus(PackageDownloadInfo status, string directoryPath = null)
         {
             string path = Path.Combine(directoryPath ?? CreatePackagePath(status.PackageId), PackageDownloadFileName);
             File.WriteAllBytes(path, app.MessageSerializer.Serialize(status.Data));

@@ -33,17 +33,25 @@ namespace ShareCluster
             appInfo.LogStart();
             appInfo.InstanceName = "Test";
 
-            var peerManager = new Network.PeerManager(appInfo);
-            var localPackageManager = new Packaging.LocalPackageManager(appInfo);
-            var packageManager = new Packaging.PackageManager(appInfo.LoggerFactory, localPackageManager);
-            var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
-            
-            var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);
+            var peerRegistry = new PeerRegistry(appInfo);
+            var udpPeerDiscovery = new UdpPeerDiscovery(appInfo, peerRegistry);
 
-            var webHost = new HttpWebHost(appInfo, clusterManager);
+            var localPackageManager = new LocalPackageManager(appInfo);
+            var packageRegistry = new PackageRegistry(appInfo.LoggerFactory, localPackageManager);
+
+            var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
+
+            var downloadManager = new PackageDownloadManager(appInfo, client, packageRegistry, peerRegistry);
+
+            var cluster = new PeersCluster(appInfo, peerRegistry, client, packageRegistry);
+
+            var webHost = new HttpWebHost(appInfo, cluster, packageRegistry, downloadManager);
+
             webHost.Start();
 
-            peerManager.EnableAutoSearch();
+            udpPeerDiscovery.EnableAutoSearch();
+
+            downloadManager.RestoreUnfinishedDownloads();
 
             //var responseStatus = client.GetStatus(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, appInfo.NetworkSettings.TcpCommunicationPort), clusterManager.CreateDiscoveryMessage());
 
@@ -51,7 +59,7 @@ namespace ShareCluster
             {
                 //packageManager.CreatePackageFromFolder(@"c:\My\Repos\BrowserNet\"); // build immutable copy
                 //packageManager.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
-                clusterManager.UpdateStatusToAllPeers(); // notify about new package
+                //clusterManager.DistributeStatusToAllPeers(); // notify about new package
 
             }
 
@@ -59,79 +67,50 @@ namespace ShareCluster
             
 
             Thread.Sleep(Timeout.InfiniteTimeSpan);
-
-            return;
-
-            
-            return;
-
-            //using (var announcer = new Network.ClusterAnnouncer(settings, clusters))
-            //{
-            //    announcer.Start();
-            //    Console.WriteLine("Listening.");
-
-            //    var discovery = new Network.ClusterDiscovery(settings);
-            //    var result = discovery.Discover().Result;
-
-            //    Console.ReadLine();
-            //}
         }
 
         private static void CreateInstance2()
         {
+            // instance 2
             var configurationBuilder = new ConfigurationBuilder();
             var configuration = configurationBuilder.Build();
 
             var appInfo = AppInfo.CreateCurrent();
-            appInfo.NetworkSettings.TcpServicePort+=10;
-            appInfo.NetworkSettings.UdpAnnouncePort+=10;
+            appInfo.NetworkSettings.UdpAnnouncePort += 10;
+            appInfo.NetworkSettings.TcpServicePort += 10;
             appInfo.PackageRepositoryPath = @"c:\temp\temp2";
             appInfo.LogStart();
-            appInfo.InstanceName = "Test2";
+            appInfo.InstanceName = "Test";
 
-            var peerManager = new Network.PeerManager(appInfo);
-            var localPackageManager = new Packaging.LocalPackageManager(appInfo);
-            var downloadManager=new PackageDownloadManager(appInfo.LoggerFactory, appInfo.)
-            var packageManager = new Packaging.PackageManager(appInfo.LoggerFactory, localPackageManager, downloadManager);
+            var peerRegistry = new PeerRegistry(appInfo);
+            var udpPeerDiscovery = new UdpPeerDiscovery(appInfo, peerRegistry);
+
+            var localPackageManager = new LocalPackageManager(appInfo);
+            var packageRegistry = new PackageRegistry(appInfo.LoggerFactory, localPackageManager);
+
             var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
 
-            var clusterManager = new ClusterManager(appInfo, packageManager, peerManager, client);
+            var downloadManager = new PackageDownloadManager(appInfo, client, packageRegistry, peerRegistry);
 
-            var webHost = new HttpWebHost(appInfo, clusterManager);
+            var cluster = new PeersCluster(appInfo, peerRegistry, client, packageRegistry);
+
+            var webHost = new HttpWebHost(appInfo, cluster, packageRegistry, downloadManager);
+
             webHost.Start();
 
-            peerManager.EnableAutoSearch();
+            udpPeerDiscovery.EnableAutoSearch();
 
-            clusterManager.AddPermanentEndpoint(new IPEndPoint(IPAddress.Loopback, 13978));
+            downloadManager.RestoreUnfinishedDownloads();
 
+            cluster.AddManualPeer(new IPEndPoint(IPAddress.Loopback, 13978));
 
-            while(!packageManager.DiscoveredPackages.Any())
+            while(packageRegistry.ImmutableDiscoveredPackages.Count() == 0)
             {
-                Thread.Sleep(2000);
+                Thread.Sleep(1000);
             }
 
-            appInfo.LoggerFactory.CreateLogger("Test").LogInformation("Starting downloading...");
-
-            var disco = packageManager.DiscoveredPackages.First();
-            clusterManager.StartDownloadDiscoveredPackage(disco);
-
-
-            //var p = localPackageManager.ListPackages().First();
-            //int[] parts = Enumerable.Range(0, new PackageSequencer(p.PackageId.Size, p.PackageId.IsDownloaded).PartsCount).ToArray();
-
-            //var allocator = new PackageDataAllocator(appInfo.LoggerFactory);
-            //allocator.Allocate(p, overwrite: true);
-
-            //using (var stream = new PackageDataStream(appInfo.LoggerFactory, p, parts, write: true))
-            //{
-            //    client.DownloadPartsAsync(new IPEndPoint(IPAddress.Loopback, 13978), new Network.Messages.DataRequest()
-            //    {
-            //        PackageHash = p.PackageId.PackageHash,
-            //        RequestedParts = parts
-            //    }, stream).Wait();
-            //}
-
-            Thread.Sleep(Timeout.InfiniteTimeSpan);
+            var package = packageRegistry.ImmutableDiscoveredPackages.First();
+            downloadManager.GetDiscoveredPackageAndStartDownloadPackage(package);
         }
     }
 }

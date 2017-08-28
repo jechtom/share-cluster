@@ -41,10 +41,7 @@ namespace ShareCluster.Packaging
 
         public long? Length { get; }
 
-        public IEnumerable<PackageDataStreamPart> EnumerateParts()
-        {
-            return sequencer.GetPartsInfinite(packageRootPath);
-        }
+        public IEnumerable<PackageDataStreamPart> EnumerateParts() => parts;
 
         public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)
         {
@@ -80,7 +77,7 @@ namespace ShareCluster.Packaging
                 currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
                 currentPart.HashAlgorithm = cryptoProvider.CreateHashAlgorithm();
                 currentPart.MemoryStream = new MemoryStream((int)newPart.PartLength);
-                currentPart.HashStream = new CryptoStream(currentPart.MemoryStream, currentPart.HashAlgorithm, CryptoStreamMode.Read, leaveOpen: true);
+                currentPart.HashStream = new CryptoStream(currentPart.MemoryStream, currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
                 currentPart.Part.Stream = currentPart.HashStream;
             }
         }

@@ -33,9 +33,9 @@ namespace ShareCluster.Network
             return SendRequestAndGetRespone<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.PackageStatus), message);
         }
 
-        public Messages.DiscoveryMessage GetStatus(IPEndPoint endpoint, Messages.DiscoveryMessage message)
+        public Messages.StatusUpdateMessage GetStatus(IPEndPoint endpoint, Messages.StatusUpdateMessage message)
         {
-            return SendRequestAndGetRespone<Messages.DiscoveryMessage, Messages.DiscoveryMessage>(endpoint, nameof(HttpApiController.Discovery), message);
+            return SendRequestAndGetRespone<Messages.StatusUpdateMessage, Messages.StatusUpdateMessage>(endpoint, nameof(HttpApiController.StatusUpdate), message);
         }
 
         public Messages.PackageResponse GetPackage(IPEndPoint endpoint, Messages.PackageRequest message)

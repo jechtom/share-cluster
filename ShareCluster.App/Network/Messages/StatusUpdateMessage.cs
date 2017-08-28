@@ -8,7 +8,7 @@ using System.Text;
 namespace ShareCluster.Network.Messages
 {
     [ProtoContract]
-    public class DiscoveryMessage : IMessage
+    public class StatusUpdateMessage : IMessage
     {
         [ProtoMember(1)]
         public virtual Hash InstanceHash { get; set; }

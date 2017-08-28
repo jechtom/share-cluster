@@ -66,7 +66,7 @@ namespace ShareCluster.Network
 
             var controller = (IHttpApiController)context.Controller;
             controller.RemoteIpAddress = context.HttpContext.Connection.RemoteIpAddress;
-            controller.InstanceHash = hash;
+            controller.PeerId = hash;
             controller.IsLoopback = hash.Equals(InstanceHash.Hash);
         }
 

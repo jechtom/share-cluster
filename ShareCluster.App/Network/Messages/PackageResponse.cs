@@ -14,5 +14,8 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(2)]
         public long BytesDownloaded { get; set; }
+
+        [ProtoMember(3)]
+        public bool Found { get; set; }
     }
 }

@@ -62,7 +62,7 @@ namespace ShareCluster.Packaging
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (CanRead)
+            if (!CanRead)
             {
                 throw new InvalidOperationException("Read is not supported for this stream configuration.");
             }
@@ -72,7 +72,7 @@ namespace ShareCluster.Packaging
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if(CanRead)
+            if(!CanRead)
             {
                 throw new InvalidOperationException("Read is not supported for this stream configuration.");
             }
@@ -191,6 +191,7 @@ namespace ShareCluster.Packaging
 
         public override void Close()
         {
+            ResolveCurrentItemAndEnsureStream(); // this will close current stream if no more files
             controller.OnStreamClosed();
         }
 

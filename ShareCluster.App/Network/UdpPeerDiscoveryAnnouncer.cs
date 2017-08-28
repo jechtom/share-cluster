@@ -12,9 +12,9 @@ using Microsoft.Extensions.Logging;
 
 namespace ShareCluster.Network
 {
-    public class UdpPeerAnnouncer : IDisposable
+    public class UdpPeerDiscoveryAnnouncer : IDisposable
     {
-        private readonly ILogger<UdpPeerAnnouncer> logger;
+        private readonly ILogger<UdpPeerDiscoveryAnnouncer> logger;
         private readonly CompatibilityChecker compatibilityChecker;
         private readonly IPeerRegistry registry;
         private readonly NetworkSettings settings;
@@ -24,9 +24,9 @@ namespace ShareCluster.Network
         private CancellationTokenSource cancel;
         private Task task;
 
-        public UdpPeerAnnouncer(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, DiscoveryAnnounceMessage announce)
+        public UdpPeerDiscoveryAnnouncer(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, DiscoveryAnnounceMessage announce)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerAnnouncer>();
+            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryAnnouncer>();
             this.compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
             this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -63,14 +63,14 @@ namespace ShareCluster.Network
                 {
                     DiscoveryAnnounceMessage messageReq;
                     messageReq = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(rec.Buffer);
-                    if(messageReq.InstanceHash.Equals(announce.InstanceHash))
+                    if(messageReq.PeerId.Equals(announce.PeerId))
                     {
                         continue; // own request
                     }
 
                     var endpoint = new IPEndPoint(rec.RemoteEndPoint.Address, messageReq.ServicePort);
                     if (!compatibilityChecker.IsCompatibleWith(endpoint, messageReq.Version)) continue;
-                    registry.RegisterPeer(new PeerInfo(endpoint, isDirectDiscovery: true));
+                    registry.RegisterPeer(new PeerInfo(messageReq.PeerId, endpoint, isDirectDiscovery: true));
 
                     logger.LogTrace($"Received request from {rec.RemoteEndPoint.Address}.");
                 }

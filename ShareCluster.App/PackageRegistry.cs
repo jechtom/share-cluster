@@ -6,37 +6,39 @@ using ShareCluster.Network.Messages;
 using ShareCluster.Packaging.Dto;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
+using ShareCluster.Packaging;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster
 {
     /// <summary>
     /// Provides synchronized access package repository and in-memory package cache.
     /// </summary>
-    public class PackageManager
+    public class PackageRegistry : IPackageRegistry
     {
-        private readonly ILogger<PackageManager> logger;
+        private readonly ILogger<PackageRegistry> logger;
         private readonly LocalPackageManager localPackageManager;
         private Dictionary<Hash, LocalPackageInfo> localPackages;
         private Dictionary<Hash, DiscoveredPackage> discoveredPackages;
         private readonly object packagesLock = new object();
 
         // pre-calculated
-        private PackageMeta[] packagesMetadata;
-        private DiscoveredPackage[] discoveredPackagesArray;
+        private PackageMeta[] immutablePackagesMetadata;
+        private LocalPackageInfo[] immutablePackages;
+        private DiscoveredPackage[] immutableDiscoveredPackagesArray;
 
 
-        public PackageManager(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
+        public PackageRegistry(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageManager>();
+            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageRegistry>();
             this.localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             Init();
         }
 
-        public PackageMeta[] PackagesMetadata => packagesMetadata;
+        public PackageMeta[] ImmutablePackagesMetadata => immutablePackagesMetadata;
 
-        public DiscoveredPackage[] DiscoveredPackages => discoveredPackagesArray;
+        public LocalPackageInfo[] ImmutablePackages => immutablePackages;
 
-        public LocalPackageManager LocalPackageManager => localPackageManager;
+        public DiscoveredPackage[] ImmutableDiscoveredPackages => immutableDiscoveredPackagesArray;
 
         private void Init()
         {
@@ -48,7 +50,7 @@ namespace ShareCluster.Packaging
             foreach (var pr in packageReferences)
             {
                 PackageHashes hashes;
-                PackageDownloadStatus download;
+                PackageDownloadInfo download;
                 PackageMeta meta;
                 try
                 {
@@ -67,8 +69,6 @@ namespace ShareCluster.Packaging
             }
 
             UpdatePackages(addToLocal: packagesInitData, addToDiscovered: Enumerable.Empty<DiscoveredPackage>());
-
-            downloadManager.RestoreUnfinishedDownloads();
         }
 
         private void UpdatePackages(IEnumerable<LocalPackageInfo> addToLocal, IEnumerable<DiscoveredPackage> addToDiscovered)
@@ -85,17 +85,15 @@ namespace ShareCluster.Packaging
                     // regenerate local packages list
                     localPackages = localPackages.Values.Concat(addToLocal).ToDictionary(p => p.Id);
 
-                    // assign downloaders
-                    foreach (var localPackage in localPackages.Values)
+                    immutablePackages = localPackages.Values.Select(p => p).ToArray();
+                    immutablePackagesMetadata = localPackages.Values.Select(p => p.Metadata).ToArray();
+
+                    foreach (var item in addToLocal)
                     {
-                        if (localPackage.Downloader != null) continue;
-                        downloadManager.CreateAndAssignDownloaderFor(localPackage);
+                        logger.LogDebug("Added local package: \"{0}\" {1:s} ({2})", item.Metadata.Name, item.Id, SizeFormatter.ToString(item.Metadata.Size));
                     }
 
-                    packagesMetadata = localPackages.Values.Select(p => p.Metadata).ToArray();
-                    logger.LogInformation("Packages count: {0}", localPackages.Count);
-
-                    // regenerate discovered - to remove new packages already in local package list
+                    // regenerate discovered - to remove new packages already move to local packages list
                     discoveredPackages = (discoveredPackages).Values.Where(dp => !localPackages.ContainsKey(dp.PackageId)).ToDictionary(dp => dp.PackageId);
                 }
 
@@ -111,17 +109,16 @@ namespace ShareCluster.Packaging
                         if(discoveredPackages.TryGetValue(item.PackageId, out var value))
                         {
                             // update just endpoint (newest peer offering this)
-                            value.AddEndPoint(item.GetPrefferedEndpoint());
                             continue;
                         }
 
-                        logger.LogTrace("Discovered package {0:s} \"{1}\"", item.PackageId, item.Name);
+                        logger.LogTrace("Discovered package \"{0}\" {1:s} ({2})", item.Name, item.PackageId, SizeFormatter.ToString(item.Meta.Size));
                         discoveredPackages.Add(item.PackageId, item);
                         changed = true;
                     }
 
                     // as immutable array
-                    if (discoveredPackagesArray == null || changed) discoveredPackagesArray = discoveredPackages.Values.ToArray();
+                    if (immutableDiscoveredPackagesArray == null || changed) immutableDiscoveredPackagesArray = discoveredPackages.Values.ToArray();
                 }
             }
         }
@@ -131,16 +128,16 @@ namespace ShareCluster.Packaging
             UpdatePackages(addToLocal: null, addToDiscovered: packageMeta);
         }
 
-        public LocalPackageInfo AddPackageToDownload(PackageHashes packageHashes, PackageMeta meta)
+        public LocalPackageInfo SaveRemotePackage(PackageHashes packageHashes, PackageMeta meta)
         {
             // register
             LocalPackageInfo package;
             lock (packagesLock)
             {
                 package = localPackageManager.RegisterPackage(packageHashes, meta);
+                RegisterPackageInternal(package);
             }
 
-            RegisterPackageInternal(package);
             return package;
         }
 
@@ -163,7 +160,7 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public bool TryGetPackageReference(Hash packageHash, out LocalPackageInfo package)
+        public bool TryGetPackage(Hash packageHash, out LocalPackageInfo package)
         {
             lock(packagesLock)
             {
@@ -173,6 +170,16 @@ namespace ShareCluster.Packaging
                 }
                 return true;
             }
+        }
+
+        public void UpdateDownloadStatus(LocalPackageInfo packageInfo)
+        {
+            if (packageInfo == null)
+            {
+                throw new ArgumentNullException(nameof(packageInfo));
+            }
+
+            localPackageManager.UpdateDownloadStatus(packageInfo.DownloadStatus);
         }
     }
 }

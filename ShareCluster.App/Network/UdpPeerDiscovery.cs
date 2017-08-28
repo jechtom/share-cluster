@@ -1,69 +1,76 @@
-﻿using System;
-using System.Linq;
+﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Network.Messages;
+using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Net;
-using Microsoft.Extensions.Logging;
-using ShareCluster.Network.Messages;
 
 namespace ShareCluster.Network
 {
-    public class UdpPeerDiscovery
+    /// <summary>
+    /// Provides full discovery services over UDP - both listening and sending broadcasts in specific interval.
+    /// Discovered peers are added to given <see cref="IPeerRegistry"/>.
+    /// </summary>
+    public class UdpPeerDiscovery : IDisposable
     {
+        private bool announceResponseEnabled = false;
+        private UdpPeerDiscoveryAnnouncer udpAnnouncer;
+        private UdpPeerDiscoveryClient udpDiscovery;
+        private Timer udpDiscoveryTimer;
+        private readonly AppInfo app;
+        private readonly IPeerRegistry peerRegistry;
         private readonly ILogger<UdpPeerDiscovery> logger;
-        private readonly CompatibilityChecker compatibilityChecker;
-        private readonly NetworkSettings settings;
-        private readonly DiscoveryAnnounceMessage announce;
-        private readonly IPeerRegistry registry;
-        private readonly byte[] announceBytes;
-        private UdpClient client;
 
-        public UdpPeerDiscovery(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, NetworkSettings settings, DiscoveryAnnounceMessage announce, IPeerRegistry registry)
+        public UdpPeerDiscovery(AppInfo app, IPeerRegistry peerRegistry)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscovery>();
-            this.compatibilityChecker = compatibilityChecker;
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            this.announce = announce ?? throw new ArgumentNullException(nameof(announce));
-            this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            this.announceBytes = settings.MessageSerializer.Serialize(announce);
+            this.app = app ?? throw new ArgumentNullException(nameof(app));
+            this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            logger = app.LoggerFactory.CreateLogger<UdpPeerDiscovery>();
         }
-        
-        public async Task Discover()
-        {
-            using (client = new UdpClient())
-            {
-                var ip = new IPEndPoint(IPAddress.Broadcast, settings.UdpAnnouncePort);
-                
-                var lengthSent = await client.SendAsync(announceBytes, announceBytes.Length, ip);
-                if(lengthSent != announceBytes.Length)
-                {
-                    throw new InvalidOperationException("Cannot send discovery datagram.");
-                }
 
-                var timeout = new CancellationTokenSource(settings.DiscoveryTimeout);
-                while(!timeout.IsCancellationRequested)
-                {
-                    DiscoveryAnnounceMessage response = null; 
-                    try
-                    {
-                        var responseData = await client.ReceiveAsync().WithCancellation(timeout.Token);
-                        response = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(responseData.Buffer);
-                        var endpoint = new IPEndPoint(responseData.RemoteEndPoint.Address, response.ServicePort);
-                        if(!compatibilityChecker.IsCompatibleWith(endpoint, response.Version)) continue;
-                        registry.RegisterPeer(new PeerInfo(endpoint, isDirectDiscovery: true));
-                    }
-                    catch(OperationCanceledException)
-                    {
-                        break;
-                    }
-                    catch(Exception e)
-                    {
-                        logger.LogDebug($"Cannot deserialize discovery response: {e}");
-                    }
-                }
+        public void EnableAutoSearch()
+        {
+            if (announceResponseEnabled) return;
+            announceResponseEnabled = true;
+
+            var announceMessage = new DiscoveryAnnounceMessage()
+            {
+                PeerId = app.InstanceHash.Hash,
+                Version = app.Version,
+                ServicePort = app.NetworkSettings.TcpServicePort
+            };
+
+            // enable announcer
+            udpAnnouncer = new UdpPeerDiscoveryAnnouncer(app.LoggerFactory, app.CompatibilityChecker, peerRegistry, app.NetworkSettings, announceMessage);
+            udpAnnouncer.Start();
+
+            // timer discovery
+            udpDiscovery = new UdpPeerDiscoveryClient(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, peerRegistry);
+            udpDiscoveryTimer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+        }
+
+        private void DiscoveryTimerCallback(object state)
+        {
+            logger.LogTrace("Starting UDP peer discovery.");
+            udpDiscovery.Discover().ContinueWith(d =>
+            {
+                // plan next round
+                try { udpDiscoveryTimer?.Change(app.NetworkSettings.UdpDiscoveryTimer, Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
+            });
+        }
+
+        public void Dispose()
+        {
+            if (udpAnnouncer != null)
+            {
+                udpAnnouncer.Dispose();
+                udpAnnouncer = null;
+            }
+
+            if (udpDiscoveryTimer != null)
+            {
+                udpDiscoveryTimer.Dispose();
+                udpDiscoveryTimer = null;
             }
         }
     }

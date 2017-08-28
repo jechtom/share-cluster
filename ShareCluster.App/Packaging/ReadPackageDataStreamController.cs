@@ -44,9 +44,14 @@ namespace ShareCluster.Packaging
             EnsureNotDisposed();
 
             bool keepSameStream = oldPart != null && newPart != null && oldPart.Path == newPart.Path;
-            
-            if (!keepSameStream)
+
+            if (keepSameStream)
             {
+                // move stream to new part
+                newPart.Stream = oldPart.Stream;
+            }
+            else
+            { 
                 // close old one
                 if (oldPart != null) DisposeCurrentPart();
 

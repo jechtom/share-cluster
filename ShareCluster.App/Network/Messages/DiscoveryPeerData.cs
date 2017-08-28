@@ -13,6 +13,9 @@ namespace ShareCluster.Network.Messages
         public IPEndPoint ServiceEndpoint { get; set; }
 
         [ProtoMember(2)]
+        public Hash PeerId { get; set; }
+
+        [ProtoMember(3)]
         public TimeSpan SinceLastActivity { get; set; }
     }
 }

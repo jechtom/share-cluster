@@ -11,7 +11,25 @@ namespace ShareCluster.Network
         public TimeSpan DiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
         public IMessageSerializer MessageSerializer { get; set; }
         public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(1);
-        public TimeSpan DisableInactivePeerAfter { get; internal set; } = TimeSpan.FromMinutes(5);
-        public TimeSpan UpdateStatusTimer { get; internal set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// How many communication fails there have to be to remove from peer list.
+        /// </summary>
+        public int DisablePeerAfterFails { get; set; } = 2;
+
+        /// <summary>
+        /// How often peer will be contacted with package status update request.
+        /// </summary>
+        public TimeSpan PeerUpdateStatusTimer { get; set; } = TimeSpan.FromMinutes(2);
+
+        /// <summary>
+        /// Number of segments to be requested from peers.
+        /// </summary>
+        public int SegmentsPerRequest { get; set; } = 4;
+
+        /// <summary>
+        /// Gets or sets maximum number of concurrent download tasks.
+        /// </summary>
+        public int MaximumDownloadSlots { get; set; } = 1/*5 TODO uncomment*/;
     }
 }

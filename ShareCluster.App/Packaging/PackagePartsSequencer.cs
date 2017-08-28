@@ -93,7 +93,7 @@ namespace ShareCluster.Packaging
             return GetPartsInternal(packageRootPath, length: length, requestedSegments: requestedSegments);
         }
 
-        public IEnumerable<PackageDataStreamPart> GetPartsInternal(string packageRootPath, long? length, int[] requestedSegments)
+        private IEnumerable<PackageDataStreamPart> GetPartsInternal(string packageRootPath, long? length, int[] requestedSegments)
         {
             bool isInfinite = length == null;
 

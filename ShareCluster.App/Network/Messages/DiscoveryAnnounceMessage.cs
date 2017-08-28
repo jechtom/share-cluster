@@ -18,6 +18,6 @@ namespace ShareCluster.Network.Messages
         public virtual ushort ServicePort { get; set; }
 
         [ProtoMember(3)]
-        public virtual Hash InstanceHash { get; set; }
+        public virtual Hash PeerId { get; set; }
     }
 }

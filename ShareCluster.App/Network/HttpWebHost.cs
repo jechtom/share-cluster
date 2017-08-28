@@ -11,13 +11,17 @@ namespace ShareCluster.Network
     public class HttpWebHost : IDisposable
     {
         private readonly AppInfo appInfo;
-        private readonly ClusterManager clusterManager;
+        private readonly PeersCluster peersCluster;
+        private readonly IPackageRegistry packageRegistry;
+        private readonly PackageDownloadManager downloadManager;
         private IWebHost webHost;
 
-        public HttpWebHost(AppInfo appInfo, ClusterManager clusterManager)
+        public HttpWebHost(AppInfo appInfo, PeersCluster peersCluster, IPackageRegistry packageRegistry, PackageDownloadManager downloadManager)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
-            this.clusterManager = clusterManager ?? throw new ArgumentNullException(nameof(clusterManager));
+            this.peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
+            this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            this.downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
         }
 
         public void Dispose()
@@ -31,6 +35,7 @@ namespace ShareCluster.Network
 
         public void Start()
         {
+            string urls = $"http://*:{appInfo.NetworkSettings.TcpServicePort}";
             webHost = new WebHostBuilder()
                 .UseKestrel()
                 .UseEnvironment("Development")
@@ -40,15 +45,18 @@ namespace ShareCluster.Network
                     s.AddSingleton(appInfo);
                     s.AddSingleton(appInfo.LoggerFactory);
                     s.AddSingleton(appInfo.MessageSerializer);
-                    s.AddSingleton(clusterManager);
+                    s.AddSingleton(peersCluster);
+                    s.AddSingleton(packageRegistry);
+                    s.AddSingleton(downloadManager);
                     s.AddSingleton(appInfo.LoggerFactory);
                     s.AddSingleton(appInfo.CompatibilityChecker);
                     s.AddSingleton(appInfo.InstanceHash);
                     s.AddLogging();
                 })
-                .UseUrls($"http://*:{appInfo.NetworkSettings.TcpServicePort}")
+                .UseUrls(urls)
                 .UseStartup<HttpStartup>()
                 .Build();
+            appInfo.LoggerFactory.CreateLogger<HttpWebHost>().LogInformation("Starting HTTP server at {0}", urls);
             webHost.Start();
         }
     }
