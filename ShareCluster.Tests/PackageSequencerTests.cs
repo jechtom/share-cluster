@@ -17,7 +17,7 @@ namespace ShareCluster.Tests
             var sequencer = new PackagePartsSequencer();
             long testSize = baseInfo.DataFileLength * 120 / 100;
             var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            var parts = sequencer.GetDataFiles(@"c:\example", testSequence).ToArray();
+            var parts = sequencer.GetDataFilesForPackage(@"c:\example", testSequence).ToArray();
             Assert.Equal(2, parts.Count());
             Assert.Equal(baseInfo.DataFileLength, parts[0].PartLength);
             Assert.Equal(testSize - baseInfo.DataFileLength, parts[1].PartLength);
@@ -39,7 +39,7 @@ namespace ShareCluster.Tests
             var sequencer = new PackagePartsSequencer();
             long testSize = baseInfo.DataFileLength * 2; // two full files
             var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            var parts = sequencer.GetDataFiles(@"c:\example", testSequence).ToArray();
+            var parts = sequencer.GetDataFilesForPackage(@"c:\example", testSequence).ToArray();
             Assert.Equal(2, parts.Count());
             Assert.Equal(baseInfo.DataFileLength, parts[0].PartLength);
             Assert.Equal(baseInfo.DataFileLength, parts[1].PartLength);

@@ -13,8 +13,6 @@ namespace ShareCluster
         void RegisterPeer(PeerInfo peer);
         void RegisterPeers(IEnumerable<PeerInfo> peers);
         bool TryGetPeer(Hash peerId, out PeerInfo peerInfo);
-        event Action<IEnumerable<PeerInfo>> PeersFound;
-        event Action<PeerInfo> KnownPackageChanged;
-        event Action<PeerInfo> PeerDisabled;
+        event Action<IEnumerable<PeerInfoChange>> PeersChanged;
     }
 }

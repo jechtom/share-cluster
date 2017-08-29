@@ -28,9 +28,9 @@ namespace ShareCluster.Network
             this.instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
         }
 
-        public Messages.PackageStatusResponse GetPackageStatus(IPEndPoint endpoint, Messages.PackageStatusRequest message)
+        public Task<Messages.PackageStatusResponse> GetPackageStatusAsync(IPEndPoint endpoint, Messages.PackageStatusRequest message)
         {
-            return SendRequestAndGetRespone<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.PackageStatus), message);
+            return SendRequestAndGetResponeAsync<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.PackageStatus), message);
         }
 
         public Messages.StatusUpdateMessage GetStatus(IPEndPoint endpoint, Messages.StatusUpdateMessage message)
@@ -43,14 +43,27 @@ namespace ShareCluster.Network
             return SendRequestAndGetRespone<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.Package), message);
         }
 
-        public async Task DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Stream streamToWrite)
+        public async Task<Messages.DataResponseFaul> DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Lazy<Stream> streamToWriteLazy)
         {
-            HttpResponseMessage resultMessage = await SendRequest(endpoint, nameof(HttpApiController.Data), message, stream: true);
-            var stream = await resultMessage.Content.ReadAsStreamAsync();
-            await stream.CopyToAsync(streamToWrite);
+            using (HttpResponseMessage resultMessage = await SendRequestAsync(endpoint, nameof(HttpApiController.Data), message, stream: true))
+            {
+                using (var stream = await resultMessage.Content.ReadAsStreamAsync())
+                {
+                    // unexpected response (expected stream) == fault 
+                    if (string.Equals(resultMessage.Content.Headers.ContentType?.MediaType, serializer.MimeType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return serializer.Deserialize<Messages.DataResponseFaul>(stream);
+                    }
+
+                    // write to target stream
+                    Stream streamToWrite = streamToWriteLazy.Value;
+                    await stream.CopyToAsync(streamToWrite);
+                }
+                return null; // success
+            }
         }
         
-        private async Task<HttpResponseMessage> SendRequest<TReq>(IPEndPoint endpoint, string apiName, TReq req, bool stream = false)
+        private async Task<HttpResponseMessage> SendRequestAsync<TReq>(IPEndPoint endpoint, string apiName, TReq req, bool stream = false)
         {
             string uri = BuildUrl(endpoint, apiName);
             byte[] requestBytes = serializer.Serialize(req);
@@ -70,10 +83,20 @@ namespace ShareCluster.Network
 
         private TRes SendRequestAndGetRespone<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
         {
-            var taskSend = SendRequest(endpoint, apiName, req);
-            HttpResponseMessage resultMessage = taskSend.Result;
-            var stream = resultMessage.Content.ReadAsStreamAsync().Result;
-            return serializer.Deserialize<TRes>(stream);
+            using (HttpResponseMessage resultMessage = SendRequestAsync(endpoint, apiName, req).Result)
+            {
+                var stream = resultMessage.Content.ReadAsStreamAsync().Result;
+                return serializer.Deserialize<TRes>(stream);
+            }
+        }
+
+        private async Task<TRes> SendRequestAndGetResponeAsync<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
+        {
+            using (var resultMessage = await SendRequestAsync(endpoint, apiName, req))
+            {
+                var stream = await resultMessage.Content.ReadAsStreamAsync();
+                return serializer.Deserialize<TRes>(stream);
+            }
         }
     }
 }

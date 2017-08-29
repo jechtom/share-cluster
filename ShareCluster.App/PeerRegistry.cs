@@ -19,18 +19,18 @@ namespace ShareCluster
     {
         private readonly AppInfo app;
         private readonly ILogger<PeerRegistry> logger;
-        private Dictionary<Hash, PeerInfoDetail> peers;
+        private Dictionary<Hash, PeerInfo> peers;
         private readonly object peersLock = new object();
 
-        private DiscoveryPeerData[] peersDiscoveryDataArray;
-        private PeerInfo[] peersArray;
+        private DiscoveryPeerData[] immutablePeersDiscoveryDataArray;
+        private PeerInfo[] immutablePeersArray;
 
         public PeerRegistry(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
-            peers = new Dictionary<Hash, PeerInfoDetail>();
-            peersDiscoveryDataArray = new DiscoveryPeerData[0];
-            peersArray = new PeerInfo[0];
+            peers = new Dictionary<Hash, PeerInfo>();
+            immutablePeersDiscoveryDataArray = new DiscoveryPeerData[0];
+            immutablePeersArray = new PeerInfo[0];
             logger = app.LoggerFactory.CreateLogger<PeerRegistry>();
         }
         
@@ -38,93 +38,92 @@ namespace ShareCluster
 
         public void RegisterPeers(IEnumerable<PeerInfo> discoveredPeers)
         {
-            List<PeerInfo> newPeers = null;
+            List<PeerInfoChange> changedPeers = null;
 
             lock(peersLock)
             {
                 bool immutableListNeedsRefresh = false;
-                foreach (var peer in discoveredPeers)
+                foreach (var newPeer in discoveredPeers)
                 {
-                    bool addAsNewPeer = false;
+                    bool notifyAsAdded = false;
+                    bool notifyAsEndpointChanged = false;
 
                     // exists in list?
-                    if(!peers.TryGetValue(peer.PeerId, out PeerInfoDetail detail))
+                    bool exists = peers.TryGetValue(newPeer.PeerId, out PeerInfo peer);
+                    if (!exists)
                     {
-                        detail = new PeerInfoDetail();
-                        peers.Add(peer.PeerId, detail);
-                        logger.LogTrace("Found new peer {0:s} at {1}. Flags: {2}", peer.PeerId, peer.ServiceEndPoint, peer.StatusString);
+                        peers.Add(newPeer.PeerId, (peer = newPeer));
+                        logger.LogTrace("Found new peer {0:s} at {1}. Flags: {2}", newPeer.PeerId, newPeer.ServiceEndPoint, newPeer.StatusString);
                         immutableListNeedsRefresh = true;
-                        addAsNewPeer = true;
-                    }
-
-                    // update detail info
-                    if (detail.Info == null)
-                    {
-                        detail.Info = peer;
-                        detail.Info.KnownPackageChanged += (info) => KnownPackageChanged?.Invoke(info);
-                        peer.ClientSuccessChanged += Peer_ClientSuccessChanged;
+                        notifyAsAdded = true;
+                        peer.KnownPackageChanged += (info) => PeersChanged?.Invoke(new PeerInfoChange[] { new PeerInfoChange(info, hasKnownPackagesChanged: true) });
+                        newPeer.ClientSuccessChanged += Peer_ClientSuccessChanged;
                     }
                     else
                     {
-                        // update endpoint if current one is failing
-                        if (detail.Info.SuccessesSinceLastFail == 0 && !detail.Info.ServiceEndPoint.Equals(peer.ServiceEndPoint))
+                        // update endpoint if current one is not proven working
+                        if (peer.SuccessesSinceLastFail == 0 && !peer.ServiceEndPoint.Equals(newPeer.ServiceEndPoint))
                         {
-                            logger.LogTrace("Peer {0:s} has changed endpoint from {1} to {2}.", detail.Info.PeerId, detail.Info.ServiceEndPoint, peer.ServiceEndPoint);
-                            detail.Info.ServiceEndPoint = peer.ServiceEndPoint;
-                            addAsNewPeer = true; // announce new peer as endpoint has changed
+                            logger.LogTrace("Peer {0:s} has changed endpoint from {1} to {2}.", peer.PeerId, peer.ServiceEndPoint, newPeer.ServiceEndPoint);
+                            peer.ServiceEndPoint = newPeer.ServiceEndPoint;
+                            notifyAsEndpointChanged = true; // announce new peer as endpoint has changed
                         }
 
                         // reenable disabled endpoint
-                        if (!detail.IsEnabled)
+                        if (!peer.IsEnabled)
                         {
-                            logger.LogTrace("Peer {0:s} at {1} has been reenabled.", detail.Info.PeerId, detail.Info.ServiceEndPoint);
+                            logger.LogTrace("Peer {0:s} at {1} has been reenabled.", peer.PeerId, peer.ServiceEndPoint);
                             immutableListNeedsRefresh = true;
-                            addAsNewPeer = true;
-                            detail.IsEnabled = true;
+                            notifyAsAdded = true; // enabling peer == adding
+                            peer.IsEnabled = true;
                         }
 
                         // update source of discovery
-                        detail.Info.IsDirectDiscovery |= peer.IsDirectDiscovery;
-                        detail.Info.IsLoopback |= peer.IsLoopback;
-                        detail.Info.IsPermanent |= peer.IsPermanent;
-                        detail.Info.IsOtherPeerDiscovery |= peer.IsOtherPeerDiscovery;
+                        peer.IsDirectDiscovery |= newPeer.IsDirectDiscovery;
+                        peer.IsLoopback |= newPeer.IsLoopback;
+                        peer.IsPermanent |= newPeer.IsPermanent;
+                        peer.IsOtherPeerDiscovery |= newPeer.IsOtherPeerDiscovery;
                     }
 
-                    // signal new peer
-                    if (addAsNewPeer) (newPeers ?? (newPeers = new List<PeerInfo>())).Add(detail.Info);
+                    // signal updated peer
+                    if (notifyAsAdded | notifyAsEndpointChanged)
+                    {
+                        var changedPeer = new PeerInfoChange(peer, isAdded: notifyAsAdded, hasEndPointHasChanged: notifyAsEndpointChanged);
+                        (changedPeers ?? (changedPeers = new List<PeerInfoChange>())).Add(changedPeer);
+                    }
                 }
 
                 // regenerate prepared list
                 if (immutableListNeedsRefresh) OnPeersListChanged();
             }
 
-            if(newPeers != null)
+            if(changedPeers != null)
             {
-                PeersFound?.Invoke(newPeers);
+                PeersChanged?.Invoke(changedPeers);
             }
         }
 
         private void OnPeersListChanged()
         {
             // don't provide peers we don't have confirmed for discovery - there would be risk of poisoning with already inactive peers
-            peersDiscoveryDataArray = peers
-                .Where(p => p.Value.IsEnabled && p.Value.Info.SuccessesSinceLastFail > 0)
+            immutablePeersDiscoveryDataArray = peers
+                .Where(p => p.Value.IsEnabled && p.Value.SuccessesSinceLastFail > 0)
                 .Select(p => new DiscoveryPeerData() {
-                    ServiceEndpoint = p.Value.Info.ServiceEndPoint,
-                    PeerId = p.Value.Info.PeerId
+                    ServiceEndpoint = p.Value.ServiceEndPoint,
+                    PeerId = p.Key
                 })
                 .ToArray();
 
-            peersArray = peers
+            immutablePeersArray = peers
                 .Where(p => p.Value.IsEnabled)
-                .Select(pv => pv.Value.Info)
+                .Select(pv => pv.Value)
                 .ToArray();
         }
         
-        private void Peer_ClientSuccessChanged(PeerInfo arg1, (bool firstSuccess, bool firstFail) arg2)
+        private void Peer_ClientSuccessChanged(PeerInfo peer, (bool firstSuccess, bool firstFail) arg2)
         {
             // disable peer if inactive
-            bool disablePeer = arg1.FailsSinceLastSuccess >= app.NetworkSettings.DisablePeerAfterFails;
+            bool disablePeer = peer.FailsSinceLastSuccess >= app.NetworkSettings.DisablePeerAfterFails;
 
             // if peer will be disabled or first fail or success - these can remove/return peer from immutable arrays
             bool updateLists = disablePeer || arg2.firstFail || arg2.firstSuccess;
@@ -135,9 +134,9 @@ namespace ShareCluster
             {
                 if (disablePeer)
                 {
-                    logger.LogTrace("Peer {0:s} at {1} has failed and is now disabled.", arg1.PeerId, arg1.ServiceEndPoint);
-                    peers[arg1.PeerId].IsEnabled = false;
-                    PeerDisabled?.Invoke(arg1);
+                    logger.LogTrace("Peer {0:s} at {1} has failed and is now disabled.", peer.PeerId, peer.ServiceEndPoint);
+                    peer.IsEnabled = false;
+                    PeersChanged?.Invoke(new[] { new PeerInfoChange(peer, isRemoved: true) });
                 }
                 
                 // update immutable
@@ -155,29 +154,15 @@ namespace ShareCluster
                     peerInfo = null;
                     return false;
                 }
-                peerInfo = item.Info;
+                peerInfo = item;
                 return true;
             }
         }
+        
+        public DiscoveryPeerData[] ImmutablePeersDiscoveryData => immutablePeersDiscoveryDataArray;
 
-        private class PeerInfoDetail
-        {
-            public PeerInfoDetail()
-            {
-                IsEnabled = true;
-            }
+        public PeerInfo[] ImmutablePeers => immutablePeersArray;
 
-            public PeerInfo Info { get; set; }
-            public bool IsEnabled { get; set; }
-        }
-
-        public DiscoveryPeerData[] ImmutablePeersDiscoveryData => peersDiscoveryDataArray;
-
-        public PeerInfo[] ImmutablePeers => peersArray;
-
-        public event Action<PeerInfo> KnownPackageChanged;
-        public event Action<PeerInfo> PeerDisabled;
-
-        public event Action<IEnumerable<PeerInfo>> PeersFound;
+        public event Action<IEnumerable<PeerInfoChange>> PeersChanged;
     }
 }

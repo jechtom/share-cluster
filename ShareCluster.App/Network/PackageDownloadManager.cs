@@ -5,6 +5,7 @@ using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -12,48 +13,38 @@ using System.Threading.Tasks;
 
 namespace ShareCluster.Network
 {
+    /// <summary>
+    /// Download queue manager.
+    /// </summary>
     public class PackageDownloadManager
     {
         private readonly AppInfo appInfo;
-        private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<PackageDownloadManager> logger;
         private readonly HttpApiClient client;
         private readonly IPackageRegistry packageRegistry;
         private readonly IPeerRegistry peerRegistry;
         private readonly List<LocalPackageInfo> downloads;
-        private readonly List<SlotDownloadInfo> slots;
+        private int downloadSlotsLeft;
         private readonly HashSet<Hash> packageDataDownloads = new HashSet<Hash>();
         private readonly object syncLock = new object();
-        private HashSet<Hash> interestedInPackages = new HashSet<Hash>();
-        private readonly Dictionary<Hash, DownloadPeerInfo> interestedClients;
-        private readonly Timer statusTimer;
-        private readonly TimeSpan statusTimerInterval = TimeSpan.FromSeconds(10);
-        private readonly Stopwatch stopwatch;
-        private int usedUploadSlots;
-        private int usedDownloadSlots;
+        
+        private readonly PackageStatusUpdater packageStatusUpdater;
 
         public PackageDownloadManager(AppInfo appInfo, HttpApiClient client, IPackageRegistry packageRegistry, IPeerRegistry peerRegistry)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
-            this.loggerFactory = appInfo.LoggerFactory;
-            logger = loggerFactory.CreateLogger<PackageDownloadManager>();
+            logger = appInfo.LoggerFactory.CreateLogger<PackageDownloadManager>();
             this.client = client ?? throw new ArgumentNullException(nameof(client));
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            stopwatch = Stopwatch.StartNew();
-            statusTimer = new Timer(StatusTimeoutCallback, null, statusTimerInterval, Timeout.InfiniteTimeSpan);
+            downloadSlotsLeft = MaximumDownloadSlots;
             downloads = new List<LocalPackageInfo>();
-            interestedClients = new Dictionary<Hash, DownloadPeerInfo>();
-            peerRegistry.PeersFound += PeerRegistry_PeersFound;
-            peerRegistry.KnownPackageChanged += PeerRegistry_KnownPackageChanged;
-            peerRegistry.PeerDisabled += PeerRegistry_PeerDisabled;
-            slots = new List<SlotDownloadInfo>(MaximumDownloadSlots);
+            packageStatusUpdater = new PackageStatusUpdater(appInfo.LoggerFactory, appInfo.NetworkSettings, client);
+            peerRegistry.PeersChanged += packageStatusUpdater.UpdatePeers;
+            packageStatusUpdater.NewDataAvailable += StartNextSegmentsDownload;
         }
 
         public int MaximumDownloadSlots => appInfo.NetworkSettings.MaximumDownloadSlots;
-        public int MaximumUploadSlots { get; set; } = 5;
-
-        public int AvailableUploadSlots => Math.Max(0, MaximumUploadSlots - usedUploadSlots);
 
         public void RestoreUnfinishedDownloads()
         {
@@ -189,7 +180,6 @@ namespace ShareCluster.Network
 
             var result = new PackageStatusResponse()
             {
-                FreeSlots = AvailableUploadSlots,
                 Packages = packages
             };
             return result;
@@ -202,289 +192,143 @@ namespace ShareCluster.Network
             lock (syncLock)
             {
                 // add/remove
-                if (!isInterested)
+                if (isInterested)
                 {
-                    // forget about package
-                    foreach (var item in interestedClients)
-                    {
-                        item.Value.Packages.Remove(package.Id);
-                    }
-                    downloads.Remove(package);
+                    downloads.Add(package);
+                    packageStatusUpdater.InterestedInPackage(package);
                 }
                 else
                 {
-                    downloads.Add(package);
-                }
-                
-                // rebuild list of relevant peers
-                interestedInPackages = downloads.Select(i => i.Id).ToHashSet();
-                InspectClients(peerRegistry.ImmutablePeers);
-            }
-        }
-
-        private void PeerRegistry_KnownPackageChanged(PeerInfo peerInfo)
-        {
-            InspectClients(new PeerInfo[] { peerInfo });
-        }
-
-        private void PeerRegistry_PeersFound(IEnumerable<PeerInfo> obj)
-        {
-            InspectClients(obj);
-        }
-
-        private void InspectClients(IEnumerable<PeerInfo> clients)
-        {
-            lock (syncLock)
-            {
-                foreach (var peerInfo in clients)
-                {
-                    bool interestingClient = (peerInfo.KnownPackages.Keys.Any(kp => interestedInPackages.Contains(kp)));
-
-                    // client don't have packages we need
-                    if (!interestingClient)
-                    {
-                        interestedClients.Remove(peerInfo.PeerId);
-                        return;
-                    }
-
-                    // update
-                    if (!interestedClients.TryGetValue(peerInfo.PeerId, out DownloadPeerInfo dpi))
-                    {
-                        dpi = new DownloadPeerInfo(peerInfo);
-                        interestedClients.Add(peerInfo.PeerId, dpi);
-                    }
+                    downloads.Remove(package);
+                    packageStatusUpdater.NotInterestedInPackage(package);
                 }
             }
+
+            StartNextSegmentsDownload();
         }
-
-        private void PeerRegistry_PeerDisabled(PeerInfo disabledPeer)
-        {
-            lock (syncLock)
-            {
-                interestedClients.Remove(disabledPeer.PeerId);
-            }
-        }
-
-        private void StatusTimeoutCallback(object state)
-        {
-            try
-            {
-
-                PackageStatusRequest requestMessage;
-                DownloadPeerInfo[] peerInfos;
-                var elapsed = stopwatch.Elapsed;
-                var elapsedThreshold = elapsed.Subtract(appInfo.NetworkSettings.PeerUpdateStatusTimer);
-
-                // list of clients to fetch
-                lock (syncLock)
-                {
-                    if (interestedClients.Count == 0 || downloads.Count == 0) return;
-
-                    peerInfos = interestedClients.Values.Where(c => c.LastUpdateInvocation < elapsedThreshold).ToArray();
-                    foreach (var item in peerInfos)
-                    {
-                        item.LastUpdateInvocation = elapsed;
-                    }
-
-                    requestMessage = new PackageStatusRequest() { PackageIds = downloads.Select(i => i.Id).ToArray() };
-                }
-
-                // fetch
-                peerInfos.AsParallel()
-                        .Select(c => {
-                            bool success = false;
-                            PackageStatusResponse statusResult = null;
-                            try
-                            {
-                                // send request
-                                statusResult = client.GetPackageStatus(c.PeerInfo.ServiceEndPoint, requestMessage);
-                                c.PeerInfo.ClientHasSuccess();
-                                success = true;
-                            }
-                            catch (Exception e)
-                            {
-                                c.PeerInfo.ClientHasFailed();
-                                logger.LogDebug("Can't reach client {0:s} at {1}: {2}", c.PeerInfo.PeerId, c.PeerInfo.ServiceEndPoint, e.Message);
-                            }
-                            return (peer: c, status: statusResult, success: success);
-                        })
-                        .Where(c => c.success)
-                        .ForAll(c =>
-                        {
-                            lock (syncLock)
-                            {
-                                // update timing - we have fresh data now
-                                c.peer.LastUpdateInvocation = stopwatch.Elapsed;
-
-                                // apply changes
-                                for (int i = 0; i < requestMessage.PackageIds.Length; i++)
-                                {
-                                    var packageId = requestMessage.PackageIds[i];
-                                    var status = c.status.Packages[i];
-
-                                    // remove not found packages
-                                    if(!status.IsFound)
-                                    {
-                                        c.peer.Packages.Remove(packageId);
-                                        continue;
-                                    }
-
-                                    // replace/add existing
-                                    if(!c.peer.Packages.TryGetValue(packageId, out DownloadPeerPackageInfo value))
-                                    {
-                                        value = new DownloadPeerPackageInfo();
-                                        c.peer.Packages.Add(packageId, value);
-                                    }
-
-                                    value.BytesDownloaded = status.BytesDownloaded;
-                                    value.SegmentsBitmap = status.SegmentsBitmap;
-                                }
-                            }
-                        });
-
-                // apply downloads
-                StartNextSegmentsDownload();
-            }
-            finally
-            {
-                statusTimer.Change(statusTimerInterval, Timeout.InfiniteTimeSpan);
-            }
-        }
-
+        
         private void StartNextSegmentsDownload()
         {
             lock (syncLock)
             {
-                // build remporal list of clients we can use to download data
-                List<DownloadPeerInfo> tmpPeers = interestedClients.Values.Where(c => c.Packages.Any(p => p.Value.BytesDownloaded > 0)).ToList();
+                LocalPackageInfo package = downloads.FirstOrDefault();
+                if (package == null || downloadSlotsLeft <= 0) return; // nothing to do
 
-                while (slots.Count < MaximumDownloadSlots && tmpPeers.Count > 0)
+                List<PeerInfo> tmpPeers = packageStatusUpdater.GetClientListForPackage(package);
+
+                while (downloadSlotsLeft > 0 && tmpPeers.Count > 0)
                 {
                     // pick random peer
-                    int peerIndex = ThreadSafeRandom.Next(0, interestedClients.Count);
+                    int peerIndex = ThreadSafeRandom.Next(0, tmpPeers.Count);
                     var peer = tmpPeers[peerIndex];
+                    tmpPeers.RemoveAt(peerIndex);
 
-                    // pick random package
-                    var package = peer.Packages.Skip(ThreadSafeRandom.Next(0, peer.Packages.Count)).First();
-                    var download = downloads.Single(d => d.Id.Equals(package.Key));
-
-                    if (!download.DownloadStatus.IsMoreToDownload) break; // TODO don't stop other downloads is current download is finished
+                    // is there any more work for now?
+                    if (!package.DownloadStatus.IsMoreToDownload)
+                    {
+                        logger.LogTrace("No more work for package {0}", package);
+                        break;
+                    }
 
                     // select random segments to download
-                    int[] parts = download.DownloadStatus.TrySelectSegmentsForDownload(package.Value.SegmentsBitmap, appInfo.NetworkSettings.SegmentsPerRequest);
+                    if (!packageStatusUpdater.TryGetBitmapOfPeer(package, peer, out byte[] remoteBitmap)) continue;
+                    int[] parts = package.DownloadStatus.TrySelectSegmentsForDownload(remoteBitmap, appInfo.NetworkSettings.SegmentsPerRequest);
                     if (parts == null)
                     {
-                        peer.Packages.Remove(package.Key);
-                        if (!peer.Packages.Any())
-                        {
-                            interestedClients.Remove(peer.PeerInfo.PeerId);
-                            tmpPeers.RemoveAt(peerIndex);
-                        }
+                        // not compatible
+                        packageStatusUpdater.PostponePeersPackage(package, peer);
                         continue;
                     }
 
                     // start download
-                    logger.LogTrace("Downloading \"{0}\" {1:s} - from {2:s} at {3} - segments {4}", download.Metadata.Name, download.Id, peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, parts.Format());
-                    PeerInfo peerInfo = peer.PeerInfo;
-                    var slot = new SlotDownloadInfo(this, peerInfo, download, parts);
-                    slots.Add(slot);
-                    slot.Download();
+                    Interlocked.Decrement(ref downloadSlotsLeft);
+                    DownloadSegmentsAsync(package, parts, peer)
+                        .ContinueWith((t) =>
+                        {
+                            Interlocked.Increment(ref downloadSlotsLeft);
+                            StartNextSegmentsDownload();
+                        });
                 }
             }
         }
 
-        private void RemoveSlot(SlotDownloadInfo slot)
+        private async Task DownloadSegmentsAsync(LocalPackageInfo package, int[] parts, PeerInfo peer)
         {
-            lock(syncLock)
+            logger.LogTrace("Downloading \"{0}\" {1:s} - from {2:s} at {3} - segments {4}", package.Metadata.Name, package.Id, peer.PeerId, peer.ServiceEndPoint, parts.Format());
+
+            var message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
+
+            WritePackageDataStreamController controller = null;
+            Stream stream = null;
+            try
             {
-                slots.Remove(slot);
-                StartNextSegmentsDownload();
-            }
-        }
-
-        class DownloadPeerInfo
-        {
-            public PeerInfo PeerInfo { get; set; }
-            public TimeSpan LastUpdateInvocation { get; set; }
-            public Dictionary<Hash, DownloadPeerPackageInfo> Packages { get; set; }
-
-            public DownloadPeerInfo(PeerInfo peerInfo)
-            {
-                LastUpdateInvocation = TimeSpan.MinValue;
-                PeerInfo = peerInfo;
-                Packages = new Dictionary<Hash, DownloadPeerPackageInfo>();
-            }
-        }
-
-        class DownloadPeerPackageInfo
-        {
-            public long BytesDownloaded { get; set; }
-            public byte[] SegmentsBitmap { get; set; }
-            public bool IsSeeder { get; set; }
-        }
-
-        class SlotDownloadInfo : IDisposable
-        {
-            private readonly PeerInfo peerInfo;
-            private readonly LocalPackageInfo package;
-            private readonly DataRequest message;
-            private PackageDownloadManager packageDownloadManager;
-            private WritePackageDataStreamController controller;
-            private PackageDataStream stream;
-            private Task task;
-
-            public SlotDownloadInfo(PackageDownloadManager packageDownloadManager, PeerInfo peerInfo, LocalPackageInfo package, int[] parts)
-            {
-                this.packageDownloadManager = packageDownloadManager;
-                this.peerInfo = peerInfo;
-                this.package = package;
-                message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
-                controller = new WritePackageDataStreamController(packageDownloadManager.loggerFactory, packageDownloadManager.appInfo.Crypto, package.Reference.FolderPath, package.Sequence, package.Hashes, parts);
-                stream = new PackageDataStream(packageDownloadManager.loggerFactory, controller);
-            }
-
-            public void Dispose()
-            {
-                stream.Dispose();
-                controller.Dispose();
-            }
-
-            public void Download()
-            {
-                task = packageDownloadManager.client.DownloadPartsAsync(peerInfo.ServiceEndPoint, message, stream);
-                task.ContinueWith(t =>
+                Func<Stream> createStream = () =>
                 {
-                    if(t.IsFaulted)
+                    controller = new WritePackageDataStreamController(appInfo.LoggerFactory, appInfo.Crypto, package.Reference.FolderPath, package.Sequence, package.Hashes, parts);
+                    stream = new PackageDataStream(appInfo.LoggerFactory, controller);
+                    return stream;
+                };
+
+                DataResponseFaul response = null;
+                bool success = false;
+                try
+                {
+                    response = await client.DownloadPartsAsync(peer.ServiceEndPoint, message, new Lazy<Stream>(createStream));
+                    success = (response == null);
+
+                    // choked response?
+                    if (response?.IsChoked == true)
                     {
-                        packageDownloadManager.logger.LogError(t.Exception, "Can't finish downloading of segments.");
+                        packageStatusUpdater.PostponePeer(peer);
+                        logger.LogTrace($"Choke response from {peer.PeerId:s} at {peer.ServiceEndPoint}.");
                     }
 
-                    try
+                    // not found (client probably deleted package)
+                    if (response?.PackageNotFound == true || response?.PackagePartsNotFound == true)
                     {
-                        Dispose();
-                    }
-                    catch (Exception e)
-                    {
-                        packageDownloadManager.logger.LogError(e, "Can't close stream.");
+                        logger.LogTrace($"Received not found data message from {peer.PeerId:s} at {peer.ServiceEndPoint}.");
+                        peer.RemoveKnownPackage(package.Id);
                     }
 
-                    bool success = t.IsCompletedSuccessfully;
-
+                    if(success)
+                    {
+                        logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2:s} at {3} - segments {4}", package.Metadata.Name, package.Id, peer.PeerId, peer.ServiceEndPoint, parts.Format());
+                    }
+                }
+                catch (HashMismatchException e)
+                {
+                    logger.LogError($"Client {peer.PeerId:s} at {peer.ServiceEndPoint} failed to provide valid data segment: {e.Message}");
+                    packageStatusUpdater.PostponePeer(peer);
+                    peer.ClientHasFailed();
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, $"Failed to download data segment from {peer.PeerId:s} at {peer.ServiceEndPoint}.");
+                    packageStatusUpdater.PostponePeer(peer);
+                    peer.ClientHasFailed();
+                }
+                finally
+                {
+                    // return segments / mark as downloaded
                     package.DownloadStatus.ReturnLockedSegments(message.RequestedParts, areDownloaded: success);
+                }
 
-                    packageDownloadManager.RemoveSlot(this);
-                    // download finished
-                    if(package.DownloadStatus.IsDownloaded)
-                    {
-                        packageDownloadManager.StopDownloadPackage(package);
-                    }
-
-                    // update success to download file
-                    if (success)
-                    {
-                        packageDownloadManager.packageRegistry.UpdateDownloadStatus(package);
-                    }
-                });
+                // download finished
+                if (package.DownloadStatus.IsDownloaded)
+                {
+                    // stop and update
+                    StopDownloadPackage(package);
+                }
+                else
+                {
+                    // just update
+                    packageRegistry.UpdateDownloadStatus(package);
+                }
+            }
+            finally
+            {
+                if (stream != null) stream.Dispose();
+                if (controller != null) controller.Dispose();
             }
         }
     }

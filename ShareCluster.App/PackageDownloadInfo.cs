@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ShareCluster.Network.Messages;
 
 namespace ShareCluster
 {
@@ -49,7 +50,7 @@ namespace ShareCluster
                 throw new ArgumentNullException(nameof(sequenceInfo));
             }
 
-            int bitmapSize = GetBitmapSizeForPackage(sequenceInfo.PackageSize);
+            int bitmapSize = GetBitmapSizeForPackage(sequenceInfo.SegmentsCount);
 
             var data = new PackageDownload()
             {
@@ -62,7 +63,7 @@ namespace ShareCluster
             return new PackageDownloadInfo(data, sequenceInfo);
         }
         
-        private static int GetBitmapSizeForPackage(long length) => (int)((length + 7) / 8);
+        private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
 
         public PackageDownload Data => dto;
         public Hash PackageId => dto.PackageId;
@@ -74,27 +75,45 @@ namespace ShareCluster
         {
             lock(syncLock)
             {
+                if (IsDownloaded) throw new InvalidOperationException("Already downloaded.");
+                if (!IsDownloading) throw new InvalidOperationException("Not downloadeding at this moment.");
+
                 partsInProgress.ExceptWith(segmentIndexes);
                 for (int i = 0; i < segmentIndexes.Length; i++)
                 {
                     int segmentIndex = segmentIndexes[i];
+                    long segmentSize = sequenceInfo.GetSizeOfSegment(segmentIndex);
                     if (areDownloaded)
                     {
                         // mark as downloaded
                         Data.SegmentsBitmap[segmentIndex / 8] |= (byte)(1 << (segmentIndex % 8));
+                        Data.DownloadedBytes += segmentSize;
                     }
-                    else
-                    {
-                        // return
-                        progressBytesReserved -= sequenceInfo.GetSizeOfSegment(segmentIndex);
-                    }
+
+                    // return
+                    progressBytesReserved -= segmentSize;
+                }
+
+                if(IsDownloaded)
+                {
+                    Data.SegmentsBitmap = null;
+                    Data.IsDownloading = false;
                 }
             }
         }
 
-
+        /// <summary>
+        /// Returns segments indexes available to read from <paramref name="remote"/> up to <paramref name="count"/>.
+        /// Make sure segment is validated with <see cref="ValidateStatusUpdateFromPeer(PackageStatusDetail)"/>
+        /// </summary>
+        /// <param name="remote">Remote bitmap or null if remote is fully downloaded.</param>
+        /// <param name="count">Maximum number of segments to return.</param>
+        /// <returns>List of segments available to read. Empty array represents no compatibility at this moment.</returns>
         public int[] TrySelectSegmentsForDownload(byte[] remote, int count)
         {
+            if (IsDownloaded) throw new InvalidOperationException("Already downloaded.");
+            if (!IsDownloading) throw new InvalidOperationException("Not downloadeding at this moment.");
+
             bool isRemoteFull = remote == null;
             if (!isRemoteFull && remote.Length != dto.SegmentsBitmap.Length)
             {
@@ -105,20 +124,21 @@ namespace ShareCluster
             lock (syncLock)
             {
                 int segments = dto.SegmentsBitmap.Length;
-                int randomSegmentByte = ThreadSafeRandom.Next(0, segments);
+                int startSegmentByte = ThreadSafeRandom.Next(0, segments);
+                int currentSegmentByte = startSegmentByte;
                 while (true)
                 {
                     // if our segment is NOT downloaded AND remote segment is ready to be downloaded
-                    int needed = (~dto.SegmentsBitmap[randomSegmentByte]);
+                    int needed = (~dto.SegmentsBitmap[currentSegmentByte]);
                     if (isRemoteFull)
                     {
                         // remote server have all segments
-                        needed &= (randomSegmentByte == segments - 1) ? lastByteMask : 0xFF;
+                        needed &= (currentSegmentByte == segments - 1) ? lastByteMask : 0xFF;
                     }
                     else
                     {
                         // remote server provided mask with segments it have
-                        needed &= remote[randomSegmentByte];
+                        needed &= remote[currentSegmentByte];
                     }
                     if (needed > 0)
                     {
@@ -126,7 +146,7 @@ namespace ShareCluster
                         {
                             // check, calculate index and verify it is not currently in progress by other download
                             int randomSegment;
-                            if ((needed & (1 << bit)) > 0 && partsInProgress.Add(randomSegment = (randomSegmentByte * 8 + bit)))
+                            if ((needed & (1 << bit)) > 0 && partsInProgress.Add(randomSegment = (currentSegmentByte * 8 + bit)))
                             {
                                 result.Add(randomSegment);
                                 if (result.Count == count) break;
@@ -137,7 +157,8 @@ namespace ShareCluster
                     if (result.Count == count) break;
 
                     // move next
-                    randomSegmentByte = (randomSegmentByte + 1) % dto.SegmentsBitmap.Length;
+                    currentSegmentByte = (currentSegmentByte + 1) % dto.SegmentsBitmap.Length;
+                    if (currentSegmentByte == startSegmentByte) break;
                 }
 
                 // lower remaining bytes
@@ -149,6 +170,70 @@ namespace ShareCluster
             }
 
             return result.ToArray();
+        }
+
+        /// <summary>
+        /// Throws exception if given status detail is invalid for package represented by this instance. This can happen only if data has been manipulated.
+        /// </summary>
+        public void ValidateStatusUpdateFromPeer(PackageStatusDetail detail)
+        {
+            if (detail == null)
+            {
+                throw new InvalidOperationException("Detail is NULL.");
+            }
+
+            if (!detail.IsFound)
+            {
+                throw new InvalidOperationException("Detail is invalid. It is marked as not found.");
+            }
+
+            if (detail.BytesDownloaded < 0 || detail.BytesDownloaded > sequenceInfo.PackageSize)
+            {
+                throw new InvalidOperationException("Invalid bytes downloaded counter. Value is out of range.");
+            }
+
+            if (detail.BytesDownloaded == sequenceInfo.PackageSize && detail.SegmentsBitmap != null)
+            {
+                throw new InvalidOperationException("Invalid bitmap. Bitmap should be NULL if package is already downloaded.");
+            }
+
+            if (detail.BytesDownloaded < sequenceInfo.PackageSize && detail.SegmentsBitmap == null)
+            {
+                throw new InvalidOperationException("Invalid bitmap. Bitmap should NOT be NULL if package is not yet downloaded.");
+            }
+
+            if (detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length != dto.SegmentsBitmap.Length)
+            {
+                throw new InvalidOperationException("Invalid bitmap. Invalid bitmap length.");
+            }
+
+            if(detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length > 0 && (byte)(detail.SegmentsBitmap[detail.SegmentsBitmap.Length - 1] & lastByteMask) != lastByteMask)
+            {
+                throw new InvalidOperationException("Invalid bitmap. Last bitmap byte is out of range.");
+            }
+        }
+
+        /// <summary>
+        /// Gets if request for given segments is valid (if all parts are in bound and downloaded).
+        /// </summary>
+        public bool ValidateRequestedParts(int[] segmentIndexes)
+        {
+            lock (syncLock)
+            {
+                foreach (var segmentIndex in segmentIndexes)
+                {
+                    // out of range?
+                    if (segmentIndex < 0 || segmentIndex >= sequenceInfo.SegmentsCount) return false;
+
+                    // is everything downloaded?
+                    if (IsDownloaded) continue;
+
+                    // is specific segment downloaded?
+                    bool isSegmentDownloaded = (Data.SegmentsBitmap[segmentIndex / 8] & (1 << (segmentIndex % 8))) != 0;
+                    if (!isSegmentDownloaded) return false;
+                }
+            }
+            return true;
         }
     }
 }

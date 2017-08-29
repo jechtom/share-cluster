@@ -10,6 +10,8 @@ namespace ShareCluster
 {
     public class AppInfo
     {
+        public static CryptoProvider CreateDefaultCryptoProvider() => new CryptoProvider(() => new SHA256Managed());
+
         public static AppInfo CreateCurrent()
         {
             var loggerFactory = new LoggerFactory().AddConsole(new ConsoleLoggerSettings()
@@ -25,7 +27,7 @@ namespace ShareCluster
             var serializer = new ProtoBufMessageSerializer(inspectMessages: false);
             var result = new AppInfo()
             {
-                Crypto = new CryptoProvider(() => new SHA256Managed()),
+                Crypto = CreateDefaultCryptoProvider(),
                 MessageSerializer = serializer,
                 Version = new ClientVersion(1),
                 NetworkSettings = new Network.NetworkSettings()

@@ -16,7 +16,6 @@ namespace ShareCluster.Packaging
         private readonly ILogger<CreatePackageDataStreamController> logger;
         private readonly ClientVersion version;
         private readonly CryptoProvider cryptoProvider;
-        private readonly PackagePartsSequencer sequencer;
         private readonly PackageSequenceBaseInfo sequenceBaseInfo;
         private readonly string packageRootPath;
         private readonly List<Hash> segmentHashes;
@@ -31,7 +30,6 @@ namespace ShareCluster.Packaging
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<CreatePackageDataStreamController>();
             this.version = version;
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            this.sequencer = sequencer ?? throw new ArgumentNullException(nameof(sequencer));
             this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
             this.packageRootPath = packageRootPath ?? throw new ArgumentNullException(nameof(packageRootPath));
             segmentHashes = new List<Hash>();
@@ -47,7 +45,7 @@ namespace ShareCluster.Packaging
 
         public IEnumerable<PackageDataStreamPart> EnumerateParts()
         {
-            return sequencer.GetPartsInfinite(packageRootPath, sequenceBaseInfo);
+            return new PackagePartsSequencer().GetPartsInfinite(packageRootPath, sequenceBaseInfo);
         }
 
         public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)

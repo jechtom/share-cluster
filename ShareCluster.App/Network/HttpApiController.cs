@@ -64,11 +64,13 @@ namespace ShareCluster.Network
         {
             if (!packageRegistry.TryGetPackage(request.PackageHash, out LocalPackageInfo package))
             {
-                return new NotFoundResult();
+                return new ObjectResult(peersCluster.CreateDataPackageNotFoundMessage());
             }
 
-            var stream = peersCluster.CreateDownloadStream(package, request.RequestedParts);
-            return new FileStreamResult(stream, "application/octet-stream");
+            // create stream
+            var result = peersCluster.CreateUploadStream(package, request.RequestedParts);
+            if(result.error != null) return new ObjectResult(result.error);
+            return new FileStreamResult(result.stream, "application/octet-stream");
         }
 
         public IPAddress RemoteIpAddress { get; set; }

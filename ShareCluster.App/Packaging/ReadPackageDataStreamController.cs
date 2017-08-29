@@ -50,6 +50,7 @@ namespace ShareCluster.Packaging
             {
                 // move stream to new part
                 newPart.Stream = oldPart.Stream;
+                currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
             }
             else
             { 

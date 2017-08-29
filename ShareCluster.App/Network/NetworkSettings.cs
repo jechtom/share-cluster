@@ -30,6 +30,11 @@ namespace ShareCluster.Network
         /// <summary>
         /// Gets or sets maximum number of concurrent download tasks.
         /// </summary>
-        public int MaximumDownloadSlots { get; set; } = 1/*5 TODO uncomment*/;
+        public int MaximumDownloadSlots { get; set; } = 5;
+
+        /// <summary>
+        /// Gets or sets maximum number of concurrent upload tasks.
+        /// </summary>
+        public int MaximumUploadsSlots { get; set; } = 5;
     }
 }

@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace ShareCluster.Network
 {
-    public class PeerInfo
+    public class PeerInfo : IEquatable<PeerInfo>
     {
         private int fails;
         private int successes;
@@ -17,6 +17,7 @@ namespace ShareCluster.Network
 
         public PeerInfo(Hash peerId, IPEndPoint endPoint, bool isPermanent = false, bool isDirectDiscovery = false, bool isOtherPeerDiscovery = false, bool isLoopback = false)
         {
+            IsEnabled = true;
             PeerId = peerId;
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
             IsPermanent = isPermanent;
@@ -35,6 +36,8 @@ namespace ShareCluster.Network
         public bool IsPermanent { get; set; }
         public bool IsDirectDiscovery { get; set; }
         public bool IsOtherPeerDiscovery { get; set; }
+
+        public bool IsEnabled { get; set; }
 
         // known packages
         public IDictionary<Hash, PackageMeta> KnownPackages { get; private set; }
@@ -91,6 +94,23 @@ namespace ShareCluster.Network
             }
 
             KnownPackageChanged?.Invoke(this);
+        }
+
+        public override int GetHashCode()
+        {
+            return PeerId.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null) return false;
+            return PeerId.Equals(((PeerInfo)obj).PeerId);
+        }
+
+        public bool Equals(PeerInfo other)
+        {
+            if (other == null) return false;
+            return PeerId.Equals(other.PeerId);
         }
     }
 }

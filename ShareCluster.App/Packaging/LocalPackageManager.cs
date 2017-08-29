@@ -100,7 +100,7 @@ namespace ShareCluster.Packaging
             using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
             {
                 using (var packageStream = new PackageDataStream(app.LoggerFactory, controller))
-                using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Create, leaveOpen: false))
+                using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Create, leaveOpen: true))
                 {
                     var helper = new ZipArchiveHelper(zipArchive);
                     helper.DoCreateFromFolder(folderToProcess);

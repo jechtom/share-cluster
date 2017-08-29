@@ -58,7 +58,7 @@ namespace ShareCluster
             for (int i = 0; i < 1; i++)
             {
                 //packageManager.CreatePackageFromFolder(@"c:\My\Repos\BrowserNet\"); // build immutable copy
-                //packageManager.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
+                //packageRegistry.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
                 //clusterManager.DistributeStatusToAllPeers(); // notify about new package
 
             }

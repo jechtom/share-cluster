@@ -117,7 +117,7 @@ namespace ShareCluster.Packaging
             {
                 string message = string.Format("Hash mismatch for segment {0}. Expected {1:s}, computed {2:s}", currentPart.Part.SegmentIndex, expetedHash, partHash);
                 logger.LogWarning(message);
-                throw new InvalidDataException(message);
+                throw new HashMismatchException(message);
             }
 
             // write to file (now it is validated)

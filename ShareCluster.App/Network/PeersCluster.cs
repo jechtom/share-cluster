@@ -27,6 +27,7 @@ namespace ShareCluster.Network
         private readonly TimeSpan scheduleInterval = TimeSpan.FromSeconds(3);
         private bool isStatusUpdateScheduled;
         private bool isStatusUpdateInProgress;
+        private int uploadSlots;
         
         public PeersCluster(AppInfo appInfo, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry)
         {
@@ -35,14 +36,18 @@ namespace ShareCluster.Network
             this.client = client ?? throw new ArgumentNullException(nameof(client));
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
-
+            uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
-            peerRegistry.PeersFound += PeerRegistry_PeersFound;
+            peerRegistry.PeersChanged += PeerRegistry_PeersChanged;
         }
 
-        private void PeerRegistry_PeersFound(IEnumerable<PeerInfo> peers)
+        private void PeerRegistry_PeersChanged(IEnumerable<PeerInfoChange> peers)
         {
-            PlanSendingClusterUpdate();
+            // any new peers? send update to other peers
+            if (peers.Any(p => p.IsAdded))
+            {
+                PlanSendingClusterUpdate();
+            }
         }
 
         /// <summary>
@@ -63,11 +68,59 @@ namespace ShareCluster.Network
             }
         }
 
-        public Stream CreateDownloadStream(LocalPackageInfo package, int[] requestedParts)
+        public DataResponseFaul CreateDataPackageNotFoundMessage()
         {
+            return new DataResponseFaul()
+            {
+                Version = appInfo.Version,
+                PackageNotFound = true
+            };
+        }
+
+        public DataResponseFaul CreateDataPackagePartsNotFoundMessage()
+        {
+            return new DataResponseFaul()
+            {
+                Version = appInfo.Version,
+                PackagePartsNotFound = true
+            };
+        }
+
+        public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackageInfo package, int[] requestedParts)
+        {
+            if (package == null)
+            {
+                throw new ArgumentNullException(nameof(package));
+            }
+
+            if (requestedParts == null)
+            {
+                throw new ArgumentNullException(nameof(requestedParts));
+            }
+
+            // packages ok?
+            if(!package.DownloadStatus.ValidateRequestedParts(requestedParts))
+            {
+                return (null, CreateDataPackagePartsNotFoundMessage());
+            }
+
+            // allocate slot
+            int newUploadSlotsCount = Interlocked.Decrement(ref uploadSlots);
+            if(newUploadSlotsCount <= 0)
+            {
+                // not enough slots
+                Interlocked.Increment(ref uploadSlots);
+                return (null, new DataResponseFaul() { Version = appInfo.Version, IsChoked = true });
+            }
+
+            // create reader stream
             var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, package.Reference, package.Sequence, requestedParts);
             var stream = new PackageDataStream(appInfo.LoggerFactory, controller);
-            return stream;
+            stream.Disposing += () => {
+                int currentSlots = Interlocked.Increment(ref uploadSlots);
+                logger.LogTrace("Upload slot returned. Current slots count is {0}.", currentSlots);
+            };
+            return (stream, null);
         }
 
         private void StatusUpdateTimerCallback(object state)

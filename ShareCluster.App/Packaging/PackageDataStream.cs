@@ -20,6 +20,7 @@ namespace ShareCluster.Packaging
 
         private long? length;
         private long position;
+        private bool isDisposed;
 
         private PackageDataStreamPart currentPart;
         private long nextPartPosition;
@@ -43,6 +44,8 @@ namespace ShareCluster.Packaging
         public override long Length => length ?? Position;
 
         public override long Position { get => position; set => throw new NotSupportedException(); }
+
+        public event Action Disposing;
 
         public override void Flush()
         {
@@ -185,7 +188,12 @@ namespace ShareCluster.Packaging
 
         protected override void Dispose(bool disposing)
         {
-            controller.Dispose();
+            if (disposing && !isDisposed)
+            {
+                Disposing?.Invoke();
+                controller.Dispose();
+                isDisposed = true;
+            }
             base.Dispose(disposing);
         }
 
@@ -193,6 +201,7 @@ namespace ShareCluster.Packaging
         {
             ResolveCurrentItemAndEnsureStream(); // this will close current stream if no more files
             controller.OnStreamClosed();
+            Dispose(true);
         }
 
         private bool ResolveCurrentItemAndEnsureStream()

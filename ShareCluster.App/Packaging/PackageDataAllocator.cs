@@ -41,7 +41,7 @@ namespace ShareCluster.Packaging
 
             // prepare parts
             var sequencer = new PackagePartsSequencer();
-            var parts = sequencer.GetPartsForPackage(path, sequence).ToArray();
+            var parts = sequencer.GetDataFilesForPackage(path, sequence).ToArray();
 
             if (!overwrite)
             {

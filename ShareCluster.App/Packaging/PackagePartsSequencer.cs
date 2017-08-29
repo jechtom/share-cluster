@@ -14,7 +14,7 @@ namespace ShareCluster.Packaging
 
         protected string GetBlockFilePath(string packagePath, int i) => Path.Combine(packagePath, string.Format(PackageDataFileNameFormat, i));
 
-        public IEnumerable<PackageDataStreamPart> GetDataFiles(string packageRootPath, PackageSequenceInfo sequenceInfo)
+        public IEnumerable<PackageDataStreamPart> GetDataFilesForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
         {
             for (int currentDataFileIndex = 0; currentDataFileIndex < sequenceInfo.DataFilesCount; currentDataFileIndex++)
             {
@@ -80,8 +80,8 @@ namespace ShareCluster.Packaging
                 // validate is requested correct index
                 if (!isInfinite && (segmentIndex < 0 || segmentIndex >= sequenceInfo.SegmentsCount)) throw new ArgumentOutOfRangeException(nameof(requestedSegments),"Requested part is out of range.");
 
-                int segmentIndexInDataFile = (segmentIndex % sequenceInfo.SegmentsPerDataFile);
-                int dataFileIndex = (segmentIndex / sequenceInfo.SegmentsPerDataFile);
+                int segmentIndexInDataFile = (segmentIndex % sequenceBaseInfo.SegmentsPerDataFile);
+                int dataFileIndex = (segmentIndex / sequenceBaseInfo.SegmentsPerDataFile);
 
                 yield return new PackageDataStreamPart()
                 {
@@ -89,7 +89,7 @@ namespace ShareCluster.Packaging
                     SegmentIndex = segmentIndex,
                     PartLength = isInfinite ? sequenceBaseInfo.SegmentLength : sequenceInfo.GetSizeOfSegment(segmentIndex),
                     Path = GetBlockFilePath(packageRootPath, dataFileIndex),
-                    SegmentOffsetInDataFile = segmentIndexInDataFile * sequenceInfo.SegmentLength,
+                    SegmentOffsetInDataFile = segmentIndexInDataFile * sequenceBaseInfo.SegmentLength,
                     DataFileLength = isInfinite ? sequenceBaseInfo.DataFileLength : sequenceInfo.GetSizeOfDataFile(dataFileIndex)
                 };
             }

@@ -39,16 +39,18 @@ namespace ShareCluster
             return ToString(Data.Length);
         }
 
-        public bool Equals(Hash other)
+        public bool Equals(Hash other) => CompareArrays(Data, other.Data);
+
+        public static bool CompareArrays(byte[] array1, byte[] array2)
         {
-            if(Data.Length != other.Data.Length)
+            if (array1.Length != array2.Length)
             {
                 return false;
             }
 
-            for (int i = 0; i < Data.Length; i++)
+            for (int i = 0; i < array1.Length; i++)
             {
-                if(other.Data[i]!=Data[i])
+                if (array1[i] != array2[i])
                 {
                     return false;
                 }

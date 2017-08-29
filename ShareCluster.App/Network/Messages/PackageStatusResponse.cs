@@ -10,8 +10,5 @@ namespace ShareCluster.Network.Messages
     {
         [ProtoMember(1)]
         public PackageStatusDetail[] Packages { get; set; }
-
-        [ProtoMember(2)]
-        public int FreeSlots { get; set; }
     }
 }
