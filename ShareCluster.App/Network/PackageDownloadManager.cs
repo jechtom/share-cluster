@@ -59,7 +59,7 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                foreach (var item in packageRegistry.ImmutablePackages.Where(p => p.DownloadStatus.Data.ResumeDownload))
+                foreach (var item in packageRegistry.ImmutablePackages.Where(p => p.DownloadStatus.Data.IsDownloading))
                 {
                     StartDownloadPackage(item);
                 }
@@ -135,9 +135,9 @@ namespace ShareCluster.Network
                 if (package.DownloadStatus.IsDownloaded) return;
 
                 // mark as "Resume download"
-                if(!package.DownloadStatus.Data.ResumeDownload)
+                if(!package.DownloadStatus.Data.IsDownloading)
                 {
-                    package.DownloadStatus.Data.ResumeDownload = true;
+                    package.DownloadStatus.Data.IsDownloading = true;
                     packageRegistry.UpdateDownloadStatus(package);
                 }
 
@@ -155,11 +155,11 @@ namespace ShareCluster.Network
 
                 // update status
                 if (package.DownloadStatus.IsDownloaded) package.DownloadStatus.Data.SegmentsBitmap = null;
-                package.DownloadStatus.Data.ResumeDownload = false;
+                package.DownloadStatus.Data.IsDownloading = false;
                 packageRegistry.UpdateDownloadStatus(package);
 
                 // mark as "don't resume download"
-                package.DownloadStatus.Data.ResumeDownload = false;
+                package.DownloadStatus.Data.IsDownloading = false;
                 packageRegistry.UpdateDownloadStatus(package);
             
                 // stop
@@ -201,9 +201,6 @@ namespace ShareCluster.Network
 
             lock (syncLock)
             {
-                // change status
-                package.DownloadStatus.IsDownloadActive = isInterested;
-
                 // add/remove
                 if (!isInterested)
                 {
@@ -442,7 +439,7 @@ namespace ShareCluster.Network
                 this.peerInfo = peerInfo;
                 this.package = package;
                 message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
-                controller = new WritePackageDataStreamController(packageDownloadManager.loggerFactory, packageDownloadManager.appInfo.Crypto, packageDownloadManager.appInfo.Sequencer, package.Reference.FolderPath, package.Hashes, parts);
+                controller = new WritePackageDataStreamController(packageDownloadManager.loggerFactory, packageDownloadManager.appInfo.Crypto, package.Reference.FolderPath, package.Sequence, package.Hashes, parts);
                 stream = new PackageDataStream(packageDownloadManager.loggerFactory, controller);
             }
 

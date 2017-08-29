@@ -1,69 +1,74 @@
-﻿using System;
+﻿using ShareCluster.Packaging.Dto;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster
 {
     public class PackageDownloadInfo
     {
         private readonly object syncLock = new object();
-        private readonly Dto.PackageDownload dto;
+        private readonly PackageDownload dto;
+        private readonly Packaging.PackageSequenceInfo sequenceInfo;
         private readonly byte lastByteMask;
-        private readonly int lastSegmentSize, segmentSize, segmentsCount;
         private readonly HashSet<int> partsInProgress;
-        private long bytesToDownload;
+        private long progressBytesReserved;
 
-        public PackageDownloadInfo(Dto.PackageDownload dto)
+        public PackageDownloadInfo(PackageDownload dto, Packaging.PackageSequenceInfo sequenceInfo)
         {
             this.dto = dto ?? throw new ArgumentNullException(nameof(dto));
+            this.sequenceInfo = sequenceInfo ?? throw new ArgumentNullException(nameof(sequenceInfo));
             partsInProgress = new HashSet<int>();
 
-            segmentSize = (int)PackagePartsSequencer.DefaultSegmentSize;
-            segmentsCount = (int)((dto.Size + segmentSize - 1) / segmentSize);
-            int lastSegmentBits = (byte)(segmentsCount % 8);
+            int lastSegmentBits = (byte)(sequenceInfo.SegmentsCount % 8);
             lastByteMask = (byte)((1 << (lastSegmentBits == 0 ? 8 : lastSegmentBits)) - 1);
-            lastSegmentSize = (int)(dto.Size % segmentSize);
-            if (lastSegmentSize == 0) lastSegmentSize = segmentSize;
-            bytesToDownload = dto.Size - dto.DownloadedBytes;
         }
 
-        public static PackageDownloadInfo CreateForCreatedPackage(ClientVersion version, Dto.PackageHashes hashes)
+        public static PackageDownloadInfo CreateForCreatedPackage(ClientVersion version, Hash packageId, Packaging.PackageSequenceInfo sequenceInfo)
         {
-            var data = new Dto.PackageDownload()
+            if (sequenceInfo == null)
             {
-                PackageId = hashes.PackageId,
-                ResumeDownload = false,
-                DownloadedBytes = hashes.Size,
-                Size = hashes.Size,
+                throw new ArgumentNullException(nameof(sequenceInfo));
+            }
+
+            var data = new PackageDownload()
+            {
+                PackageId = packageId,
+                IsDownloading = false, // already downloaded
+                DownloadedBytes = sequenceInfo.PackageSize, // all downloaded
                 Version = version,
-                SegmentsBitmap = null
+                SegmentsBitmap = null // already downloaded (=null)
             };
-            return new PackageDownloadInfo(data);
+            return new PackageDownloadInfo(data, sequenceInfo);
         }
 
-        public static PackageDownloadInfo CreateForReadyForDownloadPackage(ClientVersion version, Dto.PackageHashes hashes, bool startDownload)
+        public static PackageDownloadInfo CreateForReadyForDownloadPackage(ClientVersion version, Hash packageId, Packaging.PackageSequenceInfo sequenceInfo)
         {
-            int bitmapSize = GetBitmapSizeForPackage(hashes);
-
-            var data = new Dto.PackageDownload()
+            if (sequenceInfo == null)
             {
-                PackageId = hashes.PackageId,
-                ResumeDownload = startDownload,
-                DownloadedBytes = 0,
-                Size = hashes.Size,
+                throw new ArgumentNullException(nameof(sequenceInfo));
+            }
+
+            int bitmapSize = GetBitmapSizeForPackage(sequenceInfo.PackageSize);
+
+            var data = new PackageDownload()
+            {
+                PackageId = packageId,
+                IsDownloading = false, // don't start automatically - this needs to be handled by downloader
+                DownloadedBytes = 0, // nothing downloaded yet
                 Version = version,
                 SegmentsBitmap = new byte[bitmapSize]
             };
-            return new PackageDownloadInfo(data);
+            return new PackageDownloadInfo(data, sequenceInfo);
         }
         
-        private static int GetBitmapSizeForPackage(Dto.PackageHashes hashes) => (hashes.PackageSegmentsHashes.Length + 7) / 8;
+        private static int GetBitmapSizeForPackage(long length) => (int)((length + 7) / 8);
 
+        public PackageDownload Data => dto;
         public Hash PackageId => dto.PackageId;
-        public bool IsDownloaded => dto.DownloadedBytes == dto.Size;
-        public Dto.PackageDownload Data => dto;
-
-        public bool IsDownloadActive { get; set; }
+        public bool IsDownloaded => dto.DownloadedBytes == sequenceInfo.PackageSize;
+        public bool IsMoreToDownload => Data.DownloadedBytes + progressBytesReserved < sequenceInfo.PackageSize;
+        public bool IsDownloading => Data.IsDownloading;
 
         public void ReturnLockedSegments(int[] segmentIndexes, bool areDownloaded)
         {
@@ -81,19 +86,8 @@ namespace ShareCluster.Packaging
                     else
                     {
                         // return
-                        bytesToDownload += (segmentIndex == segmentsCount - 1) ? lastSegmentSize : lastSegmentSize;
+                        progressBytesReserved -= sequenceInfo.GetSizeOfSegment(segmentIndex);
                     }
-                }
-            }
-        }
-
-        public bool IsMoreToDownload
-        {
-            get
-            {
-                lock(syncLock)
-                {
-                    return bytesToDownload > 0;
                 }
             }
         }
@@ -150,16 +144,11 @@ namespace ShareCluster.Packaging
                 foreach (var segmentIndex in result)
                 {
                     // return
-                    bytesToDownload -= (segmentIndex == segmentsCount - 1) ? lastSegmentSize : lastSegmentSize;
+                    progressBytesReserved += sequenceInfo.GetSizeOfSegment(segmentIndex);
                 }
             }
 
             return result.ToArray();
-        }
-
-        internal int[] TrySelectSegmentsForDownload(byte[] segmentsBitmap, object segmentsPerRequest)
-        {
-            throw new NotImplementedException();
         }
     }
 }

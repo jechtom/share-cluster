@@ -15,7 +15,7 @@ namespace ShareCluster.Packaging.Dto
         public Hash PackageId { get; set; }
 
         [ProtoMember(3)]
-        public long Size { get; set; }
+        public long PackageSize { get; set; }
 
         [ProtoMember(4)]
         public DateTimeOffset Created { get; set; }

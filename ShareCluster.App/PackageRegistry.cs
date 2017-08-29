@@ -52,13 +52,15 @@ namespace ShareCluster
                 PackageHashes hashes;
                 PackageDownloadInfo download;
                 PackageMeta meta;
+                PackageSequenceInfo packageSequence;
                 try
                 {
                     hashes = localPackageManager.ReadPackageHashesFile(pr);
-                    download = localPackageManager.ReadPackageDownloadStatus(pr);
+                    packageSequence = hashes.CreatePackageSequence();
+                    download = localPackageManager.ReadPackageDownloadStatus(pr, packageSequence);
                     meta = localPackageManager.ReadPackageMetadata(pr);
 
-                    var item = new LocalPackageInfo(pr, download, hashes, meta);
+                    var item = new LocalPackageInfo(pr, download, hashes, meta, packageSequence);
                     packagesInitData.Add(item);
                 }
                 catch(Exception e)
@@ -90,7 +92,7 @@ namespace ShareCluster
 
                     foreach (var item in addToLocal)
                     {
-                        logger.LogDebug("Added local package: \"{0}\" {1:s} ({2})", item.Metadata.Name, item.Id, SizeFormatter.ToString(item.Metadata.Size));
+                        logger.LogDebug("Added local package: \"{0}\" {1:s} ({2})", item.Metadata.Name, item.Id, SizeFormatter.ToString(item.Metadata.PackageSize));
                     }
 
                     // regenerate discovered - to remove new packages already move to local packages list
@@ -112,7 +114,7 @@ namespace ShareCluster
                             continue;
                         }
 
-                        logger.LogTrace("Discovered package \"{0}\" {1:s} ({2})", item.Name, item.PackageId, SizeFormatter.ToString(item.Meta.Size));
+                        logger.LogTrace("Discovered package \"{0}\" {1:s} ({2})", item.Name, item.PackageId, SizeFormatter.ToString(item.Meta.PackageSize));
                         discoveredPackages.Add(item.PackageId, item);
                         changed = true;
                     }

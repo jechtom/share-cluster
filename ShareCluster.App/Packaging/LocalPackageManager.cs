@@ -24,12 +24,14 @@ namespace ShareCluster.Packaging
 
         private readonly ILogger<LocalPackageManager> logger;
         private readonly AppInfo app;
+        private readonly PackageSequenceBaseInfo sequenceForNewPackages;
 
         public LocalPackageManager(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
             logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
             PackageRepositoryPath = app.PackageRepositoryPath;
+            sequenceForNewPackages = PackageSequenceBaseInfo.Default;
         }
         
         public string PackageRepositoryPath { get; private set; }
@@ -95,7 +97,7 @@ namespace ShareCluster.Packaging
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, app.Sequencer, buildDirectory.FullName))
+            using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
             {
                 using (var packageStream = new PackageDataStream(app.LoggerFactory, controller))
                 using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Create, leaveOpen: false))
@@ -112,7 +114,8 @@ namespace ShareCluster.Packaging
             UpdateHashes(packageHashes, directoryPath: buildDirectory.FullName);
 
             // store download status
-            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(app.Version, packageHashes);
+            PackageSequenceInfo packageSequence = packageHashes.CreatePackageSequence();
+            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(app.Version, packageHashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
             // store metadata
@@ -120,7 +123,7 @@ namespace ShareCluster.Packaging
             {
                 Created = DateTimeOffset.Now,
                 Name = name,
-                Size = packageHashes.Size,
+                PackageSize = packageHashes.PackageSize,
                 Version = app.Version,
                 PackageId = packageHashes.PackageId
             };
@@ -135,10 +138,10 @@ namespace ShareCluster.Packaging
             Directory.Move(buildDirectory.FullName, packagePath);
 
             operationMeasure.Stop();
-            logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.Size)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
+            logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
             var reference = new PackageReference(packagePath, packageHashes.PackageId);
-            var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata);
+            var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata, packageSequence);
             return result;
         }
 
@@ -148,10 +151,10 @@ namespace ShareCluster.Packaging
             return dto;
         }
 
-        public PackageDownloadInfo ReadPackageDownloadStatus(PackageReference reference)
+        public PackageDownloadInfo ReadPackageDownloadStatus(PackageReference reference, PackageSequenceInfo sequenceInfo)
         {
             var dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
-            var result = new PackageDownloadInfo(dto);
+            var result = new PackageDownloadInfo(dto, sequenceInfo);
             return result;
         }
 
@@ -215,20 +218,21 @@ namespace ShareCluster.Packaging
             Directory.CreateDirectory(packagePath);
 
             // store data
-            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.Version, hashes, startDownload: false);
+            var packageSequence = hashes.CreatePackageSequence();
+            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.Version, hashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);
             UpdateMetadata(metadata);
 
             // allocate
-            var allocator = new PackageDataAllocator(app.LoggerFactory, app.Sequencer);
-            allocator.Allocate(packagePath, hashes.Size, overwrite: false);
+            var allocator = new PackageDataAllocator(app.LoggerFactory);
+            allocator.Allocate(packagePath, hashes.CreatePackageSequence(), overwrite: false);
 
             // log and build result
-            logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.Size)}");
+            logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
 
             var reference = new PackageReference(packagePath, hashes.PackageId);
-            var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata);
+            var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata, packageSequence);
             return result;
         }
 

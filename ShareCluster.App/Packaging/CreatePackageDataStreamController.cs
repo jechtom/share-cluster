@@ -17,6 +17,7 @@ namespace ShareCluster.Packaging
         private readonly ClientVersion version;
         private readonly CryptoProvider cryptoProvider;
         private readonly PackagePartsSequencer sequencer;
+        private readonly PackageSequenceBaseInfo sequenceBaseInfo;
         private readonly string packageRootPath;
         private readonly List<Hash> segmentHashes;
         private Dto.PackageHashes packageId;
@@ -25,13 +26,14 @@ namespace ShareCluster.Packaging
         private bool isDisposed;
         private bool isClosed;
 
-        public CreatePackageDataStreamController(ClientVersion version, ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackagePartsSequencer sequencer, string packageRootPath)
+        public CreatePackageDataStreamController(ClientVersion version, ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, string packageRootPath)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<CreatePackageDataStreamController>();
             this.version = version;
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
             this.sequencer = sequencer ?? throw new ArgumentNullException(nameof(sequencer));
-            this.packageRootPath = packageRootPath;
+            this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
+            this.packageRootPath = packageRootPath ?? throw new ArgumentNullException(nameof(packageRootPath));
             segmentHashes = new List<Hash>();
         }
 
@@ -45,7 +47,7 @@ namespace ShareCluster.Packaging
 
         public IEnumerable<PackageDataStreamPart> EnumerateParts()
         {
-            return sequencer.GetPartsInfinite(packageRootPath);
+            return sequencer.GetPartsInfinite(packageRootPath, sequenceBaseInfo);
         }
 
         public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)
@@ -144,7 +146,8 @@ namespace ShareCluster.Packaging
             DisposeCurrentPart();
 
             // build result
-            packageId = new Dto.PackageHashes(version, segmentHashes, cryptoProvider, totalSize);
+            var sequenceInfo = new PackageSequenceInfo(sequenceBaseInfo, totalSize);
+            packageId = new Dto.PackageHashes(version, segmentHashes, cryptoProvider, sequenceInfo);
             logger.LogDebug($"Closed package data files. Written {SizeFormatter.ToString(totalSize)}. Hash is {packageId.PackageId:s}.");
             isClosed = true;
         }

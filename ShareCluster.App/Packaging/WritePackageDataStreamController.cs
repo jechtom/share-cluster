@@ -16,22 +16,24 @@ namespace ShareCluster.Packaging
     {
         private readonly ILogger<WritePackageDataStreamController> logger;
         private readonly CryptoProvider cryptoProvider;
-        private readonly PackagePartsSequencer sequencer;
         private readonly string packageRootPath;
-        private readonly Dto.PackageHashes packageId;
+        private readonly PackageSequenceBaseInfo sequenceBaseInfo;
+        private readonly Dto.PackageHashes hashes;
         private readonly PackageDataStreamPart[] parts;
         private CurrentPart currentPart;
         private bool isDisposed;
 
-        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackagePartsSequencer sequencer, string packageRootPath, Dto.PackageHashes packageId, int[] segmentsToWrite)
+        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, int[] segmentsToWrite)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            this.sequencer = sequencer ?? throw new ArgumentNullException(nameof(sequencer));
             this.packageRootPath = packageRootPath;
-            this.packageId = packageId ?? throw new ArgumentNullException(nameof(packageId));
+            this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
+            this.hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
 
-            parts = sequencer.GetPartsForSpecificSegments(packageRootPath, packageId.Size, segmentsToWrite).ToArray();
+            var sequencer = new PackagePartsSequencer();
+            var packageSequence = hashes.CreatePackageSequence();
+            parts = sequencer.GetPartsForSpecificSegments(packageRootPath, packageSequence, segmentsToWrite).ToArray();
             Length = parts.Sum(p => p.PartLength);
         }
 
@@ -102,7 +104,7 @@ namespace ShareCluster.Packaging
             currentPart.HashStream.Dispose();
 
             Hash partHash = new Hash(currentPart.HashAlgorithm.Hash);
-            Hash expetedHash = packageId.PackageSegmentsHashes[currentPart.Part.SegmentIndex];
+            Hash expetedHash = hashes.PackageSegmentsHashes[currentPart.Part.SegmentIndex];
 
             currentPart.HashAlgorithm.Dispose();
 

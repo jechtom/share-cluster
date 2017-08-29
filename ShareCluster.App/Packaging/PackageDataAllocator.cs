@@ -10,29 +10,38 @@ namespace ShareCluster.Packaging
     public class PackageDataAllocator
     {
         private readonly ILogger<PackageDataAllocator> logger;
-        private readonly PackagePartsSequencer sequencer;
 
-        public PackageDataAllocator(ILoggerFactory loggerFactory, PackagePartsSequencer sequencer)
+        public PackageDataAllocator(ILoggerFactory loggerFactory)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataAllocator>();
-            this.sequencer = sequencer ?? throw new ArgumentNullException(nameof(sequencer));
+            logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataAllocator>();
         }
 
-        public void Allocate(string path, long length, bool overwrite)
+        public void Allocate(string path, PackageSequenceInfo sequence, bool overwrite)
         {
-            logger.LogInformation($"Allocating {SizeFormatter.ToString(length)} for package data in {path}");
+            if (path == null)
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            if (sequence == null)
+            {
+                throw new ArgumentNullException(nameof(sequence));
+            }
+
+            logger.LogInformation($"Allocating {SizeFormatter.ToString(sequence.PackageSize)} for package data in {path}");
             Directory.CreateDirectory(path);
 
             // check disk space and throw error if not enough
             var driveInfo = new DriveInfo(Directory.GetDirectoryRoot(path));
             long freeSpace = driveInfo.TotalFreeSpace;
-            if(freeSpace < length)
+            if(freeSpace < sequence.PackageSize)
             {
-                throw new InvalidOperationException($"There is not enough disk space on drive {driveInfo.Name}. Free space is {SizeFormatter.ToString(freeSpace)} but required is {SizeFormatter.ToString(length)}.");
+                throw new InvalidOperationException($"There is not enough disk space on drive {driveInfo.Name}. Free space is {SizeFormatter.ToString(freeSpace)} but required is {SizeFormatter.ToString(sequence.PackageSize)}.");
             }
 
             // prepare parts
-            var parts = sequencer.GetDataFilesForSize(path, length).ToArray();
+            var sequencer = new PackagePartsSequencer();
+            var parts = sequencer.GetPartsForPackage(path, sequence).ToArray();
 
             if (!overwrite)
             {

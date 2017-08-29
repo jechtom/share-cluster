@@ -37,7 +37,6 @@ namespace ShareCluster
 
             result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(), result.Version);
             result.InstanceHash = new InstanceHash(result.Crypto);
-            result.Sequencer = new PackagePartsSequencer();
 
             return result;
         }
@@ -58,6 +57,5 @@ namespace ShareCluster
         public string InstanceName { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
         public InstanceHash InstanceHash { get; private set; }
-        public PackagePartsSequencer Sequencer { get; private set; }
     }
 }

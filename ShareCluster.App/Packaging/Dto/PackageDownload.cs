@@ -15,15 +15,12 @@ namespace ShareCluster.Packaging.Dto
         public Hash PackageId { get; set; }
 
         [ProtoMember(3)]
-        public bool ResumeDownload { get; set; }
+        public bool IsDownloading { get; set; }
 
         [ProtoMember(4)]
-        public long Size { get; set; }
-
-        [ProtoMember(5)]
         public long DownloadedBytes { get; set; }
 
-        [ProtoMember(6)]
+        [ProtoMember(5)]
         public byte[] SegmentsBitmap { get; set; }
     }
 }

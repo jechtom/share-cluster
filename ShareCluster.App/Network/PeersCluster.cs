@@ -65,7 +65,7 @@ namespace ShareCluster.Network
 
         public Stream CreateDownloadStream(LocalPackageInfo package, int[] requestedParts)
         {
-            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, appInfo.Sequencer, package.Reference, package.Hashes, requestedParts);
+            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, package.Reference, package.Sequence, requestedParts);
             var stream = new PackageDataStream(appInfo.LoggerFactory, controller);
             return stream;
         }
