@@ -94,5 +94,15 @@ namespace ShareCluster.Packaging
                 };
             }
         }
+
+        public long GetSizeOfParts(PackageSequenceInfo sequence, int[] parts)
+        {
+            long result = 0;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                result += (parts[i] == sequence.SegmentsCount - 1) ? sequence.SegmentLastLength : sequence.SegmentLength;
+            }
+            return result;
+        }
     }
 }

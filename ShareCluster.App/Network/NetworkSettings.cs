@@ -23,6 +23,12 @@ namespace ShareCluster.Network
         public TimeSpan PeerUpdateStatusTimer { get; set; } = TimeSpan.FromMinutes(2);
 
         /// <summary>
+        /// How often peer will be contacted with package status update request if not enough seeders are available. 
+        /// This is done when we want to start reading from other peers quickly but last time we asked they didn't have enough segments.
+        /// </summary>
+        public TimeSpan PeerUpdateStatusFastTimer { get; set; } = TimeSpan.FromSeconds(20);
+
+        /// <summary>
         /// Number of segments to be requested from peers.
         /// </summary>
         public int SegmentsPerRequest { get; set; } = 6;

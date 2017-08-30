@@ -14,7 +14,7 @@ namespace ShareCluster.Network
     public class UdpPeerDiscovery : IDisposable
     {
         private bool announceResponseEnabled = false;
-        private UdpPeerDiscoveryAnnouncer udpAnnouncer;
+        private UdpPeerDiscoveryListener udpAnnouncer;
         private UdpPeerDiscoveryClient udpDiscovery;
         private Timer udpDiscoveryTimer;
         private readonly AppInfo app;
@@ -28,9 +28,9 @@ namespace ShareCluster.Network
             logger = app.LoggerFactory.CreateLogger<UdpPeerDiscovery>();
         }
 
-        public void EnableAutoSearch()
+        public void EnableAutoSearch(bool allowListener = true, bool allowClient = true)
         {
-            if (announceResponseEnabled) return;
+            if (announceResponseEnabled) throw new InvalidOperationException("Already started.");
             announceResponseEnabled = true;
 
             var announceMessage = new DiscoveryAnnounceMessage()
@@ -40,13 +40,19 @@ namespace ShareCluster.Network
                 ServicePort = app.NetworkSettings.TcpServicePort
             };
 
-            // enable announcer
-            udpAnnouncer = new UdpPeerDiscoveryAnnouncer(app.LoggerFactory, app.CompatibilityChecker, peerRegistry, app.NetworkSettings, announceMessage);
-            udpAnnouncer.Start();
+            if (allowListener)
+            {
+                // enable announcer
+                udpAnnouncer = new UdpPeerDiscoveryListener(app.LoggerFactory, app.CompatibilityChecker, peerRegistry, app.NetworkSettings, announceMessage);
+                udpAnnouncer.Start();
+            }
 
-            // timer discovery
-            udpDiscovery = new UdpPeerDiscoveryClient(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, peerRegistry);
-            udpDiscoveryTimer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            if (allowClient)
+            {
+                // timer discovery
+                udpDiscovery = new UdpPeerDiscoveryClient(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, peerRegistry);
+                udpDiscoveryTimer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            }
         }
 
         private void DiscoveryTimerCallback(object state)

@@ -13,6 +13,7 @@ namespace ShareCluster.Network
 
         public const string VersionHeaderName = "X-ShareClusterVersion";
         public const string InstanceHeaderName = "X-ShareClusterInstance";
+        public const string TypeHeaderName = "X-ShareClusterType";
         private readonly ILogger<HttpRequestHeaderValidator> logger;
 
         public HttpRequestHeaderValidator(ILogger<HttpRequestHeaderValidator> logger, CompatibilityChecker compatibilityChecker, InstanceHash instanceHash)

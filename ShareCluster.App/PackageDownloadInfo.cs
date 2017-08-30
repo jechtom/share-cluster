@@ -71,6 +71,16 @@ namespace ShareCluster
         public bool IsMoreToDownload => Data.DownloadedBytes + progressBytesReserved < sequenceInfo.PackageSize;
         public bool IsDownloading => Data.IsDownloading;
 
+        public double Progress
+        {
+            get
+            {
+                if (IsDownloaded) return 1;
+                if (Data.DownloadedBytes == 0) return 0;
+                return (double)Data.DownloadedBytes / (double)sequenceInfo.PackageSize;
+            }
+        }
+
         public void ReturnLockedSegments(int[] segmentIndexes, bool areDownloaded)
         {
             lock(syncLock)
@@ -207,7 +217,7 @@ namespace ShareCluster
                 throw new InvalidOperationException("Invalid bitmap. Invalid bitmap length.");
             }
 
-            if(detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length > 0 && (byte)(detail.SegmentsBitmap[detail.SegmentsBitmap.Length - 1] & lastByteMask) != lastByteMask)
+            if(detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length > 0 && (byte)(detail.SegmentsBitmap[detail.SegmentsBitmap.Length - 1] & ~lastByteMask) != 0)
             {
                 throw new InvalidOperationException("Invalid bitmap. Last bitmap byte is out of range.");
             }
@@ -234,6 +244,12 @@ namespace ShareCluster
                 }
             }
             return true;
+        }
+
+        public override string ToString()
+        {
+            int percents = (int)(Data.DownloadedBytes * 100 / sequenceInfo.PackageSize);
+            return $"{percents}% {(IsDownloaded ? "Completed" : "Unfinished")} {(IsDownloading?"Downloading":"Stopped")}";
         }
     }
 }

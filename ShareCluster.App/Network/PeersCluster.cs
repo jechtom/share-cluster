@@ -21,6 +21,7 @@ namespace ShareCluster.Network
         private readonly IPeerRegistry peerRegistry;
         private readonly HttpApiClient client;
         private readonly IPackageRegistry packageRegistry;
+        private readonly PackageDownloadManager packageDownloadManager;
         private readonly ILogger<PeersCluster> logger;
         private readonly object clusterNodeLock = new object();
         private readonly Timer statusUpdateTimer;
@@ -29,16 +30,34 @@ namespace ShareCluster.Network
         private bool isStatusUpdateInProgress;
         private int uploadSlots;
         
-        public PeersCluster(AppInfo appInfo, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry)
+        public PeersCluster(AppInfo appInfo, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry, PackageDownloadManager packageDownloadManager)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             this.client = client ?? throw new ArgumentNullException(nameof(client));
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            this.packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
             uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
             peerRegistry.PeersChanged += PeerRegistry_PeersChanged;
+            packageRegistry.NewLocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
+            packageDownloadManager.DownloadStatusChange += PackageDownloadManager_DownloadStatusChange;
+        }
+
+        private void PackageDownloadManager_DownloadStatusChange(DownloadStatusChange obj)
+        {
+            // download started? make sure other peers knows we know this package
+            if (obj.HasStarted)
+            {
+                PlanSendingClusterUpdate();
+            }
+        }
+
+        private void PackageRegistry_NewLocalPackageCreated(LocalPackageInfo obj)
+        {
+            // new local package created? announce it to peers
+            PlanSendingClusterUpdate();
         }
 
         private void PeerRegistry_PeersChanged(IEnumerable<PeerInfoChange> peers)
@@ -217,7 +236,6 @@ namespace ShareCluster.Network
             {
                 throw new InvalidOperationException($"Can't find peer in internal registry: {peerId} {address}");
             }
-
             // update known packages if different
             peer.ReplaceKnownPackages(message.KnownPackages ?? Array.Empty<Packaging.Dto.PackageMeta>());
 
@@ -226,6 +244,9 @@ namespace ShareCluster.Network
             {
                 packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp)));
             }
+
+            // mark as success peer
+            peer.ClientHasSuccess();
         }
 
         public StatusUpdateMessage CreateStatusUpdateMessage(IPEndPoint endpoint)

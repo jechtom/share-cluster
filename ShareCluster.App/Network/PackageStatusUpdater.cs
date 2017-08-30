@@ -21,8 +21,8 @@ namespace ShareCluster.Network
 
         readonly ILogger<PackageStatusUpdater> logger;
         readonly object syncLock = new object();
-        private readonly TimeSpan statusTimerInterval = TimeSpan.FromSeconds(30);
-        private readonly TimeSpan postponeInterval = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan statusTimerInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan postponeInterval = TimeSpan.FromSeconds(30);
         private readonly Timer statusTimer;
         private readonly Stopwatch stopwatch;
 
@@ -156,24 +156,37 @@ namespace ShareCluster.Network
             }
         }
 
+        public void MarkPeerForFastUpdate(PeerInfo peer)
+        {
+            lock (syncLock)
+            {
+                if (!peers.TryGetValue(peer.PeerId, out PeerOverallStatus status)) return;
+                status.UseFastUpdate = true;
+            }
+        }
+
         private void StatusUpdateInternal()
         {
             PackageStatusRequest requestMessage;
             PeerOverallStatus[] peersToUpdate;
             var elapsed = stopwatch.Elapsed;
-            var elapsedThreshold = elapsed.Subtract(settings.PeerUpdateStatusTimer);
+            var elapsedThresholdRegular = elapsed.Subtract(settings.PeerUpdateStatusTimer);
+            var elapsedThresholdFast = elapsed.Subtract(settings.PeerUpdateStatusFastTimer);
 
             // prepare list of peers and list of packages we're interested in
             lock (syncLock)
             {
                 if (states.Count == 0) return;
 
-                peersToUpdate = peers.Values.Where(c => c.LastUpdateStatus < elapsedThreshold && c.DoUpdateStatus).ToArray();
+                peersToUpdate = peers.Values
+                    .Where(c => c.LastUpdateStatus < (c.UseFastUpdate ? elapsedThresholdFast : elapsedThresholdRegular) && c.DoUpdateStatus)
+                    .ToArray();
 
                 if (peersToUpdate.Length == 0) return;
 
                 foreach (var item in peersToUpdate)
                 {
+                    item.UseFastUpdate = false; // reset
                     item.LastUpdateStatus = elapsed;
                 }
 
@@ -287,7 +300,7 @@ namespace ShareCluster.Network
 
         public void PostponePeersPackage(LocalPackageInfo package, PeerInfo peer)
         {
-            logger.LogTrace($"Peer {0:s} at {1} for package {2} has been postponed.", peer.PeerId, peer.ServiceEndPoint, package);
+            logger.LogTrace("Peer {0:s} at {1} for package {2} has been postponed.", peer.PeerId, peer.ServiceEndPoint, package);
 
             lock (syncLock)
             {
@@ -298,7 +311,7 @@ namespace ShareCluster.Network
 
         public void PostponePeer(PeerInfo peer)
         {
-            logger.LogTrace($"Peer {0:s} at {1} for all packages has been postponed.", peer.PeerId, peer.ServiceEndPoint);
+            logger.LogTrace("Peer {0:s} at {1} for all packages has been postponed.", peer.PeerId, peer.ServiceEndPoint);
 
             lock (syncLock)
             {
@@ -306,7 +319,16 @@ namespace ShareCluster.Network
                 peerStatus.PostponeTimer = new PostponeTimer(postponeInterval);
             }
         }
-        
+
+        public void StatsUpdateSuccessPart(PeerInfo peer, LocalPackageInfo package, long downloadedBytes)
+        {
+            lock (syncLock)
+            {
+                if (!states.TryGetValue(package.Id, out var packageStatus)) return;
+                packageStatus.StatsUpdateSuccessPart(peer, downloadedBytes);
+            }
+        }
+
         class PackageStatus
         {
             private readonly ILogger<PackageStatus> logger;
@@ -338,6 +360,11 @@ namespace ShareCluster.Network
                 peer.InterestedForPackagesTotalCount--;
                 if (status.IsSeeder) peer.InterestedForPackagesSeederCount--;
                 peerStatuses.Remove(peer.PeerInfo);
+
+                if(status.DownloadedBytes > 0)
+                {
+                    logger.LogTrace($"Stats: Package {packageInfo.Metadata.Name} {packageInfo.Id:s} from {peer.PeerInfo.PeerId:s} at {peer.PeerInfo.ServiceEndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
+                }
             }
 
             public void AddPeer(PeerOverallStatus peer)
@@ -375,6 +402,10 @@ namespace ShareCluster.Network
                 // update status and number of seeders
                 bool wasSeeder = status.IsSeeder;
                 status.StatusDetail = detail;
+
+                // mark fast updates for peers without any data - we can expect they will have it soon (this can speed up initial seeding)
+                if (detail.BytesDownloaded == 0) peer.UseFastUpdate = true;
+
                 if(wasSeeder != status.IsSeeder)
                 {
                     logger.LogTrace("Found seeder {0:s} at {1} of {2}.", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo);
@@ -407,6 +438,12 @@ namespace ShareCluster.Network
                 remoteBitmap = status.StatusDetail.SegmentsBitmap;
                 return true;
             }
+
+            public void StatsUpdateSuccessPart(PeerInfo peer, long downloadedBytes)
+            {
+                if (!peerStatuses.TryGetValue(peer, out var status)) return;
+                status.DownloadedBytes += downloadedBytes;
+            }
         }
 
         class PackagePeerStatus
@@ -423,8 +460,7 @@ namespace ShareCluster.Network
             public bool CanDownload => StatusDetail != null && StatusDetail.BytesDownloaded > 0 && !IsPostponedPackageOrPeer;
             public PostponeTimer PostponeTimer { get; set; }
             public bool IsPostponedPackageOrPeer => PostponeTimer.IsPostponed || Peer.PostponeTimer.IsPostponed;
-
-
+            public long DownloadedBytes { get; set; }
         }
 
         class PeerOverallStatus
@@ -469,6 +505,11 @@ namespace ShareCluster.Network
             /// Gets or sets when this peer status has been done last time.
             /// </summary>
             public TimeSpan LastUpdateStatus { get; set; }
+
+            /// <summary>
+            /// Gets or sets if fast update should be used (if not enough seeders are available).
+            /// </summary>
+            public bool UseFastUpdate { get; set; }
 
             public PostponeTimer PostponeTimer { get; set; }
         }

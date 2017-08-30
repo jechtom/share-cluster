@@ -12,9 +12,9 @@ using Microsoft.Extensions.Logging;
 
 namespace ShareCluster.Network
 {
-    public class UdpPeerDiscoveryAnnouncer : IDisposable
+    public class UdpPeerDiscoveryListener : IDisposable
     {
-        private readonly ILogger<UdpPeerDiscoveryAnnouncer> logger;
+        private readonly ILogger<UdpPeerDiscoveryListener> logger;
         private readonly CompatibilityChecker compatibilityChecker;
         private readonly IPeerRegistry registry;
         private readonly NetworkSettings settings;
@@ -24,9 +24,9 @@ namespace ShareCluster.Network
         private CancellationTokenSource cancel;
         private Task task;
 
-        public UdpPeerDiscoveryAnnouncer(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, DiscoveryAnnounceMessage announce)
+        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, DiscoveryAnnounceMessage announce)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryAnnouncer>();
+            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
             this.compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
             this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -42,7 +42,7 @@ namespace ShareCluster.Network
 
         public void Start()
         {
-            logger.LogDebug("Starting peer announcing UDP {0}", settings.UdpAnnouncePort);
+            logger.LogDebug("Starting UDP discovery listening {0}", settings.UdpAnnouncePort);
 
             client = new UdpClient(settings.UdpAnnouncePort);
             cancel = new CancellationTokenSource();

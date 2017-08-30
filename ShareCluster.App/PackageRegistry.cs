@@ -26,10 +26,12 @@ namespace ShareCluster
         private LocalPackageInfo[] immutablePackages;
         private DiscoveredPackage[] immutableDiscoveredPackagesArray;
 
+        public event Action<LocalPackageInfo> NewLocalPackageCreated;
+        public event Action<DiscoveredPackage> NewDiscoveredPackage;
 
         public PackageRegistry(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageRegistry>();
+            logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageRegistry>();
             this.localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             Init();
         }
@@ -92,7 +94,7 @@ namespace ShareCluster
 
                     foreach (var item in addToLocal)
                     {
-                        logger.LogDebug("Added local package: \"{0}\" {1:s} ({2})", item.Metadata.Name, item.Id, SizeFormatter.ToString(item.Metadata.PackageSize));
+                        logger.LogDebug("Added local package: {0} - {1}", item, item.DownloadStatus);
                     }
 
                     // regenerate discovered - to remove new packages already move to local packages list
@@ -127,7 +129,17 @@ namespace ShareCluster
 
         public void RegisterDiscoveredPackages(IEnumerable<DiscoveredPackage> packageMeta)
         {
-            UpdatePackages(addToLocal: null, addToDiscovered: packageMeta);
+            DiscoveredPackage[] newDiscoveredPackages;
+            lock (packagesLock)
+            {
+                newDiscoveredPackages = packageMeta.Where(p => !localPackages.ContainsKey(p.PackageId)).ToArray();
+                UpdatePackages(addToLocal: null, addToDiscovered: newDiscoveredPackages);
+            }
+
+            foreach (var packageMetaItem in newDiscoveredPackages)
+            {
+                NewDiscoveredPackage?.Invoke(packageMetaItem);
+            }
         }
 
         public LocalPackageInfo SaveRemotePackage(PackageHashes packageHashes, PackageMeta meta)
@@ -147,6 +159,7 @@ namespace ShareCluster
         {
             var package = localPackageManager.CreatePackageFromFolder(path, name);
             RegisterPackageInternal(package);
+            NewLocalPackageCreated?.Invoke(package);
             return package;
         }
         
@@ -180,8 +193,10 @@ namespace ShareCluster
             {
                 throw new ArgumentNullException(nameof(packageInfo));
             }
-
-            localPackageManager.UpdateDownloadStatus(packageInfo.DownloadStatus);
+            lock (packagesLock)
+            {
+                localPackageManager.UpdateDownloadStatus(packageInfo.DownloadStatus);
+            }
         }
     }
 }

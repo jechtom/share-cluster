@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -50,7 +51,7 @@ namespace ShareCluster.Network
                 using (var stream = await resultMessage.Content.ReadAsStreamAsync())
                 {
                     // unexpected response (expected stream) == fault 
-                    if (string.Equals(resultMessage.Content.Headers.ContentType?.MediaType, serializer.MimeType, StringComparison.OrdinalIgnoreCase))
+                    if(resultMessage.Headers.TryGetValues(HttpRequestHeaderValidator.TypeHeaderName, out IEnumerable<string> typeHeaderValues))
                     {
                         return serializer.Deserialize<Messages.DataResponseFaul>(stream);
                     }

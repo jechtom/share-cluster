@@ -15,13 +15,6 @@ namespace ShareCluster.Network
 {
     public class HttpStartup
     {
-        public HttpStartup(IConfiguration configuration)
-        {
-            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        }
-
-        public IConfiguration Configuration { get; set; }
-
         public void ConfigureServices(IServiceCollection services)
         {
             var serializer = services.BuildServiceProvider().GetRequiredService<IMessageSerializer>();
@@ -35,7 +28,7 @@ namespace ShareCluster.Network
                 c.Filters.Add(typeof(HttpRequestHeaderValidator));
 
                 // prevent validation of messages - MVC crashes if hits IPAddress/IPEndPoint class
-                c.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Network.Messages.IMessage)));
+                c.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Messages.IMessage)));
             });
         }
 
@@ -51,6 +44,5 @@ namespace ShareCluster.Network
                 c.MapRoute("Default", "api/{action}", new { controller = "HttpApi" });
             });
         }
-
     }
 }

@@ -22,105 +22,63 @@ namespace ShareCluster
 {
     class Program
     {
+        static List<AppInstance> instances = new List<AppInstance>();
+
         static void Main(string[] args)
         {
             // instance 1
-            var configurationBuilder = new ConfigurationBuilder();
-            var configuration = configurationBuilder.Build();
-
             var appInfo = AppInfo.CreateCurrent();
             appInfo.PackageRepositoryPath = @"c:\temp\temp";
-            appInfo.LogStart();
-            appInfo.InstanceName = "Test";
 
-            var peerRegistry = new PeerRegistry(appInfo);
-            var udpPeerDiscovery = new UdpPeerDiscovery(appInfo, peerRegistry);
-
-            var localPackageManager = new LocalPackageManager(appInfo);
-            var packageRegistry = new PackageRegistry(appInfo.LoggerFactory, localPackageManager);
-
-            var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
-
-            var downloadManager = new PackageDownloadManager(appInfo, client, packageRegistry, peerRegistry);
-
-            var cluster = new PeersCluster(appInfo, peerRegistry, client, packageRegistry);
-
-            var webHost = new HttpWebHost(appInfo, cluster, packageRegistry, downloadManager);
-
-            webHost.Start();
-
-            udpPeerDiscovery.EnableAutoSearch();
-
-            downloadManager.RestoreUnfinishedDownloads();
-
-            //var responseStatus = client.GetStatus(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, appInfo.NetworkSettings.TcpCommunicationPort), clusterManager.CreateDiscoveryMessage());
-
-            for (int i = 0; i < 1; i++)
+            var appSettings = new AppInstanceSettings()
             {
-                //packageManager.CreatePackageFromFolder(@"c:\My\Repos\BrowserNet\"); // build immutable copy
-                packageRegistry.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
-                //clusterManager.DistributeStatusToAllPeers(); // notify about new package
+                EnableUdpDiscoveryListener = true,
+                EnableUdpDiscoveryClient = true,
+                DownloadEverything = true
+            };
 
-            }
+            var instance = new AppInstance(appInfo);
+            instances.Add(instance);
+            var bootstrapper = instance.Start(appSettings);
 
-            Task.Run(() => { CreateInstance2(); });
-            
+            Task.Run(() => { CreateInstance(1); });
+            Task.Run(() => { CreateInstance(2); });
+            Task.Run(() => { CreateInstance(3); });
+            Task.Run(() => { CreateInstance(4); });
 
-            Thread.Sleep(Timeout.InfiniteTimeSpan);
+            //bootstrapper.PackageRegistry.CreatePackageFromFolder(@"c:\SQLServer2016Media", "sql2016");
+
+            Console.ReadLine();
+            Stop();
         }
 
-        private static void CreateInstance2()
+        private static void Stop()
         {
-            // instance 2
-            var configurationBuilder = new ConfigurationBuilder();
-            var configuration = configurationBuilder.Build();
+            Console.WriteLine("Stopping.");
+            foreach (var instance in instances)
+            {
+                instance.Dispose();
+            }
+            Console.WriteLine("Stopped.");
+        }
 
+        private static void CreateInstance(int index)
+        {
+            // instance n
             var appInfo = AppInfo.CreateCurrent();
-            appInfo.NetworkSettings.UdpAnnouncePort += 10;
-            appInfo.NetworkSettings.TcpServicePort += 10;
-            appInfo.PackageRepositoryPath = @"c:\temp\temp2";
-            appInfo.LogStart();
-            appInfo.InstanceName = "Test";
+            appInfo.NetworkSettings.TcpServicePort += (ushort)(index * 10);
+            appInfo.PackageRepositoryPath = @"c:\temp\temp" + index;
 
-            var peerRegistry = new PeerRegistry(appInfo);
-            var udpPeerDiscovery = new UdpPeerDiscovery(appInfo, peerRegistry);
-
-            var localPackageManager = new LocalPackageManager(appInfo);
-            var packageRegistry = new PackageRegistry(appInfo.LoggerFactory, localPackageManager);
-
-            var client = new HttpApiClient(appInfo.MessageSerializer, appInfo.CompatibilityChecker, appInfo.InstanceHash);
-
-            var downloadManager = new PackageDownloadManager(appInfo, client, packageRegistry, peerRegistry);
-
-            var cluster = new PeersCluster(appInfo, peerRegistry, client, packageRegistry);
-
-            var webHost = new HttpWebHost(appInfo, cluster, packageRegistry, downloadManager);
-
-            webHost.Start();
-
-            udpPeerDiscovery.EnableAutoSearch();
-
-            downloadManager.RestoreUnfinishedDownloads();
-
-            cluster.AddManualPeer(new IPEndPoint(IPAddress.Loopback, 13978));
-
-            // download
-            while (packageRegistry.ImmutableDiscoveredPackages.Count() == 0)
+            var appSettings = new AppInstanceSettings()
             {
-                Thread.Sleep(1000);
-            }
-            var discoveredPackage = packageRegistry.ImmutableDiscoveredPackages.First();
-            downloadManager.GetDiscoveredPackageAndStartDownloadPackage(discoveredPackage);
+                EnableUdpDiscoveryListener = false,
+                EnableUdpDiscoveryClient = true,
+                DownloadEverything = true
+            };
 
-            // test validate
-            while (!packageRegistry.ImmutablePackages.Any(p => p.DownloadStatus.IsDownloaded))
-            {
-                Thread.Sleep(1000);
-            }
-
-            var package = packageRegistry.ImmutablePackages.First(p => p.DownloadStatus.IsDownloaded);
-            localPackageManager.ExtractPackage(package, @"c:\temp\extract-test", validate: true);
-
+            var instance = new AppInstance(appInfo);
+            instances.Add(instance);
+            var bootstrapper = instance.Start(appSettings);
         }
     }
 }

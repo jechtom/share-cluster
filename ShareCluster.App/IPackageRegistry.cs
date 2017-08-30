@@ -14,7 +14,10 @@ namespace ShareCluster
         LocalPackageInfo[] ImmutablePackages { get; }
         PackageMeta[] ImmutablePackagesMetadata { get; }
         DiscoveredPackage[] ImmutableDiscoveredPackages { get; }
+        event Action<LocalPackageInfo> NewLocalPackageCreated;
+        event Action<DiscoveredPackage> NewDiscoveredPackage;
         void RegisterDiscoveredPackages(IEnumerable<DiscoveredPackage> enumerable);
+        LocalPackageInfo CreatePackageFromFolder(string path, string name);
         LocalPackageInfo SaveRemotePackage(PackageHashes hashes, PackageMeta meta);
         bool TryGetPackage(Hash packageHash, out LocalPackageInfo package);
         void UpdateDownloadStatus(LocalPackageInfo packageInfo);

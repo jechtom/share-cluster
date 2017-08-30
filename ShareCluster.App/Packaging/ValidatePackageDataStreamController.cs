@@ -40,7 +40,6 @@ namespace ShareCluster.Packaging
             this.nestedStream = nestedStream;
             writeToNestedStream = nestedStream != null;
             if (writeToNestedStream) memStream = new MemoryStream(capacity: (int)sequenceBaseInfo.SegmentLength);
-
         }
 
         public bool CanWrite => true;
@@ -86,7 +85,7 @@ namespace ShareCluster.Packaging
                 {
                     // allocate and write to memory stream
                     memStream.Position = 0;
-                    memStream.SetLength((int)newPart.PartLength);
+                    memStream.SetLength(0);
                     currentPart.HashStream = new CryptoStream(memStream, currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
                 }
                 else

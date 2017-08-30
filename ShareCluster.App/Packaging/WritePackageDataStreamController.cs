@@ -18,18 +18,16 @@ namespace ShareCluster.Packaging
         private readonly CryptoProvider cryptoProvider;
         private readonly string packageRootPath;
         private readonly PackageSequenceBaseInfo sequenceBaseInfo;
-        private readonly Dto.PackageHashes hashes;
         private readonly PackageDataStreamPart[] parts;
         private CurrentPart currentPart;
         private bool isDisposed;
 
-        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageDataStreamPart> partsToWrite)
+        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, IEnumerable<PackageDataStreamPart> partsToWrite)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
             this.packageRootPath = packageRootPath;
             this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
-            this.hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
             parts = (partsToWrite ?? throw new ArgumentNullException(nameof(partsToWrite))).ToArray();
             Length = parts.Sum(p => p.PartLength);
         }
@@ -48,8 +46,8 @@ namespace ShareCluster.Packaging
 
             bool keepSameStream = oldPart != null && newPart != null && oldPart.Path == newPart.Path;
 
-            // compute hash
-            if(oldPart != null) ComputeCurrentPartHash();
+            // flush
+            if(oldPart != null) FlushCurrentPart();
 
             if (!keepSameStream)
             {
@@ -74,10 +72,7 @@ namespace ShareCluster.Packaging
             {
                 currentPart.Part = newPart;
                 currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
-                currentPart.HashAlgorithm = cryptoProvider.CreateHashAlgorithm();
-                currentPart.MemoryStream = new MemoryStream((int)newPart.PartLength);
-                currentPart.HashStream = new CryptoStream(currentPart.MemoryStream, currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
-                currentPart.Part.Stream = currentPart.HashStream;
+                currentPart.Part.Stream = currentPart.FileStream;
             }
         }
 
@@ -85,43 +80,13 @@ namespace ShareCluster.Packaging
         {
             if (currentPart == null) return;
 
-            currentPart.HashStream.Dispose();
-            currentPart.HashAlgorithm.Dispose();
             currentPart.FileStream.Dispose();
             currentPart = null;
         }
 
-        private void ComputeCurrentPartHash()
+        private void FlushCurrentPart()
         {
             if (currentPart == null) return;
-
-            // get hash and close crypto stream
-            currentPart.HashStream.FlushFinalBlock();
-            currentPart.HashStream.Close();
-            currentPart.HashStream.Dispose();
-
-            Hash partHash = new Hash(currentPart.HashAlgorithm.Hash);
-            Hash expetedHash = hashes.PackageSegmentsHashes[currentPart.Part.SegmentIndex];
-
-            currentPart.HashAlgorithm.Dispose();
-
-            // verify hash
-            if (partHash.Equals(expetedHash))
-            {
-                logger.LogTrace("Hash OK for segment {0}. Hash {1:s}", currentPart.Part.SegmentIndex, expetedHash);
-            }
-            else
-            {
-                string message = string.Format("Hash mismatch for segment {0}. Expected {1:s}, computed {2:s}", currentPart.Part.SegmentIndex, expetedHash, partHash);
-                logger.LogWarning(message);
-                throw new HashMismatchException(message);
-            }
-
-            // write to file (now it is validated)
-            currentPart.MemoryStream.Position = 0;
-            currentPart.MemoryStream.CopyTo(currentPart.FileStream);
-            currentPart.MemoryStream.Dispose();
-            currentPart.MemoryStream = null;
             currentPart.FileStream.Flush();
         }
 
@@ -145,9 +110,6 @@ namespace ShareCluster.Packaging
         {
             public PackageDataStreamPart Part { get; set; }
             public FileStream FileStream { get; set; }
-            public HashAlgorithm HashAlgorithm { get; set; }
-            public CryptoStream HashStream { get; set; }
-            public MemoryStream MemoryStream { get; set; }
         }
     }
 }

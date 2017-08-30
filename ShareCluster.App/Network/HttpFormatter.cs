@@ -35,6 +35,7 @@ namespace ShareCluster.Network
 
         Task IOutputFormatter.WriteAsync(OutputFormatterWriteContext context)
         {
+            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);
             context.ContentType = serializer.MimeType;
             serializer.Serialize(context.Object, context.HttpContext.Response.Body);
             return Task.CompletedTask;

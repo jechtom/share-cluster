@@ -45,8 +45,9 @@ namespace ShareCluster
 
         public void LogStart()
         {
-            LoggerFactory.CreateLogger<AppInfo>()
-                .LogInformation($"Starting app.\nContract version: {Version}\nAnnounce port: UDP {NetworkSettings.UdpAnnouncePort}\nCommunication port: TCP {NetworkSettings.TcpServicePort}\nPackage repo path: {PackageRepositoryPath}");
+            var logger = LoggerFactory.CreateLogger<AppInfo>();
+            logger.LogInformation($"Starting app {Version}. Instance {InstanceHash.Hash:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
+            logger.LogDebug($"Repository path: {PackageRepositoryPath}");
         }
 
         public CryptoProvider Crypto { get; private set; }
@@ -55,8 +56,6 @@ namespace ShareCluster
         public Network.NetworkSettings NetworkSettings { get; private set; }
         public string PackageRepositoryPath { get; set; }
         public ILoggerFactory LoggerFactory { get; set; }
-        public string App => "ShareCluster.App";
-        public string InstanceName { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
         public InstanceHash InstanceHash { get; private set; }
     }
