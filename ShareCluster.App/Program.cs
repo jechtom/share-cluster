@@ -58,7 +58,7 @@ namespace ShareCluster
             for (int i = 0; i < 1; i++)
             {
                 //packageManager.CreatePackageFromFolder(@"c:\My\Repos\BrowserNet\"); // build immutable copy
-                //packageRegistry.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
+                packageRegistry.CreatePackageFromFolder(@"c:\SamplesWCF\", "WCF Samples"); // build immutable copy
                 //clusterManager.DistributeStatusToAllPeers(); // notify about new package
 
             }
@@ -104,13 +104,23 @@ namespace ShareCluster
 
             cluster.AddManualPeer(new IPEndPoint(IPAddress.Loopback, 13978));
 
-            while(packageRegistry.ImmutableDiscoveredPackages.Count() == 0)
+            // download
+            while (packageRegistry.ImmutableDiscoveredPackages.Count() == 0)
+            {
+                Thread.Sleep(1000);
+            }
+            var discoveredPackage = packageRegistry.ImmutableDiscoveredPackages.First();
+            downloadManager.GetDiscoveredPackageAndStartDownloadPackage(discoveredPackage);
+
+            // test validate
+            while (!packageRegistry.ImmutablePackages.Any(p => p.DownloadStatus.IsDownloaded))
             {
                 Thread.Sleep(1000);
             }
 
-            var package = packageRegistry.ImmutableDiscoveredPackages.First();
-            downloadManager.GetDiscoveredPackageAndStartDownloadPackage(package);
+            var package = packageRegistry.ImmutablePackages.First(p => p.DownloadStatus.IsDownloaded);
+            localPackageManager.ExtractPackage(package, @"c:\temp\extract-test", validate: true);
+
         }
     }
 }

@@ -10,28 +10,37 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging
 {
     /// <summary>
-    /// Controller to use with <see cref="PackageDataStream"/> when writing incoming data stream to pre-allocated data files when downloading package. To verify hashes use <see cref="ValidatePackageDataStreamController"/> before this.
+    /// Controller to use with <see cref="PackageDataStream"/> to validate hashes of incoming data stream and sending it to next stream to null stream.
     /// </summary>
-    public class WritePackageDataStreamController : IPackageDataStreamController
+    public class ValidatePackageDataStreamController : IPackageDataStreamController
     {
         private readonly ILogger<WritePackageDataStreamController> logger;
         private readonly CryptoProvider cryptoProvider;
-        private readonly string packageRootPath;
         private readonly PackageSequenceBaseInfo sequenceBaseInfo;
         private readonly Dto.PackageHashes hashes;
         private readonly PackageDataStreamPart[] parts;
         private CurrentPart currentPart;
+        private readonly MemoryStream memStream;
         private bool isDisposed;
 
-        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageDataStreamPart> partsToWrite)
+        private bool writeToNestedStream;
+        private Stream nestedStream;
+
+        /// <param name="nestedStream">Can be null if you just want to validate hashes.</param>
+        public ValidatePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageDataStreamPart> partsToValidate, Stream nestedStream)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            this.packageRootPath = packageRootPath;
             this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
             this.hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
-            parts = (partsToWrite ?? throw new ArgumentNullException(nameof(partsToWrite))).ToArray();
+            parts = (partsToValidate ?? throw new ArgumentNullException(nameof(partsToValidate))).ToArray();
             Length = parts.Sum(p => p.PartLength);
+
+            // where to write validated data?
+            this.nestedStream = nestedStream;
+            writeToNestedStream = nestedStream != null;
+            if (writeToNestedStream) memStream = new MemoryStream(capacity: (int)sequenceBaseInfo.SegmentLength);
+
         }
 
         public bool CanWrite => true;
@@ -64,7 +73,6 @@ namespace ShareCluster.Packaging
                     currentPart = new CurrentPart
                     {
                         Part = newPart,
-                        FileStream = new FileStream(newPart.Path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite)
                     };
                 }
             }
@@ -73,10 +81,19 @@ namespace ShareCluster.Packaging
             if(newPart != null)
             {
                 currentPart.Part = newPart;
-                currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
                 currentPart.HashAlgorithm = cryptoProvider.CreateHashAlgorithm();
-                currentPart.MemoryStream = new MemoryStream((int)newPart.PartLength);
-                currentPart.HashStream = new CryptoStream(currentPart.MemoryStream, currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
+                if (writeToNestedStream)
+                {
+                    // allocate and write to memory stream
+                    memStream.Position = 0;
+                    memStream.SetLength((int)newPart.PartLength);
+                    currentPart.HashStream = new CryptoStream(memStream, currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
+                }
+                else
+                {
+                    // write to NULL - just compute hash
+                    currentPart.HashStream = new CryptoStream(Stream.Null, currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
+                }
                 currentPart.Part.Stream = currentPart.HashStream;
             }
         }
@@ -87,7 +104,6 @@ namespace ShareCluster.Packaging
 
             currentPart.HashStream.Dispose();
             currentPart.HashAlgorithm.Dispose();
-            currentPart.FileStream.Dispose();
             currentPart = null;
         }
 
@@ -118,11 +134,12 @@ namespace ShareCluster.Packaging
             }
 
             // write to file (now it is validated)
-            currentPart.MemoryStream.Position = 0;
-            currentPart.MemoryStream.CopyTo(currentPart.FileStream);
-            currentPart.MemoryStream.Dispose();
-            currentPart.MemoryStream = null;
-            currentPart.FileStream.Flush();
+            if(writeToNestedStream)
+            {
+                memStream.Position = 0;
+                memStream.CopyTo(nestedStream);
+                nestedStream.Flush();
+            }
         }
 
         public void OnStreamClosed()
@@ -144,10 +161,8 @@ namespace ShareCluster.Packaging
         private class CurrentPart
         {
             public PackageDataStreamPart Part { get; set; }
-            public FileStream FileStream { get; set; }
             public HashAlgorithm HashAlgorithm { get; set; }
             public CryptoStream HashStream { get; set; }
-            public MemoryStream MemoryStream { get; set; }
         }
     }
 }

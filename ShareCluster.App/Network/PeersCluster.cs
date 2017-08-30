@@ -86,21 +86,22 @@ namespace ShareCluster.Network
             };
         }
 
-        public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackageInfo package, int[] requestedParts)
+        public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackageInfo package, int[] requestedSegments)
         {
             if (package == null)
             {
                 throw new ArgumentNullException(nameof(package));
             }
 
-            if (requestedParts == null)
+            if (requestedSegments == null)
             {
-                throw new ArgumentNullException(nameof(requestedParts));
+                throw new ArgumentNullException(nameof(requestedSegments));
             }
 
             // packages ok?
-            if(!package.DownloadStatus.ValidateRequestedParts(requestedParts))
+            if(!package.DownloadStatus.ValidateRequestedParts(requestedSegments))
             {
+                logger.LogTrace($"Requested segments not valid for {package}: {requestedSegments.Format()}");
                 return (null, CreateDataPackagePartsNotFoundMessage());
             }
 
@@ -110,15 +111,18 @@ namespace ShareCluster.Network
             {
                 // not enough slots
                 Interlocked.Increment(ref uploadSlots);
+                logger.LogTrace($"Peer choked when requested {package} segments: {requestedSegments.Format()}");
                 return (null, new DataResponseFaul() { Version = appInfo.Version, IsChoked = true });
             }
 
             // create reader stream
-            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, package.Reference, package.Sequence, requestedParts);
+            var sequencer = new PackagePartsSequencer();
+            logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
+            IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, requestedSegments);
+            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, package.Reference, package.Sequence, partsSource);
             var stream = new PackageDataStream(appInfo.LoggerFactory, controller);
             stream.Disposing += () => {
                 int currentSlots = Interlocked.Increment(ref uploadSlots);
-                logger.LogTrace("Upload slot returned. Current slots count is {0}.", currentSlots);
             };
             return (stream, null);
         }

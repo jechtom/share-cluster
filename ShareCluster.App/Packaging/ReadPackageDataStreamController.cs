@@ -19,16 +19,15 @@ namespace ShareCluster.Packaging
         private CurrentPart currentPart;
         private bool isDisposed;
 
-        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, PackageReference package, PackageSequenceInfo packageSequence, int[] requestedSegments)
+        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, PackageReference package, PackageSequenceInfo packageSequence, IEnumerable<PackageDataStreamPart> requestedParts)
         {
             if (package == null)
             {
                 throw new ArgumentNullException(nameof(package));
             }
-
+            
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ReadPackageDataStreamController>();
-            var sequencer = new PackagePartsSequencer();
-            parts = sequencer.GetPartsForSpecificSegments(package.FolderPath, packageSequence, requestedSegments).ToArray();
+            parts = requestedParts.ToArray();
             Length = parts.Sum(p => p.PartLength);
         }
 

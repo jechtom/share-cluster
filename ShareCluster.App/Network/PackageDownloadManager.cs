@@ -258,15 +258,30 @@ namespace ShareCluster.Network
 
             var message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
 
-            WritePackageDataStreamController controller = null;
-            Stream stream = null;
+            // remarks:
+            // - write incoming stream to streamValidate
+            // - streamValidate validates data and writes it to nested streamWrite
+            // - streamWrite writes data to data files
+
+            WritePackageDataStreamController controllerWriter = null;
+            Stream streamWrite = null;
+
+            ValidatePackageDataStreamController controllerValidate = null;
+            Stream streamValidate = null;
             try
             {
                 Func<Stream> createStream = () =>
                 {
-                    controller = new WritePackageDataStreamController(appInfo.LoggerFactory, appInfo.Crypto, package.Reference.FolderPath, package.Sequence, package.Hashes, parts);
-                    stream = new PackageDataStream(appInfo.LoggerFactory, controller);
-                    return stream;
+                    var sequencer = new PackagePartsSequencer();
+                    IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, parts);
+
+                    controllerWriter = new WritePackageDataStreamController(appInfo.LoggerFactory, appInfo.Crypto, package.Reference.FolderPath, package.Sequence, package.Hashes, partsSource);
+                    streamWrite = new PackageDataStream(appInfo.LoggerFactory, controllerWriter);
+
+                    controllerValidate = new ValidatePackageDataStreamController(appInfo.LoggerFactory, appInfo.Crypto, package.Sequence, package.Hashes, partsSource, streamWrite);
+                    streamValidate = new PackageDataStream(appInfo.LoggerFactory, controllerValidate);
+
+                    return streamValidate;
                 };
 
                 DataResponseFaul response = null;
@@ -327,8 +342,10 @@ namespace ShareCluster.Network
             }
             finally
             {
-                if (stream != null) stream.Dispose();
-                if (controller != null) controller.Dispose();
+                if (streamValidate != null) streamValidate.Dispose();
+                if (controllerValidate != null) controllerValidate.Dispose();
+                if (streamWrite != null) streamWrite.Dispose();
+                if (controllerWriter != null) controllerWriter.Dispose();
             }
         }
     }

@@ -145,6 +145,40 @@ namespace ShareCluster.Packaging
             return result;
         }
 
+        public void ExtractPackage(LocalPackageInfo packageInfo, string targetFolder, bool validate)
+        {
+            if (validate)
+            {
+                // validate
+                var validator = new PackageDataValidator(app.LoggerFactory, app.Crypto);
+                var result = validator.ValidatePackageAsync(packageInfo).Result;
+                if(!result.IsValid)
+                {
+                    throw new InvalidOperationException($"Cannot validate package {packageInfo}:\n{string.Join("\n", result.Errors)}");
+                }
+            }
+
+            logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
+
+            // prepare folder
+            var folderInfo = new DirectoryInfo(targetFolder);
+            folderInfo.Create();
+
+            // read all and extract
+            var sequencer = new PackagePartsSequencer();
+            IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
+            using (var readController = new ReadPackageDataStreamController(app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
+            using (var readStream = new PackageDataStream(app.LoggerFactory, readController))
+            {
+                using (var zipArchive = new ZipArchive(readStream, ZipArchiveMode.Read, leaveOpen: true))
+                {
+                    zipArchive.ExtractToDirectory(targetFolder);
+                }
+            }
+
+            logger.LogInformation($"Package {packageInfo} has been extracted.");
+        }
+
         public PackageHashes ReadPackageHashesFile(PackageReference reference)
         {
             var dto = ReadPackageFile<PackageHashes>(reference, PackageHashesFileName);

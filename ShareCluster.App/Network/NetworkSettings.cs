@@ -25,7 +25,7 @@ namespace ShareCluster.Network
         /// <summary>
         /// Number of segments to be requested from peers.
         /// </summary>
-        public int SegmentsPerRequest { get; set; } = 4;
+        public int SegmentsPerRequest { get; set; } = 6;
 
         /// <summary>
         /// Gets or sets maximum number of concurrent download tasks.
