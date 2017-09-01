@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using System;

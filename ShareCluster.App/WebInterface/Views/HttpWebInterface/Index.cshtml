@@ -1,0 +1,196 @@
+﻿@model ShareCluster.WebInterface.StatusViewModel
+
+<p>Instance <tt>@Model.Instance.Hash</tt></p>
+<div class="pull-right">
+    <a href="@Url.Action(nameof(HttpWebInterfaceController.CreatePackage))" class="btn btn-default">
+        <span class="glyphicon glyphicon-plus"></span>
+        Create new package
+    </a>
+</div>
+<h2>Packages</h2>
+<table class="table table-bordered table-hover table-responsive">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Created</th>
+            <th>Size</th>
+            <th colspan="2">Status</th>
+            <th>Commands</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var package in Model.Packages)
+        {
+            string css_class = package.DownloadStatus.IsDownloaded ? "success" : (package.DownloadStatus.IsDownloading ? "info" : "warning");
+                        
+            <tr>
+                <td><tt>@package.Id</tt></td>
+                <td>@package.Metadata.Name</td>
+                <td>@package.Metadata.Created.ToString("f")</td>
+                <td>@ShareCluster.SizeFormatter.ToString(package.Metadata.PackageSize)</td>
+                <td class="@css_class">@(package.DownloadStatus.IsDownloaded ? "Finished" : "Progress")</td>
+                <td class="@css_class">@($"{package.DownloadStatus.Progress * 100:0.0}%")</td>
+                <td>
+                    <ul class="simple-list">
+                        <li>
+                            <a href="@Url.Action(nameof(HttpWebInterfaceController.DeletePackage), new { packageId = package.Id })">
+                                <span class="glyphicon glyphicon-remove"></span> Delete
+                            </a>
+                        </li>
+                        @if (package.DownloadStatus.IsDownloading)
+                        {
+                            <li>
+                                <form asp-action="@nameof(HttpWebInterfaceController.StopDownloadPackage)" method="post" asp-antiforgery="true" asp-route-packageId="@package.Id" class="simple-form">
+                                    <button type="submit" class="btn-link">
+                                        <span class="glyphicon glyphicon-pause"></span> Pause
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                        else if (!package.DownloadStatus.IsDownloaded)
+                        {
+                            <li>
+                                <form asp-action="@nameof(HttpWebInterfaceController.StartDownloadPackage)" method="post" asp-antiforgery="true" asp-route-packageId="@package.Id" class="simple-form">
+                                    <button type="submit" class="btn-link">
+                                        <span class="glyphicon glyphicon-download-alt"></span> Resume
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                        @if (package.DownloadStatus.IsDownloaded)
+                        {
+                            <li>
+                                <a href="@Url.Action(nameof(HttpWebInterfaceController.ExtractPackage), new { packageId = package.Id })">
+                                    <span class="glyphicon glyphicon-paste"></span> Extract
+                                </a>
+                            </li>
+                            <li>
+                                <form asp-action="@nameof(HttpWebInterfaceController.StartVerifyPackage)" method="post" asp-antiforgery="true" asp-route-packageId="@package.Id" class="simple-form">
+                                    <button type="submit" class="btn-link">
+                                        <span class="glyphicon glyphicon-eye-open"></span> Verify
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </td>
+            </tr>
+        }
+        @foreach (var package in Model.PackagesAvailableToDownload)
+        {
+            <tr>
+                <td><tt>@package.PackageId</tt></td>
+                <td>@package.Name</td>
+                <td>@package.Meta.Created.ToString("f")</td>
+                <td>@ShareCluster.SizeFormatter.ToString(package.Meta.PackageSize)</td>
+                <td colspan="2">Not downloaded</td>
+                <td>
+                    <ul class="simple-list">
+                        <li>
+                            <form asp-action="@nameof(HttpWebInterfaceController.StartDownloadDiscoveredPackage)" method="post" asp-antiforgery="true" asp-route-packageId="@package.PackageId" class="simple-form">
+                                <button type="submit" class="btn-link">
+                                    <span class="glyphicon glyphicon-download-alt"></span> Download
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="row">
+    <div class="col-md-6">
+        <h2 class="pull-left">Peers</h2>
+        <div class="pull-right">
+            <a href="@Url.Action(nameof(HttpWebInterfaceController.AddManualPeer))" class="btn btn-link">
+                <span class="glyphicon glyphicon-user"></span>
+                Add manual peer
+            </a>
+        </div>
+        <table class="table table-bordered table-hover table-responsive">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Endpoint</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var peer in Model.Peers)
+                {
+                    <tr>
+                        <td><tt>@peer.PeerId</tt></td>
+                        <td>@peer.ServiceEndPoint</td>
+                        <td class="@(peer.IsDirectDiscovery ? "success" : "")">
+                            @if (!peer.IsDirectDiscovery)
+                            { 
+                                <span class="glyphicon glyphicon-hourglass" title="No direct connection"></span>
+                            }
+                            else
+                            {
+                                <span class="glyphicon glyphicon-ok" title="Direct connection"></span>
+                            }
+                            @if (peer.IsOtherPeerDiscovery)
+                            {
+                                <span class="glyphicon glyphicon-send" title="Other peer(s) knows this"></span>
+                            }
+                            @if (peer.IsLoopback)
+                            {
+                                <span class="glyphicon glyphicon-home" title="Loopback connection"></span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <h2 class="pull-left">Tasks</h2>
+        <div class="pull-right">
+            <form asp-action="@nameof(HttpWebInterfaceController.ClearCompletedTasks)" method="post" asp-antiforgery="true" class="simple-form">
+                <button type="submit" class="btn-link">
+                    <span class="glyphicon glyphicon-remove"></span>
+                    Clear history
+                </button>
+            </form>
+        </div>
+        <table class="table table-bordered table-hover table-responsive">
+            <thead>
+                <tr>
+                    <th>Duration</th>
+                    <th>Task</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in Model.Tasks)
+                {
+                    <tr>
+                        <td>@task.Elapsed.ToString("h\\:mm\\:ss")</td>
+                        <td>
+                            @task.Title<br />
+                            <small>
+                                @if (task.IsCompleted)
+                                {
+                                    <span class="glyphicon glyphicon-ok"></span>
+                                }
+                                else if (task.IsFaulted)
+                                {
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                }
+                                else if (task.IsRunning)
+                                {
+                                    <span class="glyphicon glyphicon-hourglass"></span>
+                                }
+                                @task.ProgressText
+                            </small>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>autoRefresh();</script>

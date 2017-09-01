@@ -9,6 +9,7 @@ using Microsoft.Extensions.Primitives;
 namespace ShareCluster
 {
     [ProtoContract]
+    [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.HashModelBinder))]
     public struct Hash : IEquatable<Hash>, IFormattable
     {
         [ProtoMember(1)]
@@ -98,6 +99,12 @@ namespace ShareCluster
 
         public static bool TryParse(string valueString, out Hash hash)
         {
+            if(valueString == null)
+            {
+                hash = default(Hash);
+                return false;
+            }
+
             if(!TryConvertHexStringToByteArray(valueString, out byte[] bytes))
             {
                 hash = default(Hash);

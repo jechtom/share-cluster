@@ -28,13 +28,13 @@ namespace ShareCluster
         {
             // instance 1
             var appInfo = AppInfo.CreateCurrent();
-            appInfo.PackageRepositoryPath = @"c:\temp\temp";
+            appInfo.DataRootPath = @"c:\temp\temp";
 
             var appSettings = new AppInstanceSettings()
             {
                 EnableUdpDiscoveryListener = true,
                 EnableUdpDiscoveryClient = true,
-                DownloadEverything = true
+                DownloadEverything = false
             };
 
             var instance = new AppInstance(appInfo);
@@ -67,7 +67,7 @@ namespace ShareCluster
             // instance n
             var appInfo = AppInfo.CreateCurrent();
             appInfo.NetworkSettings.TcpServicePort += (ushort)(index * 10);
-            appInfo.PackageRepositoryPath = @"c:\temp\temp" + index;
+            appInfo.DataRootPath = @"c:\temp\temp" + index;
 
             var appSettings = new AppInstanceSettings()
             {

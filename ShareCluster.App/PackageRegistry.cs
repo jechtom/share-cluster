@@ -7,6 +7,7 @@ using ShareCluster.Packaging.Dto;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
 using ShareCluster.Packaging;
+using System.Threading.Tasks;
 
 namespace ShareCluster
 {
@@ -28,6 +29,8 @@ namespace ShareCluster
 
         public event Action<LocalPackageInfo> NewLocalPackageCreated;
         public event Action<DiscoveredPackage> NewDiscoveredPackage;
+        public event Action<LocalPackageInfo> LocalPackageDeleting;
+        public event Action<LocalPackageInfo> LocalPackageDeleted;
 
         public PackageRegistry(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
         {
@@ -72,10 +75,10 @@ namespace ShareCluster
                 }
             }
 
-            UpdatePackages(addToLocal: packagesInitData, addToDiscovered: Enumerable.Empty<DiscoveredPackage>());
+            UpdateLists(addToLocal: packagesInitData, removeFromLocal: null, addToDiscovered: Enumerable.Empty<DiscoveredPackage>());
         }
 
-        private void UpdatePackages(IEnumerable<LocalPackageInfo> addToLocal, IEnumerable<DiscoveredPackage> addToDiscovered)
+        private void UpdateLists(IEnumerable<LocalPackageInfo> addToLocal, IEnumerable<LocalPackageInfo> removeFromLocal, IEnumerable<DiscoveredPackage> addToDiscovered)
         {
             lock (packagesLock)
             {
@@ -83,28 +86,42 @@ namespace ShareCluster
                 if (localPackages == null) localPackages = new Dictionary<Hash, LocalPackageInfo>();
                 if (discoveredPackages == null) discoveredPackages = new Dictionary<Hash, DiscoveredPackage>();
 
+                bool updateDiscoveredArray = false;
+
                 // update
-                if (addToLocal != null)
+                if (addToLocal != null || removeFromLocal != null)
                 {
                     // regenerate local packages list
-                    localPackages = localPackages.Values.Concat(addToLocal).ToDictionary(p => p.Id);
+                    IEnumerable<LocalPackageInfo> packageSource = localPackages.Values;
+                    if (addToLocal != null)
+                    {
+                        packageSource = packageSource.Concat(addToLocal);
+                        foreach (var item in addToLocal)
+                        {
+                            logger.LogDebug("Added local package: {0} - {1}", item, item.DownloadStatus);
+                        }
+                    }
+                    if (removeFromLocal != null)
+                    {
+                        packageSource = packageSource.Except(removeFromLocal);
+                        foreach (var item in removeFromLocal)
+                        {
+                            logger.LogDebug("Removed local package: {0} - {1}", item, item.DownloadStatus);
+                        }
+                    }
+
+                    localPackages = packageSource.ToDictionary(p => p.Id);
 
                     immutablePackages = localPackages.Values.Select(p => p).ToArray();
                     immutablePackagesMetadata = localPackages.Values.Select(p => p.Metadata).ToArray();
 
-                    foreach (var item in addToLocal)
-                    {
-                        logger.LogDebug("Added local package: {0} - {1}", item, item.DownloadStatus);
-                    }
-
                     // regenerate discovered - to remove new packages already move to local packages list
                     discoveredPackages = (discoveredPackages).Values.Where(dp => !localPackages.ContainsKey(dp.PackageId)).ToDictionary(dp => dp.PackageId);
+                    updateDiscoveredArray = true;
                 }
 
                 if(addToDiscovered != null)
                 {
-                    bool changed = false;
-
                     // is there anything to add?
                     foreach(var item in addToDiscovered)
                     {
@@ -118,12 +135,13 @@ namespace ShareCluster
 
                         logger.LogTrace("Discovered package \"{0}\" {1:s} ({2})", item.Name, item.PackageId, SizeFormatter.ToString(item.Meta.PackageSize));
                         discoveredPackages.Add(item.PackageId, item);
-                        changed = true;
+                        updateDiscoveredArray = true;
                     }
 
-                    // as immutable array
-                    if (immutableDiscoveredPackagesArray == null || changed) immutableDiscoveredPackagesArray = discoveredPackages.Values.ToArray();
                 }
+
+                // as immutable array
+                if (immutableDiscoveredPackagesArray == null || updateDiscoveredArray) immutableDiscoveredPackagesArray = discoveredPackages.Values.ToArray();
             }
         }
 
@@ -133,7 +151,7 @@ namespace ShareCluster
             lock (packagesLock)
             {
                 newDiscoveredPackages = packageMeta.Where(p => !localPackages.ContainsKey(p.PackageId)).ToArray();
-                UpdatePackages(addToLocal: null, addToDiscovered: newDiscoveredPackages);
+                UpdateLists(addToLocal: null, removeFromLocal: null, addToDiscovered: newDiscoveredPackages);
             }
 
             foreach (var packageMetaItem in newDiscoveredPackages)
@@ -171,7 +189,7 @@ namespace ShareCluster
                 {
                     throw new InvalidOperationException("Registering package with existing hash.");
                 }
-                UpdatePackages(addToLocal: new LocalPackageInfo[] { package }, addToDiscovered: null);
+                UpdateLists(addToLocal: new LocalPackageInfo[] { package }, removeFromLocal: null, addToDiscovered: null);
             }
         }
 
@@ -193,10 +211,51 @@ namespace ShareCluster
             {
                 throw new ArgumentNullException(nameof(packageInfo));
             }
+
+            if (!packageInfo.LockProvider.TryLock(out object lockToken)) return; // marked to delete?
+            try
+            {
+                // update!
+                lock (packagesLock)
+                {
+                    localPackageManager.UpdateDownloadStatus(packageInfo.DownloadStatus);
+                }
+            }
+            finally
+            {
+                packageInfo.LockProvider.Unlock(lockToken);
+            }
+        }
+
+        public async Task DeletePackageAsync(LocalPackageInfo packageInfo)
+        {
+            if (packageInfo == null)
+            {
+                throw new ArgumentNullException(nameof(packageInfo));
+            }
+
+            // first mark for deletion
+            Task waitForReleaseLocksTask;
             lock (packagesLock)
             {
-                localPackageManager.UpdateDownloadStatus(packageInfo.DownloadStatus);
+                if (packageInfo.LockProvider.IsMarkedToDelete) return;
+                waitForReleaseLocksTask = packageInfo.LockProvider.MarkForDelete();
             }
+
+            // notify we are deleting package (stop download)
+            LocalPackageDeleting?.Invoke(packageInfo);
+            
+            // wait for all resources all unlocked
+            await waitForReleaseLocksTask;
+
+            // delete content
+            localPackageManager.DeletePackage(packageInfo);
+
+            // update collections
+            UpdateLists(addToLocal: null, removeFromLocal: new[] { packageInfo }, addToDiscovered: null);
+
+            // notify we have deleted package (stop download)
+            LocalPackageDeleted?.Invoke(packageInfo);
         }
     }
 }

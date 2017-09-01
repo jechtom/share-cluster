@@ -9,6 +9,8 @@ using System.IO;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using ShareCluster.Network.Http;
+using ShareCluster.WebInterface;
 
 namespace ShareCluster
 {
@@ -48,7 +50,7 @@ namespace ShareCluster
             webHost = new WebHostBuilder()
                 .UseKestrel()
                 .UseEnvironment("Development")
-                .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseContentRoot(Path.Combine(Directory.GetCurrentDirectory(), "WebInterface"))
                 .UseUrls(urls)
                 .ConfigureServices(ConfigureService)
                 .UseStartup<HttpStartup>()
@@ -80,6 +82,9 @@ namespace ShareCluster
             services.AddSingleton<PackageDownloadManager>();
             services.AddSingleton<PeersCluster>();
             services.AddSingleton<AppInstanceBootstrapper>();
+            services.AddSingleton<WebFacade>();
+            services.AddSingleton<LongRunningTasksManager>();
+            services.AddSingleton<PackageDataValidator>();
         }
     }
 }

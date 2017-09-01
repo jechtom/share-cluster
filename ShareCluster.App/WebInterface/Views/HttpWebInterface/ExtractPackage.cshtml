@@ -1,0 +1,26 @@
+﻿@model ExtractPackageViewModel
+<h2>Extract Package @Model.Package.Name</h2>
+<p>Package Id: <strong><tt>@Model.Package.Id</tt></strong></p>
+<p>Size: <strong>@SizeFormatter.ToString(Model.Package.Size)</strong></p>
+<p>In what folder would you like to extract <strong>@Model.Package.Name</strong>?</p>
+<form method="post" asp-antiforgery="true">
+    <div class="form-group">
+        <label asp-for="Folder">New folder to extract package:</label>
+        <input asp-for="Folder" class="form-control" />
+        <em>Given folder will be created.</em>
+        @Html.ValidationMessageFor(m => m.Folder)
+    </div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <div class="checkbox">
+                <label><input type="checkbox" asp-for="DoValidate"> Verify package before extraction</label>
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-success">
+        <span class="glyphicon glyphicon-paste"></span> Extract @SizeFormatter.ToString(Model.Package.Size)
+    </button>
+    <a href="@Url.Action(nameof(HttpWebInterfaceController.Index))" class="btn btn-default">
+        Cancel
+    </a>
+</form>

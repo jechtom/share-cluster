@@ -86,7 +86,6 @@ namespace ShareCluster
             lock(syncLock)
             {
                 if (IsDownloaded) throw new InvalidOperationException("Already downloaded.");
-                if (!IsDownloading) throw new InvalidOperationException("Not downloadeding at this moment.");
 
                 partsInProgress.ExceptWith(segmentIndexes);
                 for (int i = 0; i < segmentIndexes.Length; i++)
@@ -122,7 +121,7 @@ namespace ShareCluster
         public int[] TrySelectSegmentsForDownload(byte[] remote, int count)
         {
             if (IsDownloaded) throw new InvalidOperationException("Already downloaded.");
-            if (!IsDownloading) throw new InvalidOperationException("Not downloadeding at this moment.");
+            if (!IsDownloading) throw new InvalidOperationException("Not downloading at this moment.");
 
             bool isRemoteFull = remote == null;
             if (!isRemoteFull && remote.Length != dto.SegmentsBitmap.Length)

@@ -43,7 +43,7 @@ namespace ShareCluster.Packaging
                 throw new ArgumentNullException(nameof(packageInfo));
             }
 
-            if(!packageInfo.DownloadStatus.IsDownloaded)
+            if (!packageInfo.DownloadStatus.IsDownloaded)
             {
                 // remark: this can be implemented but don't need it now
                 throw new InvalidOperationException("Can't validate integrity of not fully downloaded package.");
@@ -67,66 +67,78 @@ namespace ShareCluster.Packaging
 
             // validate package hash calculated from segment hashes
             var calculatedPackageHash = cryptoProvider.HashFromHashes(packageInfo.Hashes.PackageSegmentsHashes);
-            if(!calculatedPackageHash.Equals(packageInfo.Id))
+            if (!calculatedPackageHash.Equals(packageInfo.Id))
             {
                 return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {packageInfo.Id:s}.");
             }
 
-            // start checking files
-            var errors = new List<string>();
-            var sequencer = new PackagePartsSequencer();
-
-            // check if data files exists and if correct size
-            foreach (var dataFile in sequencer.GetDataFilesForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence))
+            // before working with files - obtain lock to make sure package is not deleted on check
+            if (!packageInfo.LockProvider.TryLock(out object lockToken))
             {
-                try
-                {
-                    var fileInfo = new FileInfo(dataFile.Path);
-                    if(!fileInfo.Exists)
-                    {
-                        errors.Add($"Expected data file not found. File: {dataFile.Path}");
-                        continue;
-                    }
-
-                    if(fileInfo.Length != dataFile.DataFileLength)
-                    {
-                        errors.Add($"Invalid length of data file. Expected is {dataFile.DataFileLength}b but actual is {fileInfo.Length}b. File: {dataFile.Path}");
-                        continue;
-                    }
-                }
-                catch(Exception e)
-                {
-                    errors.Add($"Can't validate file \"{ dataFile.Path }\". Reason: {e.Message}");
-                }
+                throw new InvalidOperationException("Can't obtain lock for this package. It is marked for deletion.");
             }
-
-            // don't continue if files are not OK
-            if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
-
-            // do file hashes check
-            IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
             try
             {
-                using (var readPackageController = new ReadPackageDataStreamController(loggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
-                using (var readPackageStream = new PackageDataStream(loggerFactory, readPackageController))
-                using (var validatePackageController = new ValidatePackageDataStreamController(loggerFactory, cryptoProvider, packageInfo.Sequence, packageInfo.Hashes, allParts, nestedStream: null))
-                using (var validatePackageStream = new PackageDataStream(loggerFactory, validatePackageController))
-                {
-                    await readPackageStream.CopyToAsync(validatePackageStream);
-                }
-            }
-            catch(HashMismatchException e)
-            {
-                errors.Add($"Data file segment hash mismatch: {e.Message}");
-            }
-            catch(Exception e)
-            {
-                errors.Add($"Can't process data files to validation. {e.ToString()}");
-            }
+                // start checking files
+                var errors = new List<string>();
+                var sequencer = new PackagePartsSequencer();
 
-            // get result
-            if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
-            return PackageDataValidatorResult.Valid;
+                // check if data files exists and if correct size
+                foreach (var dataFile in sequencer.GetDataFilesForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence))
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(dataFile.Path);
+                        if (!fileInfo.Exists)
+                        {
+                            errors.Add($"Expected data file not found. File: {dataFile.Path}");
+                            continue;
+                        }
+
+                        if (fileInfo.Length != dataFile.DataFileLength)
+                        {
+                            errors.Add($"Invalid length of data file. Expected is {dataFile.DataFileLength}b but actual is {fileInfo.Length}b. File: {dataFile.Path}");
+                            continue;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        errors.Add($"Can't validate file \"{ dataFile.Path }\". Reason: {e.Message}");
+                    }
+                }
+
+                // don't continue if files are not OK
+                if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
+
+                // do file hashes check
+                IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
+                try
+                {
+                    using (var readPackageController = new ReadPackageDataStreamController(loggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
+                    using (var readPackageStream = new PackageDataStream(loggerFactory, readPackageController))
+                    using (var validatePackageController = new ValidatePackageDataStreamController(loggerFactory, cryptoProvider, packageInfo.Sequence, packageInfo.Hashes, allParts, nestedStream: null))
+                    using (var validatePackageStream = new PackageDataStream(loggerFactory, validatePackageController))
+                    {
+                        await readPackageStream.CopyToAsync(validatePackageStream);
+                    }
+                }
+                catch (HashMismatchException e)
+                {
+                    errors.Add($"Data file segment hash mismatch: {e.Message}");
+                }
+                catch (Exception e)
+                {
+                    errors.Add($"Can't process data files to validation. {e.ToString()}");
+                }
+
+                // get result
+                if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
+                return PackageDataValidatorResult.Valid;
+            }
+            finally
+            {
+                packageInfo.LockProvider.Unlock(lockToken);
+            }
         }
     }
 }

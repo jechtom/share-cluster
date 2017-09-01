@@ -1,0 +1,22 @@
+﻿@model CreatePackageViewModel
+<h2>Create New Package</h2>
+<p>After package is created it will be immediately accessible to other peers.</p>
+<form method="post" asp-antiforgery="true">
+    <div class="form-group">
+        <label asp-for="Folder">Path to directory:</label>
+        <input asp-for="Folder" class="form-control" />
+        @Html.ValidationMessageFor(m => m.Folder)
+    </div>
+    <div class="form-group">
+        <label asp-for="Name">Package name:</label>
+        <input asp-for="Name" class="form-control" />
+        <em>Leave empty to use same as folder name.</em>
+        @Html.ValidationMessageFor(m => m.Name)
+    </div>
+    <button type="submit" class="btn btn-success">
+        <span class="glyphicon glyphicon-cloud-upload"></span> Create and publish
+    </button>
+    <a href="@Url.Action(nameof(HttpWebInterfaceController.Index))" class="btn btn-default">
+        Cancel
+    </a>
+</form>

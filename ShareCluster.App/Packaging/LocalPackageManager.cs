@@ -30,7 +30,7 @@ namespace ShareCluster.Packaging
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
             logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
-            PackageRepositoryPath = app.PackageRepositoryPath;
+            PackageRepositoryPath = app.DataRootPathPackageRepository;
             sequenceForNewPackages = PackageSequenceBaseInfo.Default;
         }
         
@@ -147,36 +147,53 @@ namespace ShareCluster.Packaging
 
         public void ExtractPackage(LocalPackageInfo packageInfo, string targetFolder, bool validate)
         {
-            if (validate)
+            if (packageInfo == null)
             {
-                // validate
-                var validator = new PackageDataValidator(app.LoggerFactory, app.Crypto);
-                var result = validator.ValidatePackageAsync(packageInfo).Result;
-                if(!result.IsValid)
-                {
-                    throw new InvalidOperationException($"Cannot validate package {packageInfo}:\n{string.Join("\n", result.Errors)}");
-                }
+                throw new ArgumentNullException(nameof(packageInfo));
             }
 
-            logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
-
-            // prepare folder
-            var folderInfo = new DirectoryInfo(targetFolder);
-            folderInfo.Create();
-
-            // read all and extract
-            var sequencer = new PackagePartsSequencer();
-            IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
-            using (var readController = new ReadPackageDataStreamController(app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
-            using (var readStream = new PackageDataStream(app.LoggerFactory, readController))
+            // rent package lock
+            if (!packageInfo.LockProvider.TryLock(out object lockToken))
             {
-                using (var zipArchive = new ZipArchive(readStream, ZipArchiveMode.Read, leaveOpen: true))
-                {
-                    zipArchive.ExtractToDirectory(targetFolder);
-                }
+                throw new InvalidOperationException("Package is marked to delete, can't extract it.");
             }
+            try
+            {
+                if (validate)
+                {
+                    // validate
+                    var validator = new PackageDataValidator(app.LoggerFactory, app.Crypto);
+                    var result = validator.ValidatePackageAsync(packageInfo).Result;
+                    if (!result.IsValid)
+                    {
+                        throw new InvalidOperationException($"Cannot validate package {packageInfo}:\n{string.Join("\n", result.Errors)}");
+                    }
+                }
 
-            logger.LogInformation($"Package {packageInfo} has been extracted.");
+                logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
+
+                // prepare folder
+                var folderInfo = new DirectoryInfo(targetFolder);
+                folderInfo.Create();
+
+                // read all and extract
+                var sequencer = new PackagePartsSequencer();
+                IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
+                using (var readController = new ReadPackageDataStreamController(app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
+                using (var readStream = new PackageDataStream(app.LoggerFactory, readController))
+                {
+                    using (var zipArchive = new ZipArchive(readStream, ZipArchiveMode.Read, leaveOpen: true))
+                    {
+                        zipArchive.ExtractToDirectory(targetFolder);
+                    }
+                }
+
+                logger.LogInformation($"Package {packageInfo} has been extracted.");
+            }
+            finally
+            {
+                packageInfo.LockProvider.Unlock(lockToken);
+            }
         }
 
         public PackageHashes ReadPackageHashesFile(PackageReference reference)
@@ -232,6 +249,18 @@ namespace ShareCluster.Packaging
             app.CompatibilityChecker.ThrowIfNotCompatibleWith($"{filePath}", data.Version);
 
             return data;
+        }
+
+        public void DeletePackage(LocalPackageInfo packageInfo)
+        {
+            if (packageInfo == null)
+            {
+                throw new ArgumentNullException(nameof(packageInfo));
+            }
+
+            logger.LogInformation($"Deleting folder {packageInfo.Reference.FolderPath}.");
+            Directory.Delete(packageInfo.Reference.FolderPath, recursive: true);
+            logger.LogInformation($"Folder deleted {packageInfo.Reference.FolderPath}.");
         }
 
         public LocalPackageInfo RegisterPackage(PackageHashes hashes, PackageMeta metadata)

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using System;
@@ -42,7 +43,13 @@ namespace ShareCluster.Network
             logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
             peerRegistry.PeersChanged += PeerRegistry_PeersChanged;
             packageRegistry.NewLocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
+            packageRegistry.LocalPackageDeleted += PackageRegistry_LocalPackageDeleted;
             packageDownloadManager.DownloadStatusChange += PackageDownloadManager_DownloadStatusChange;
+        }
+
+        private void PackageRegistry_LocalPackageDeleted(LocalPackageInfo obj)
+        {
+            PlanSendingClusterUpdate();
         }
 
         private void PackageDownloadManager_DownloadStatusChange(DownloadStatusChange obj)
@@ -86,25 +93,7 @@ namespace ShareCluster.Network
                 }
             }
         }
-
-        public DataResponseFaul CreateDataPackageNotFoundMessage()
-        {
-            return new DataResponseFaul()
-            {
-                Version = appInfo.Version,
-                PackageNotFound = true
-            };
-        }
-
-        public DataResponseFaul CreateDataPackagePartsNotFoundMessage()
-        {
-            return new DataResponseFaul()
-            {
-                Version = appInfo.Version,
-                PackagePartsNotFound = true
-            };
-        }
-
+        
         public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackageInfo package, int[] requestedSegments)
         {
             if (package == null)
@@ -121,7 +110,7 @@ namespace ShareCluster.Network
             if(!package.DownloadStatus.ValidateRequestedParts(requestedSegments))
             {
                 logger.LogTrace($"Requested segments not valid for {package}: {requestedSegments.Format()}");
-                return (null, CreateDataPackagePartsNotFoundMessage());
+                return (null, DataResponseFaul.CreateDataPackageSegmentsNotFoundMessage());
             }
 
             // allocate slot
@@ -131,7 +120,13 @@ namespace ShareCluster.Network
                 // not enough slots
                 Interlocked.Increment(ref uploadSlots);
                 logger.LogTrace($"Peer choked when requested {package} segments: {requestedSegments.Format()}");
-                return (null, new DataResponseFaul() { Version = appInfo.Version, IsChoked = true });
+                return (null, DataResponseFaul.CreateChokeMessage());
+            }
+
+            // obtain lock
+            if (!package.LockProvider.TryLock(out object lockToken))
+            {
+                return (null, DataResponseFaul.CreateDataPackageNotFoundMessage());
             }
 
             // create reader stream
@@ -142,6 +137,7 @@ namespace ShareCluster.Network
             var stream = new PackageDataStream(appInfo.LoggerFactory, controller);
             stream.Disposing += () => {
                 int currentSlots = Interlocked.Increment(ref uploadSlots);
+                package.LockProvider.Unlock(lockToken);
             };
             return (stream, null);
         }
@@ -194,6 +190,7 @@ namespace ShareCluster.Network
                         catch (Exception e)
                         {
                             logger.LogWarning("Communication failed with peer {0} at {1:s}: {2}", p.ServiceEndPoint, p.PeerId, e.Message);
+                            p.ClientHasFailed();
                             return;
                         }
                         logger.LogTrace("Getting status from peer {0:s} at {1}", p.PeerId, p.ServiceEndPoint);

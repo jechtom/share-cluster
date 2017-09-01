@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ShareCluster
 {
@@ -38,6 +39,13 @@ namespace ShareCluster
 
             currentExists = extend == 1;
             return extendedPath;
+        }
+
+        public static string GetSafeFileName(string name)
+        {
+            Regex allowed = new Regex(@"[^a-z0-9á-ž\-\._ ]", RegexOptions.IgnoreCase);
+            name = (name ?? string.Empty);
+            return allowed.Replace(name, string.Empty).Trim();
         }
     }
 }

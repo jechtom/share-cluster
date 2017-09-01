@@ -1,0 +1,15 @@
+﻿@model PackageOperationViewModel
+
+<h2>Delete Package @Model.Name?</h2>
+<p>Are you sure you want to delete local copy of package <strong>@Model.Name</strong>?</p>
+<p>Package Id: <strong><tt>@Model.Id</tt></strong></p>
+<p>Size: <strong>@SizeFormatter.ToString(Model.Size)</strong></p>
+@Html.ValidationSummary()
+<form method="post" asp-antiforgery="true">
+    <button type="submit" class="btn btn-danger">
+        <span class="glyphicon glyphicon-trash"></span> Delete
+    </button>
+    <a href="@Url.Action(nameof(HttpWebInterfaceController.Index))" class="btn btn-default">
+        Cancel
+    </a>
+</form>
