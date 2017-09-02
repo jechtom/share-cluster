@@ -44,8 +44,10 @@ namespace ShareCluster
             {
                 PackageRegistry.NewDiscoveredPackage += (package) =>
                 {
-                    PackageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(package, out var task);
-                    task.Wait();
+                    if (PackageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(package, out var task))
+                    {
+                        task.Wait();
+                    }
                 };
             }
 

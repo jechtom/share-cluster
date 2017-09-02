@@ -42,7 +42,7 @@ namespace ShareCluster
             {
                 if (tasks.Contains(task)) return;
                 tasks = tasks.Add(task);
-                task.Task.ContinueWith(t => OnCompletedTask(task));
+                task.CompletionTask.ContinueWith(t => OnCompletedTask(t.Result));
             }
         }
         
@@ -62,7 +62,7 @@ namespace ShareCluster
                 }
                 else
                 {
-                    logger.LogError(task.Task.Exception, $"Task \"{task.Title}\" (has been running for {task.Elapsed}): {task.ProgressText ?? "Unknown reason"}");
+                    logger.LogError(task.FaultException, $"Task \"{task.Title}\" (has been running for {task.Elapsed}): {task.ProgressText ?? "Unknown reason"}");
                 }
                 completedTasks = completedTasks.Insert(index: 0, item: task);
             }

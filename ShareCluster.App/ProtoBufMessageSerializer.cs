@@ -5,6 +5,7 @@ using System.Text;
 using ProtoBuf;
 using System.Net;
 using ProtoBuf.Meta;
+using ShareCluster.Network.Messages;
 
 namespace ShareCluster
 {

@@ -27,7 +27,7 @@ namespace ShareCluster.Network
         private readonly Timer statusTimer;
         private readonly Stopwatch stopwatch;
 
-        Dictionary<Hash, PackageStatus> states;
+        Dictionary<Hash, PackagePeersStatus> states;
         Dictionary<Hash, PeerOverallStatus> peers;
         private readonly ILoggerFactory loggerFactory;
         private readonly NetworkSettings settings;
@@ -38,7 +38,7 @@ namespace ShareCluster.Network
             this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
             stopwatch = Stopwatch.StartNew();
-            states = new Dictionary<Hash, PackageStatus>();
+            states = new Dictionary<Hash, PackagePeersStatus>();
             peers = new Dictionary<Hash, PeerOverallStatus>();
             statusTimer = new Timer(StatusTimeoutCallback, null, statusTimerInterval, Timeout.InfiniteTimeSpan);
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -53,14 +53,16 @@ namespace ShareCluster.Network
             lock(syncLock)
             {
                 if (states.ContainsKey(packageInfo.Id)) return; // already there
-                var status = new PackageStatus(loggerFactory.CreateLogger<PackageStatus>(), packageInfo);
+                var status = new PackagePeersStatus(loggerFactory.CreateLogger<PackagePeersStatus>(), packageInfo);
                 states.Add(packageInfo.Id, status);
+
+                // add status for each peer that knows package
                 int alreadyFound = 0;
                 foreach (var peer in peers.Values)
                 {
-                    if (!peer.PeerInfo.KnownPackages.ContainsKey(packageInfo.Id)) continue;
+                    if (!peer.PeerInfo.KnownPackages.TryGetValue(packageInfo.Id, out PackageStatus ps)) continue;
                     alreadyFound++;
-                    status.AddPeer(peer);
+                    status.AddPeer(peer, isSeeder: ps.IsSeeder);
                 }
             }
 
@@ -121,9 +123,9 @@ namespace ShareCluster.Network
                         // update and add to peers list
                         foreach (var packageState in states)
                         {
-                            if (peer.KnownPackages.ContainsKey(packageState.Key))
+                            if(peer.KnownPackages.TryGetValue(packageState.Key, out PackageStatus ps))
                             {
-                                packageState.Value.AddPeer(status);
+                                packageState.Value.AddPeer(status, isSeeder: ps.IsSeeder);
                             }
                             else
                             {
@@ -242,7 +244,7 @@ namespace ShareCluster.Network
                     var result = input.result.Packages[i];
 
                     // download state (are we still interested in packages?)
-                    if (!states.TryGetValue(packageId, out PackageStatus state)) continue;
+                    if (!states.TryGetValue(packageId, out PackagePeersStatus state)) continue;
 
                     // remove not found packages
                     if (!result.IsFound)
@@ -280,7 +282,7 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                if (!states.TryGetValue(package.Id, out PackageStatus status)) return new List<PeerInfo>(capacity: 0);
+                if (!states.TryGetValue(package.Id, out PackagePeersStatus status)) return new List<PeerInfo>(capacity: 0);
                 return status.GetClientList();
             }
         }
@@ -330,13 +332,13 @@ namespace ShareCluster.Network
             }
         }
 
-        class PackageStatus
+        class PackagePeersStatus
         {
-            private readonly ILogger<PackageStatus> logger;
+            private readonly ILogger<PackagePeersStatus> logger;
             private readonly LocalPackageInfo packageInfo;
             private readonly Dictionary<PeerInfo, PackagePeerStatus> peerStatuses;
 
-            public PackageStatus(ILogger<PackageStatus> logger, LocalPackageInfo packageInfo)
+            public PackagePeersStatus(ILogger<PackagePeersStatus> logger, LocalPackageInfo packageInfo)
             {
                 this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
                 this.packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
@@ -368,13 +370,26 @@ namespace ShareCluster.Network
                 }
             }
 
-            public void AddPeer(PeerOverallStatus peer)
+            public void AddPeer(PeerOverallStatus peer, bool isSeeder)
             {
                 logger.LogTrace("Peer {0:s} at {1} knows package {2}.", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo);
 
-                if(peerStatuses.TryAdd(peer.PeerInfo, new PackagePeerStatus(peer)))
+                var newStatus = new PackagePeerStatus(peer);
+                if (peerStatuses.TryAdd(peer.PeerInfo, newStatus))
                 {
                     peer.InterestedForPackagesTotalCount++;
+
+                    if(isSeeder)
+                    {
+                        // mark as seeder
+                        peer.InterestedForPackagesSeederCount++;
+                        newStatus.StatusDetail = new PackageStatusDetail()
+                        {
+                            BytesDownloaded = packageInfo.Metadata.PackageSize,
+                            IsFound = true,
+                            SegmentsBitmap = null
+                        };
+                    }
                 }
             }
 
@@ -383,7 +398,7 @@ namespace ShareCluster.Network
                 // did peer added known package from update?
                 if(!peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
                 {
-                    AddPeer(peer);
+                    AddPeer(peer, isSeeder: false);
                     status = peerStatuses[peer.PeerInfo];
                 }
 

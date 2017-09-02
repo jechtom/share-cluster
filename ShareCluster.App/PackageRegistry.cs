@@ -23,7 +23,7 @@ namespace ShareCluster
         private readonly object packagesLock = new object();
 
         // pre-calculated
-        private PackageMeta[] immutablePackagesMetadata;
+        private PackageStatus[] immutablePackagesStatus;
         private LocalPackageInfo[] immutablePackages;
         private DiscoveredPackage[] immutableDiscoveredPackagesArray;
 
@@ -39,7 +39,7 @@ namespace ShareCluster
             Init();
         }
 
-        public PackageMeta[] ImmutablePackagesMetadata => immutablePackagesMetadata;
+        public PackageStatus[] ImmutablePackagesStatuses => immutablePackagesStatus;
 
         public LocalPackageInfo[] ImmutablePackages => immutablePackages;
 
@@ -85,7 +85,6 @@ namespace ShareCluster
                 // init
                 if (localPackages == null) localPackages = new Dictionary<Hash, LocalPackageInfo>();
                 if (discoveredPackages == null) discoveredPackages = new Dictionary<Hash, DiscoveredPackage>();
-
                 bool updateDiscoveredArray = false;
 
                 // update
@@ -113,7 +112,7 @@ namespace ShareCluster
                     localPackages = packageSource.ToDictionary(p => p.Id);
 
                     immutablePackages = localPackages.Values.Select(p => p).ToArray();
-                    immutablePackagesMetadata = localPackages.Values.Select(p => p.Metadata).ToArray();
+                    immutablePackagesStatus = localPackages.Values.Select(p => new PackageStatus(p)).ToArray();
 
                     // regenerate discovered - to remove new packages already move to local packages list
                     discoveredPackages = (discoveredPackages).Values.Where(dp => !localPackages.ContainsKey(dp.PackageId)).ToDictionary(dp => dp.PackageId);

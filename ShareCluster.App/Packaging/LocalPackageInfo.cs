@@ -10,6 +10,8 @@ namespace ShareCluster.Packaging
         public LocalPackageInfo(PackageReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata, PackageSequenceInfo sequence)
         {
             LockProvider = new PackageLocks();
+            DownloadMeasure = new MeasureItem(MeasureType.Throughput);
+            UploadMeasure = new MeasureItem(MeasureType.Throughput);
             Reference = reference ?? throw new ArgumentNullException(nameof(reference));
             DownloadStatus = downloadStatus ?? throw new ArgumentNullException(nameof(downloadStatus));
             Hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
@@ -28,7 +30,8 @@ namespace ShareCluster.Packaging
         public Dto.PackageMeta Metadata { get; }
         public PackageSequenceInfo Sequence { get; }
         public PackageLocks LockProvider { get; }
-
+        public MeasureItem DownloadMeasure { get; }
+        public MeasureItem UploadMeasure { get; }
         public override string ToString() => $"\"{Metadata.Name}\" {Id:s} ({SizeFormatter.ToString(Metadata.PackageSize)})";
     }
 }

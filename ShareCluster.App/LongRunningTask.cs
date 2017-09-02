@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ShareCluster
@@ -13,15 +14,11 @@ namespace ShareCluster
 
         public LongRunningTask(string title, Task task, string successProgress = null)
         {
-            if (string.IsNullOrEmpty(title))
-            {
-                throw new ArgumentException("message", nameof(title));
-            }
+            if (string.IsNullOrEmpty(title)) throw new ArgumentException("message", nameof(title));
+            if (task == null) throw new ArgumentNullException(nameof(task));
 
             Title = title;
-            Task = task ?? throw new ArgumentNullException(nameof(task));
             ProgressText = "Running";
-
             stopwatch = Stopwatch.StartNew();
 
             try
@@ -30,25 +27,31 @@ namespace ShareCluster
             }
             catch (Exception e)
             {
-                Task = Task.FromException(new Exception($"Can't start task: {e.Message}", e));
+                task = Task.FromException(new Exception($"Can't start task: {e.Message}", e));
             }
 
-            Task = Task.ContinueWith(t =>
+            CompletionTask = task.ContinueWith(t =>
             {
                 stopwatch.Stop();
                 if (t.IsFaulted)
                 {
-                    Exception exc = t.Exception.InnerException;
+                    // extract exception if single exception
+                    var flattenExc = t.Exception.Flatten();
+                    Exception exc = (flattenExc.InnerExceptions.Count == 1 ? flattenExc.InnerExceptions.First(): flattenExc);
                     UpdateProgress($"Error: {exc}");
-                    throw exc;
+                    FaultException = exc;
                 }
                 else
                 {
                     UpdateProgress(successProgress ?? "Success");
                 }
+
+                IsCompleted = true;
+
+                return this;
             });
         }
-        
+
         public LongRunningTask UpdateProgress(string progressText)
         {
             ProgressText = progressText;
@@ -59,13 +62,13 @@ namespace ShareCluster
 
         public virtual string ProgressText { get; private set; }
 
-        public Task Task { get; private set; }
+        public Task<LongRunningTask> CompletionTask { get; private set; }
 
-        public bool IsCompletedSuccessfully => Task.IsCompletedSuccessfully;
-        public bool IsRunning => !Task.IsCompleted;
-        public bool IsCompleted => Task.IsCompleted;
-        public bool IsFaulted => Task.IsFaulted;
-
+        public bool IsCompletedSuccessfully => IsCompleted && !IsFaulted;
+        public bool IsRunning => !IsCompleted;
+        public bool IsCompleted { get; private set; }
+        public bool IsFaulted => FaultException != null;
+        public Exception FaultException { get; private set; }
         public TimeSpan Elapsed => stopwatch.Elapsed;
 
         public string StatusText =>

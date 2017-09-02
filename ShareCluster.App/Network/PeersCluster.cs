@@ -134,7 +134,7 @@ namespace ShareCluster.Network
             logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
             IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, requestedSegments);
             var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, package.Reference, package.Sequence, partsSource);
-            var stream = new PackageDataStream(appInfo.LoggerFactory, controller);
+            var stream = new PackageDataStream(appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
             stream.Disposing += () => {
                 int currentSlots = Interlocked.Increment(ref uploadSlots);
                 package.LockProvider.Unlock(lockToken);
@@ -234,12 +234,12 @@ namespace ShareCluster.Network
                 throw new InvalidOperationException($"Can't find peer in internal registry: {peerId} {address}");
             }
             // update known packages if different
-            peer.ReplaceKnownPackages(message.KnownPackages ?? Array.Empty<Packaging.Dto.PackageMeta>());
+            peer.ReplaceKnownPackages(message.KnownPackages ?? Array.Empty<PackageStatus>());
 
             // register discovered packages
             if (message.KnownPackages?.Any() == true)
             {
-                packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp)));
+                packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp.Meta)));
             }
 
             // mark as success peer
@@ -253,7 +253,7 @@ namespace ShareCluster.Network
                 var result = new StatusUpdateMessage
                 {
                     InstanceHash = appInfo.InstanceHash.Hash,
-                    KnownPackages = packageRegistry.ImmutablePackagesMetadata,
+                    KnownPackages = packageRegistry.ImmutablePackagesStatuses,
                     KnownPeers = peerRegistry.ImmutablePeersDiscoveryData,
                     ServicePort = appInfo.NetworkSettings.TcpServicePort,
                     PeerEndpoint = endpoint

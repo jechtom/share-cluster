@@ -15,6 +15,7 @@
             <th>Name</th>
             <th>Created</th>
             <th>Size</th>
+            <th>Speed</th>
             <th colspan="2">Status</th>
             <th>Commands</th>
         </tr>
@@ -25,10 +26,16 @@
             string css_class = package.DownloadStatus.IsDownloaded ? "success" : (package.DownloadStatus.IsDownloading ? "info" : "warning");
                         
             <tr>
-                <td><tt>@package.Id</tt></td>
+                <td><tt>@($"{package.Id:s}")</tt></td>
                 <td>@package.Metadata.Name</td>
                 <td>@package.Metadata.Created.ToString("f")</td>
                 <td>@ShareCluster.SizeFormatter.ToString(package.Metadata.PackageSize)</td>
+                <td>
+                    @if(package.DownloadStatus.IsDownloading) {
+                        @:Down: @(package.DownloadMeasure.ValueFormatted)<br/>
+                    }
+                    Up: @(package.UploadMeasure.ValueFormatted)
+                </td>
                 <td class="@css_class">@(package.DownloadStatus.IsDownloaded ? "Finished" : "Progress")</td>
                 <td class="@css_class">@($"{package.DownloadStatus.Progress * 100:0.0}%")</td>
                 <td>
@@ -80,11 +87,11 @@
         @foreach (var package in Model.PackagesAvailableToDownload)
         {
             <tr>
-                <td><tt>@package.PackageId</tt></td>
+                <td><tt>@($"{package.PackageId:s}")</tt></td>
                 <td>@package.Name</td>
                 <td>@package.Meta.Created.ToString("f")</td>
                 <td>@ShareCluster.SizeFormatter.ToString(package.Meta.PackageSize)</td>
-                <td colspan="2">Not downloaded</td>
+                <td colspan="3">Not downloaded</td>
                 <td>
                     <ul class="simple-list">
                         <li>
@@ -122,7 +129,7 @@
                 @foreach (var peer in Model.Peers)
                 {
                     <tr>
-                        <td><tt>@peer.PeerId</tt></td>
+                        <td><tt>@($"{peer.PeerId:s}")</tt></td>
                         <td>@peer.ServiceEndPoint</td>
                         <td class="@(peer.IsDirectDiscovery ? "success" : "")">
                             @if (!peer.IsDirectDiscovery)

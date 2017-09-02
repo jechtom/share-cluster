@@ -32,11 +32,11 @@ namespace ShareCluster.Tests
             Assert.Contains(task, tasksManager.Tasks);
             Assert.DoesNotContain(task, tasksManager.CompletedTasks);
 
-            task.Task.Wait();
+            task.CompletionTask.Wait();
             Thread.Sleep(50);
 
             // finisihed
-            Assert.True(task.Task.IsCompletedSuccessfully);
+            Assert.True(task.IsCompletedSuccessfully);
             Assert.DoesNotContain(task, tasksManager.Tasks);
             Assert.Contains(task, tasksManager.CompletedTasks);
         }
@@ -46,14 +46,18 @@ namespace ShareCluster.Tests
         {
             var loggerFactory = new LoggerFactory();
             var tasksManager = new LongRunningTasksManager(loggerFactory);
-            LongRunningTask task = new LongRunningTask("Test", Task.Run(new Action(() => throw new Exception("test exception"))));
+            Exception exc = new Exception("test exception");
+            LongRunningTask task = new LongRunningTask("Test", Task.Run(new Action(() => throw exc)));
 
             tasksManager.AddTaskToQueue(task);
 
-            Assert.Throws<AggregateException>(() => task.Task.Wait());
+            task.CompletionTask.Wait();
             Thread.Sleep(50);
 
-            Assert.False(task.Task.IsCompletedSuccessfully);
+            Assert.False(task.IsCompletedSuccessfully);
+            Assert.True(task.IsFaulted);
+            Assert.True(task.IsCompleted);
+            Assert.Equal(exc, task.FaultException);
             Assert.DoesNotContain(task, tasksManager.Tasks);
             Assert.Contains(task, tasksManager.CompletedTasks);
         }
@@ -68,7 +72,7 @@ namespace ShareCluster.Tests
             tasksManager.AddTaskToQueue(task); // should be placed directly to finished 
             Thread.Sleep(50);
 
-            Assert.True(task.Task.IsCompletedSuccessfully);
+            Assert.True(task.IsCompletedSuccessfully);
             Assert.DoesNotContain(task, tasksManager.Tasks);
             Assert.Contains(task, tasksManager.CompletedTasks);
         }

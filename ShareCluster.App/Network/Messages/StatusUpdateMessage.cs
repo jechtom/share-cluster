@@ -17,7 +17,7 @@ namespace ShareCluster.Network.Messages
         public DiscoveryPeerData[] KnownPeers { get; set; }
 
         [ProtoMember(3)]
-        public PackageMeta[] KnownPackages { get; set; }
+        public PackageStatus[] KnownPackages { get; set; }
 
         [ProtoMember(4)]
         public ushort ServicePort { get; set; }

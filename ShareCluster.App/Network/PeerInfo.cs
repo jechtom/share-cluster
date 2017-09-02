@@ -1,4 +1,5 @@
-﻿using ShareCluster.Packaging.Dto;
+﻿using ShareCluster.Network.Messages;
+using ShareCluster.Packaging.Dto;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,7 +25,7 @@ namespace ShareCluster.Network
             IsDirectDiscovery = isDirectDiscovery;
             IsOtherPeerDiscovery = isOtherPeerDiscovery;
             IsLoopback = isLoopback;
-            KnownPackages = new Dictionary<Hash, PackageMeta>(0);
+            KnownPackages = new Dictionary<Hash, PackageStatus>(0);
         }
 
         // identification
@@ -40,7 +41,7 @@ namespace ShareCluster.Network
         public bool IsEnabled { get; set; }
 
         // known packages
-        public IDictionary<Hash, PackageMeta> KnownPackages { get; private set; }
+        public IDictionary<Hash, PackageStatus> KnownPackages { get; private set; }
 
         // communication stats
         public int FailsSinceLastSuccess => fails;
@@ -71,14 +72,14 @@ namespace ShareCluster.Network
 
         public event Action<PeerInfo> KnownPackageChanged;
 
-        public void ReplaceKnownPackages(PackageMeta[] newPackages)
+        public void ReplaceKnownPackages(PackageStatus[] newPackages)
         {
             bool changed = false;
             lock (syncLock)
             {
-                if (newPackages.Length != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.PackageId)))
+                if (newPackages.Length != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.Meta.PackageId)))
                 {
-                    KnownPackages = newPackages.ToDictionary(p => p.PackageId);
+                    KnownPackages = newPackages.ToDictionary(p => p.Meta.PackageId);
                     changed = true;
                 }
             }

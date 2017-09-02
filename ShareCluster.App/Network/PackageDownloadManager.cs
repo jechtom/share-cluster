@@ -138,11 +138,14 @@ namespace ShareCluster.Network
                 catch (Exception e)
                 {
                     logger.LogError(e, "Can't download package data of \"{0}\" {1:s}", packageToDownload.Name, packageToDownload.PackageId);
+                    throw;
+                }
+                finally
+                {
                     lock (syncLock)
                     {
                         packageDataDownloads.Remove(packageToDownload.PackageId);
                     }
-                    throw;
                 }
             });
 
@@ -480,8 +483,9 @@ namespace ShareCluster.Network
                     IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, parts);
 
                     controllerWriter = new WritePackageDataStreamController(parent.appInfo.LoggerFactory, parent.appInfo.Crypto, package.Reference.FolderPath, package.Sequence, partsSource);
-                    streamWrite = new PackageDataStream(parent.appInfo.LoggerFactory, controllerWriter);
-
+                    streamWrite = new PackageDataStream(parent.appInfo.LoggerFactory, controllerWriter)
+                        { Measure = package.DownloadMeasure };
+                    
                     controllerValidate = new ValidatePackageDataStreamController(parent.appInfo.LoggerFactory, parent.appInfo.Crypto, package.Sequence, package.Hashes, partsSource, streamWrite);
                     streamValidate = new PackageDataStream(parent.appInfo.LoggerFactory, controllerValidate);
 

@@ -37,6 +37,11 @@ namespace ShareCluster.Packaging
             partsSource = controller.EnumerateParts().GetEnumerator();
         }
         
+        /// <summary>
+        /// Gets or sets measure item. If null, no measuring is done.
+        /// </summary>
+        public MeasureItem Measure { get; set; }
+
         public override bool CanRead => controller.CanRead;
 
         public override bool CanSeek => false;
@@ -132,6 +137,7 @@ namespace ShareCluster.Packaging
                 // advance counters
                 bytesProcessedTotal += bytesProcessed;
                 position += bytesProcessed;
+                Measure?.Put(bytesProcessed);
 
                 // remove range from current range
                 offset += bytesProcessed;
