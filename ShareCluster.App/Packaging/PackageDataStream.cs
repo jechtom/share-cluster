@@ -175,6 +175,7 @@ namespace ShareCluster.Packaging
                 // advance counters
                 bytesProcessedTotal += bytesProcessed;
                 position += bytesProcessed;
+                Measure?.Put(bytesProcessed);
 
                 // remove range from current range
                 offset += bytesProcessed;

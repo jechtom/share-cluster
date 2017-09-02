@@ -172,9 +172,9 @@ namespace ShareCluster
             return package;
         }
 
-        public LocalPackageInfo CreatePackageFromFolder(string path, string name)
+        public LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure)
         {
-            var package = localPackageManager.CreatePackageFromFolder(path, name);
+            var package = localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
             RegisterPackageInternal(package);
             NewLocalPackageCreated?.Invoke(package);
             return package;

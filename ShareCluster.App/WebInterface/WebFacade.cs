@@ -109,13 +109,15 @@ namespace ShareCluster.WebInterface
             if (!Directory.Exists(folder)) throw new InvalidOperationException("Folder does not exists.");
 
             // start
-            Task taskCreate = Task.Run(new Action(() => packageRegistry.CreatePackageFromFolder(folder, name)));
+            var measureItem = new MeasureItem(MeasureType.Throughput);
+            Task taskCreate = Task.Run(new Action(() => packageRegistry.CreatePackageFromFolder(folder, name, measureItem)));
 
             // create and register task for starting download
             var task = new LongRunningTask(
                     $"Started creating new package from: \"{folder}\"",
                     taskCreate,
-                    $"Package has been created."
+                    $"Package has been created.",
+                    (t) => $"Writing {measureItem.ValueFormatted}"
                 );
 
             // register

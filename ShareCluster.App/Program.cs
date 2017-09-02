@@ -26,27 +26,36 @@ namespace ShareCluster
 
         static void Main(string[] args)
         {
-            // instance 1
-            var appInfo = AppInfo.CreateCurrent();
-            appInfo.DataRootPath = @"c:\temp\temp";
-
-            var appSettings = new AppInstanceSettings()
+            if (args.Length > 2)
             {
-                EnableUdpDiscoveryListener = true,
-                EnableUdpDiscoveryClient = true,
-                DownloadEverything = false
-            };
+                args[0] = "dev";
+                var index = int.Parse(args[1]);
+                CreateInstance(index);
+            }
+            else
+            {
+                // instance 1
+                var appInfo = AppInfo.CreateCurrent();
+                appInfo.DataRootPath = @"c:\temp\temp";
 
-            var instance = new AppInstance(appInfo);
-            instances.Add(instance);
-            var bootstrapper = instance.Start(appSettings);
+                var appSettings = new AppInstanceSettings()
+                {
+                    EnableUdpDiscoveryListener = true,
+                    EnableUdpDiscoveryClient = true,
+                    DownloadEverything = false
+                };
 
-            Task.Run(() => { CreateInstance(1); });
-            Task.Run(() => { CreateInstance(2); });
-            Task.Run(() => { CreateInstance(3); });
-            Task.Run(() => { CreateInstance(4); });
+                var instance = new AppInstance(appInfo);
+                instances.Add(instance);
+                var bootstrapper = instance.Start(appSettings);
+            }
 
-            //bootstrapper.PackageRegistry.CreatePackageFromFolder(@"c:\SQLServer2016Media", "sql2016");
+            //Task.Run(() => { CreateInstance(1); });
+            //Task.Run(() => { CreateInstance(2); });
+            //Task.Run(() => { CreateInstance(3); });
+            //Task.Run(() => { CreateInstance(4); });
+
+            ////bootstrapper.PackageRegistry.CreatePackageFromFolder(@"c:\SQLServer2016Media", "sql2016");
 
             Console.ReadLine();
             Stop();
@@ -66,12 +75,12 @@ namespace ShareCluster
         {
             // instance n
             var appInfo = AppInfo.CreateCurrent();
-            appInfo.NetworkSettings.TcpServicePort += (ushort)(index * 10);
+            appInfo.NetworkSettings.TcpServicePort += (ushort)(index);
             appInfo.DataRootPath = @"c:\temp\temp" + index;
 
             var appSettings = new AppInstanceSettings()
             {
-                EnableUdpDiscoveryListener = false,
+                EnableUdpDiscoveryListener = (index == 0),
                 EnableUdpDiscoveryClient = true,
                 DownloadEverything = true
             };

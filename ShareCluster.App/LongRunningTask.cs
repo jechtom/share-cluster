@@ -11,14 +11,15 @@ namespace ShareCluster
     public class LongRunningTask
     {
         Stopwatch stopwatch;
+        Func<LongRunningTask, string> progressFunc;
 
-        public LongRunningTask(string title, Task task, string successProgress = null)
+        public LongRunningTask(string title, Task task, string successProgress = null, Func<LongRunningTask, string> progressFunc = null)
         {
             if (string.IsNullOrEmpty(title)) throw new ArgumentException("message", nameof(title));
             if (task == null) throw new ArgumentNullException(nameof(task));
 
             Title = title;
-            ProgressText = "Running";
+            this.progressFunc = progressFunc ?? ((t) => "Running");
             stopwatch = Stopwatch.StartNew();
 
             try
@@ -38,12 +39,12 @@ namespace ShareCluster
                     // extract exception if single exception
                     var flattenExc = t.Exception.Flatten();
                     Exception exc = (flattenExc.InnerExceptions.Count == 1 ? flattenExc.InnerExceptions.First(): flattenExc);
-                    UpdateProgress($"Error: {exc}");
+                    this.progressFunc = ((_) => $"Error: {exc}");
                     FaultException = exc;
                 }
                 else
                 {
-                    UpdateProgress(successProgress ?? "Success");
+                    this.progressFunc = ((_) => $"{successProgress ?? "Success"}");
                 }
 
                 IsCompleted = true;
@@ -52,15 +53,9 @@ namespace ShareCluster
             });
         }
 
-        public LongRunningTask UpdateProgress(string progressText)
-        {
-            ProgressText = progressText;
-            return this;
-        }
-
         public string Title { get; protected set; }
 
-        public virtual string ProgressText { get; private set; }
+        public virtual string ProgressText => progressFunc(this);
 
         public Task<LongRunningTask> CompletionTask { get; private set; }
 

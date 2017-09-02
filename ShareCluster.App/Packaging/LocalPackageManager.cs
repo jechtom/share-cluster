@@ -82,7 +82,7 @@ namespace ShareCluster.Packaging
             Directory.CreateDirectory(PackageRepositoryPath);
         }
 
-        public LocalPackageInfo CreatePackageFromFolder(string folderToProcess, string name)
+        public LocalPackageInfo CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
         {
             var operationMeasure = Stopwatch.StartNew();
 
@@ -99,7 +99,7 @@ namespace ShareCluster.Packaging
             int entriesCount;
             using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
             {
-                using (var packageStream = new PackageDataStream(app.LoggerFactory, controller))
+                using (var packageStream = new PackageDataStream(app.LoggerFactory, controller) { Measure = writeMeasure })
                 using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Create, leaveOpen: true))
                 {
                     var helper = new ZipArchiveHelper(zipArchive);
