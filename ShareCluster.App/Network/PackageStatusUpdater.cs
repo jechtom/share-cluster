@@ -182,7 +182,7 @@ namespace ShareCluster.Network
                 if (states.Count == 0) return;
 
                 peersToUpdate = peers.Values
-                    .Where(c => c.LastUpdateStatus < (c.UseFastUpdate ? elapsedThresholdFast : elapsedThresholdRegular) && c.DoUpdateStatus)
+                    .Where(c => c.LastUpdateTry < (c.UseFastUpdate ? elapsedThresholdFast : elapsedThresholdRegular) && c.DoUpdateStatus)
                     .ToArray();
 
                 if (peersToUpdate.Length == 0) return;
@@ -190,7 +190,7 @@ namespace ShareCluster.Network
                 foreach (var item in peersToUpdate)
                 {
                     item.UseFastUpdate = false; // reset
-                    item.LastUpdateStatus = elapsed;
+                    item.LastUpdateTry = elapsed;
                 }
 
                 requestMessage = new PackageStatusRequest() { PackageIds = states.Keys.ToArray() };
@@ -235,7 +235,10 @@ namespace ShareCluster.Network
             lock (syncLock)
             {
                 // update timing - we have fresh data now
-                input.peer.LastUpdateStatus = stopwatch.Elapsed;
+                input.peer.LastUpdateTry = stopwatch.Elapsed;
+
+                // failed
+                if (!input.success) return;
 
                 // apply changes
                 for (int i = 0; i < requestMessage.PackageIds.Length; i++)
@@ -485,7 +488,7 @@ namespace ShareCluster.Network
             {
                 PeerInfo = peer ?? throw new ArgumentNullException(nameof(peer));
                 PostponeTimer = Network.PostponeTimer.NoPostpone;
-                LastUpdateStatus = TimeSpan.MinValue;
+                LastUpdateTry = TimeSpan.MinValue;
             }
 
             public PeerInfo PeerInfo { get; set; }
@@ -520,7 +523,7 @@ namespace ShareCluster.Network
             /// <summary>
             /// Gets or sets when this peer status has been done last time.
             /// </summary>
-            public TimeSpan LastUpdateStatus { get; set; }
+            public TimeSpan LastUpdateTry { get; set; }
 
             /// <summary>
             /// Gets or sets if fast update should be used (if not enough seeders are available).

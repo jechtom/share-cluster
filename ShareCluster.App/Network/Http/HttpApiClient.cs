@@ -13,7 +13,7 @@ namespace ShareCluster.Network.Http
 {
     public class HttpApiClient
     {
-        static readonly HttpClient appClient = new HttpClient();
+        private readonly HttpClient appClient = new HttpClient();
         private readonly IMessageSerializer serializer;
         private readonly CompatibilityChecker compatibility;
         private readonly InstanceHash instanceHash;
@@ -95,29 +95,39 @@ namespace ShareCluster.Network.Http
             requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, typeof(TReq).Name);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            request.Content = requestContent;
-
-            var resultMessage = await appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
-            resultMessage.EnsureSuccessStatusCode();
-            return resultMessage;
+            using (var request = new HttpRequestMessage(HttpMethod.Post, uri))
+            {
+                request.Content = requestContent;
+                HttpResponseMessage resultMessage = null;
+                try
+                {
+                    resultMessage = await appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
+                    resultMessage.EnsureSuccessStatusCode();
+                }
+                catch
+                {
+                    if (resultMessage != null)
+                    {
+                        resultMessage.Dispose();
+                    }
+                }
+                return resultMessage;
+            }
         }
 
         private TRes SendRequestAndGetRespone<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
         {
-            using (HttpResponseMessage resultMessage = SendRequestAsync(endpoint, apiName, req).Result)
-            {
-                var stream = resultMessage.Content.ReadAsStreamAsync().Result;
-                return serializer.Deserialize<TRes>(stream);
-            }
+            return SendRequestAndGetResponeAsync<TReq, TRes>(endpoint, apiName, req).Result;
         }
 
         private async Task<TRes> SendRequestAndGetResponeAsync<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
         {
             using (var resultMessage = await SendRequestAsync(endpoint, apiName, req))
             {
-                var stream = await resultMessage.Content.ReadAsStreamAsync();
-                return serializer.Deserialize<TRes>(stream);
+                using (var stream = await resultMessage.Content.ReadAsStreamAsync())
+                {
+                    return serializer.Deserialize<TRes>(stream);
+                }
             }
         }
     }

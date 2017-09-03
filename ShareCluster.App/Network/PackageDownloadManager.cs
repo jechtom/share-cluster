@@ -276,20 +276,35 @@ namespace ShareCluster.Network
 
                     // create slot and try find
                     var slot = new PackageDownloadSlot(this, package, peer);
-                    (PackageDownloadSlotResult result, Task task) = slot.TryStart();
-                    if (task != null) task.ContinueWith(t => TryScheduleNextDownload());
+                    (PackageDownloadSlotResult result, Task<bool> task) = slot.TryStart();
+                    if (task == null) continue; // cannot allocate
+
+                    // schedule next check to deploy slots
+                    task.ContinueWith(t =>
+                    {
+                        if (t.Result == true)
+                        {
+                            // finished succesfully - try schedule again
+                            TryScheduleNextDownload();
+                        }
+                        else
+                        {
+                            // try again but later, peer has choked connection or there was some other potential issue
+                            Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith((t2) => TryScheduleNextDownload());
+                        }
+                    });
                 }
 
                 if (downloadSlots.Count >= MaximumDownloadSlots)
                 {
-                    // no slots? exit - this method will be called when slot is returned
+                    // no slots? exit - this method will be called when any slot is returned
                     return;
                 }
 
                 if (tmpPeers.Count == 0)
                 {
                     // all peers has been depleated (busy or incompatible), let's try again soon but waite
-                    Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(t => TryScheduleNextDownload());
+                    Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => TryScheduleNextDownload());
                 }
             }
         }
@@ -323,7 +338,7 @@ namespace ShareCluster.Network
             private object lockToken;
             private bool isPackageLockReleaseNeeded;
 
-            private Task task;
+            private Task<bool> task;
 
             public PackageDownloadSlot(PackageDownloadManager parent, LocalPackageInfo package, PeerInfo peer)
             {
@@ -332,7 +347,7 @@ namespace ShareCluster.Network
                 this.peer = peer ?? throw new ArgumentNullException(nameof(peer));
             }
 
-            public (PackageDownloadSlotResult, Task) TryStart()
+            public (PackageDownloadSlotResult, Task<bool>) TryStart()
             {
                 bool hasStarted = false;
                 try
@@ -410,7 +425,7 @@ namespace ShareCluster.Network
                 }
             }
 
-            private async Task Start()
+            private async Task<bool> Start()
             {
                 lock (parent.syncLock)
                 {
@@ -422,7 +437,7 @@ namespace ShareCluster.Network
                     // start download
                     DownloadSegmentResult result = await DownloadSegmentsInternalAsync(package, segments, peer);
                     
-                    if (!result.IsSuccess) return;
+                    if (!result.IsSuccess) return false;
 
                     // success, segments are downloaded
                     package.DownloadStatus.ReturnLockedSegments(segments, areDownloaded: true);
@@ -457,6 +472,8 @@ namespace ShareCluster.Network
                         parent.downloadSlots.Remove(this);
                     }
                 }
+
+                return true; // success
             }
 
             private async Task<DownloadSegmentResult> DownloadSegmentsInternalAsync(LocalPackageInfo package, int[] parts, PeerInfo peer)
