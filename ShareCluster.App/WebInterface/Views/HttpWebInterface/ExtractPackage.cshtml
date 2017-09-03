@@ -5,16 +5,14 @@
 <p>In what folder would you like to extract <strong>@Model.Package.Name</strong>?</p>
 <form method="post" asp-antiforgery="true">
     <div class="form-group">
-        <label asp-for="Folder">New folder to extract package:</label>
+        <label asp-for="Folder">Folder to extract package:</label>
         <input asp-for="Folder" class="form-control" />
-        <em>Given folder will be created.</em>
+        <em>New folder will be created inside this folder.</em>
         @Html.ValidationMessageFor(m => m.Folder)
     </div>
     <div class="form-group">
-        <div class="col-sm-offset-2 col-sm-10">
-            <div class="checkbox">
-                <label><input type="checkbox" asp-for="DoValidate"> Verify package before extraction</label>
-            </div>
+        <div class="checkbox">
+            <label><input type="checkbox" asp-for="DoValidate"> Verify consistency of package before extraction</label>
         </div>
     </div>
     <button type="submit" class="btn btn-success">

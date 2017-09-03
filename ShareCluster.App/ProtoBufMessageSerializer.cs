@@ -11,7 +11,7 @@ namespace ShareCluster
 {
     public class ProtoBufMessageSerializer : IMessageSerializer
     {
-        private readonly bool inspectMessages;
+        const PrefixStyle LengthPrefixStyle = PrefixStyle.Base128;
 
         static ProtoBufMessageSerializer()
         {
@@ -20,12 +20,7 @@ namespace ShareCluster
             RuntimeTypeModel.Default[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
             RuntimeTypeModel.Default.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
         }
-
-        public ProtoBufMessageSerializer(bool inspectMessages)
-        {
-            this.inspectMessages = inspectMessages;
-        }
-
+        
         public byte[] Serialize<T>(T value)
         {
             using (var memStream = new MemoryStream())
@@ -39,10 +34,6 @@ namespace ShareCluster
         {
             using (var ms = new MemoryStream(bytes))
             {
-                if(inspectMessages)
-                {
-                    InspectOnDeserialization(ms);
-                }
                 return ProtoBuf.Serializer.Deserialize<T>(ms);
             }
         }
@@ -51,42 +42,24 @@ namespace ShareCluster
         {
             ProtoBuf.Serializer.Serialize(stream, value);
         }
+        public void SerializeWithLengthPrefix<T>(T value, Stream stream)
+        {
+            ProtoBuf.Serializer.SerializeWithLengthPrefix(stream, value, LengthPrefixStyle);
+        }
 
         public object Deserialize(Stream stream, Type type)
         {
-            if(inspectMessages)
-            {
-                using (var ms = new MemoryStream())
-                {
-                    stream.CopyTo(ms);
-                    ms.Position = 0;
-                    InspectOnDeserialization(ms);
-                    return ProtoBuf.Serializer.Deserialize(type, ms);
-                }
-            }
-
             return ProtoBuf.Serializer.Deserialize(type, stream);
         }
 
         public T Deserialize<T>(Stream stream)
         {
-            if (inspectMessages)
-            {
-                using (var ms = new MemoryStream())
-                {
-                    stream.CopyTo(ms);
-                    ms.Position = 0;
-                    InspectOnDeserialization(ms);
-                    return ProtoBuf.Serializer.Deserialize<T>(ms);
-                }
-            }
-
             return ProtoBuf.Serializer.Deserialize<T>(stream);
         }
 
-        private void InspectOnDeserialization(MemoryStream ms)
+        public T DeserializeWithLengthPrefix<T>(Stream stream)
         {
-            ms.Position = 0; // return back for further processing
+            return ProtoBuf.Serializer.DeserializeWithLengthPrefix<T>(stream, LengthPrefixStyle);
         }
 
         public string MimeType => "application/protobuf";

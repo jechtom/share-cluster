@@ -31,10 +31,10 @@ namespace ShareCluster
                 }
             }
 
-            long convertedValue = bytes;
+            double convertedValue = bytes;
             if (baseIndex > 0) convertedValue /= sizeLimits[baseIndex - 1];
 
-            return $"{convertedValue} {sizesLabels[baseIndex]}";
+            return $"{convertedValue:0.0} {sizesLabels[baseIndex]}";
         }
     }
 }

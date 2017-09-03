@@ -87,7 +87,7 @@ namespace ShareCluster.WebInterface
             var model = new ExtractPackageViewModel()
             {
                 DoValidate = true,
-                Folder = facade.RecommendFolderForExtraction(package),
+                Folder = facade.RecommendFolderForExtraction(),
                 Package = package
             };
             return View(model);

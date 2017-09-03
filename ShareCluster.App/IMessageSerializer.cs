@@ -7,9 +7,11 @@ namespace ShareCluster
     {
         byte[] Serialize<T>(T value);
         void Serialize<T>(T value, Stream stream);
+        void SerializeWithLengthPrefix<T>(T value, Stream stream);
         T Deserialize<T>(byte[] bytes);
         object Deserialize(Stream stream, Type type);
         string MimeType { get; }
         T Deserialize<T>(Stream stream);
+        T DeserializeWithLengthPrefix<T>(Stream stream);
     }
 }

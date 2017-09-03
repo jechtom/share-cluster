@@ -100,11 +100,10 @@ namespace ShareCluster.Packaging
             using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
             {
                 using (var packageStream = new PackageDataStream(app.LoggerFactory, controller) { Measure = writeMeasure })
-                using (var zipArchive = new ZipArchive(packageStream, ZipArchiveMode.Create, leaveOpen: true))
                 {
-                    var helper = new ZipArchiveHelper(zipArchive);
-                    helper.DoCreateFromFolder(folderToProcess);
-                    entriesCount = helper.EntriesCount;
+                    var archive = new PackageArchive(app.CompatibilityChecker, app.MessageSerializer);
+                    archive.WriteFromFolder(folderToProcess, packageStream);
+                    entriesCount = archive.EntriesCount;
                 }
                 packageHashes = controller.PackageId;
             }
@@ -163,7 +162,7 @@ namespace ShareCluster.Packaging
                 {
                     // validate
                     var validator = new PackageDataValidator(app.LoggerFactory, app.Crypto);
-                    var result = validator.ValidatePackageAsync(packageInfo).Result;
+                    var result = validator.ValidatePackageAsync(packageInfo, measure: null).Result;
                     if (!result.IsValid)
                     {
                         throw new InvalidOperationException($"Cannot validate package {packageInfo}:\n{string.Join("\n", result.Errors)}");
@@ -172,20 +171,14 @@ namespace ShareCluster.Packaging
 
                 logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
 
-                // prepare folder
-                var folderInfo = new DirectoryInfo(targetFolder);
-                folderInfo.Create();
-
                 // read all and extract
                 var sequencer = new PackagePartsSequencer();
                 IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
                 using (var readController = new ReadPackageDataStreamController(app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
                 using (var readStream = new PackageDataStream(app.LoggerFactory, readController))
                 {
-                    using (var zipArchive = new ZipArchive(readStream, ZipArchiveMode.Read, leaveOpen: true))
-                    {
-                        zipArchive.ExtractToDirectory(targetFolder);
-                    }
+                    var archive = new PackageArchive(app.CompatibilityChecker, app.MessageSerializer);
+                    archive.ReadToFolder(readStream, targetFolder);
                 }
 
                 logger.LogInformation($"Package {packageInfo} has been extracted.");

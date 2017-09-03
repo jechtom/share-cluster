@@ -27,7 +27,7 @@ namespace ShareCluster
                     }
             });
 
-            var serializer = new ProtoBufMessageSerializer(inspectMessages: false);
+            var serializer = new ProtoBufMessageSerializer();
             var result = new AppInfo()
             {
                 Crypto = CreateDefaultCryptoProvider(),

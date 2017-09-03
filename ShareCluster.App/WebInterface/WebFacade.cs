@@ -59,7 +59,8 @@ namespace ShareCluster.WebInterface
             }
 
             // run
-            var extractTask = validator.ValidatePackageAsync(package).ContinueWith(t => {
+            var measureItem = new MeasureItem(MeasureType.Throughput);
+            var extractTask = validator.ValidatePackageAsync(package, measureItem).ContinueWith(t => {
                 if (t.IsFaulted && !t.Result.IsValid) throw new Exception(string.Join("; ", t.Result.Errors));
             });
 
@@ -73,9 +74,10 @@ namespace ShareCluster.WebInterface
 
             // create and register task for starting download
             var task = new LongRunningTask(
-                    $"Validating \"{package.Metadata.Name}\" {package.Id:s}",
+                    $"Validation of \"{package.Metadata.Name}\" {package.Id:s}",
                     extractTask,
-                    $"Package \"{package.Metadata.Name}\" {package.Id:s} is valid."
+                    $"Package is valid.",
+                    t => $"Validating {measureItem.ValueFormatted}"
                 );
 
             // register
@@ -172,12 +174,9 @@ namespace ShareCluster.WebInterface
             tasks.AddTaskToQueue(task);
         }
 
-        public string RecommendFolderForExtraction(PackageOperationViewModel package)
+        public string RecommendFolderForExtraction()
         {
-            string name = FileHelper.GetSafeFileName(package.Name);
-            string path = Path.Combine(appInfo.DataRootPathExtractDefault, name);
-            path = FileHelper.FindFreeFolderName(path);
-            return path;
+            return appInfo.DataRootPathExtractDefault;
         }
 
         public PackageOperationViewModel GetPackageOrNull(Hash packageId)

@@ -21,7 +21,7 @@ namespace ShareCluster.Packaging
             logger = loggerFactory.CreateLogger<PackageDataValidator>();
         }
 
-        public async Task<PackageDataValidatorResult> ValidatePackageAsync(LocalPackageInfo packageInfo)
+        public async Task<PackageDataValidatorResult> ValidatePackageAsync(LocalPackageInfo packageInfo, MeasureItem measure)
         {
             logger.LogDebug($"Starting validation of package {packageInfo}.");
             var result = await ValidatePackageAsyncInternal(packageInfo);
