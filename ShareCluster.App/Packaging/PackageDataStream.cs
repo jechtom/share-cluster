@@ -204,6 +204,13 @@ namespace ShareCluster.Packaging
                 isDisposed = true;
             }
             base.Dispose(disposing);
+
+            long diff = Length - Position;
+            if (diff != 0)
+            {
+                Debugger.Break();
+                logger.LogWarning($"Stream disposed before processing all data. Position {Position}B of {Length}B.");
+            }
         }
 
         public override void Close()

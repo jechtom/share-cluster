@@ -29,9 +29,9 @@ namespace ShareCluster.Network
         private readonly HashSet<Hash> packageDataDownloads = new HashSet<Hash>();
         private readonly object syncLock = new object();
         private readonly PackageStatusUpdater packageStatusUpdater;
-
         private readonly Dictionary<Hash, PostponeTimer> postPoneUpdateDownloadFile;
         private readonly TimeSpan postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
+        private bool isNextTryScheduled = false;
 
         public PackageDownloadManager(AppInfo appInfo, HttpApiClient client, IPackageRegistry packageRegistry, IPeerRegistry peerRegistry)
         {
@@ -263,6 +263,8 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
+                isNextTryScheduled = false;
+
                 LocalPackageInfo package = downloads.FirstOrDefault();
                 if (package == null)
                 {
@@ -298,17 +300,13 @@ namespace ShareCluster.Network
                     // schedule next check to deploy slots
                     task.ContinueWith(t =>
                     {
-                        if (t.Result == true)
-                        {
-                            // finished succesfully - try schedule again
-                            TryScheduleNextDownload();
-                        }
-                        else
-                        {
-                            // try again but later, peer has choked connection or there was some other potential issue
-                            Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith((t2) => TryScheduleNextDownload());
-                        }
+                        TryScheduleNextDownload();
                     });
+                }
+
+                if (isNextTryScheduled)
+                {
+                    return; // already scheduled, exit
                 }
 
                 if (downloadSlots.Count >= MaximumDownloadSlots)
@@ -320,6 +318,7 @@ namespace ShareCluster.Network
                 if (tmpPeers.Count == 0)
                 {
                     // all peers has been depleated (busy or incompatible), let's try again soon but waite
+                    isNextTryScheduled = true;
                     Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => TryScheduleNextDownload());
                 }
             }
@@ -454,8 +453,13 @@ namespace ShareCluster.Network
                 {
                     // start download
                     DownloadSegmentResult result = await DownloadSegmentsInternalAsync(package, segments, peer);
-                    
-                    if (!result.IsSuccess) return false;
+
+                    if (!result.IsSuccess)
+                    {
+                        // ignore peer for some time or until new status is received or until other slot finished successfuly
+                        parent.packageStatusUpdater.PostponePeer(peer);
+                        return false;
+                    }
 
                     // success, segments are downloaded
                     package.DownloadStatus.ReturnLockedSegments(segments, areDownloaded: true);
@@ -571,7 +575,6 @@ namespace ShareCluster.Network
                     // choked response?
                     if (errorResponse.IsChoked)
                     {
-                        parent.packageStatusUpdater.PostponePeer(peer);
                         parent.logger.LogTrace($"Choke response from {peer.PeerId:s} at {peer.ServiceEndPoint}.");
                         return result;
                     }
