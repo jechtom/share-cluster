@@ -23,7 +23,7 @@ namespace ShareCluster.Network
         readonly ILogger<PackageStatusUpdater> logger;
         readonly object syncLock = new object();
         private readonly TimeSpan statusTimerInterval = TimeSpan.FromSeconds(5);
-        private readonly TimeSpan postponeInterval = TimeSpan.FromSeconds(30);
+        private readonly TimeSpan postponeInterval = TimeSpan.FromSeconds(15);
         private readonly Timer statusTimer;
         private readonly Stopwatch stopwatch;
 
@@ -326,6 +326,17 @@ namespace ShareCluster.Network
             }
         }
 
+        public void PostponePeerReset(PeerInfo peer, LocalPackageInfo package)
+        {
+            lock (syncLock)
+            {
+                if (!peers.TryGetValue(peer.PeerId, out var peerStatus)) return;
+                peerStatus.PostponeTimer = PostponeTimer.NoPostpone;
+                if (!states.TryGetValue(package.Id, out var packageStatus)) return;
+                packageStatus.PostPonePeer(peer, TimeSpan.Zero);
+            }
+        }
+
         public void StatsUpdateSuccessPart(PeerInfo peer, LocalPackageInfo package, long downloadedBytes)
         {
             lock (syncLock)
@@ -381,8 +392,9 @@ namespace ShareCluster.Network
                 if (peerStatuses.TryAdd(peer.PeerInfo, newStatus))
                 {
                     peer.InterestedForPackagesTotalCount++;
+                    peer.PostponeTimer = PostponeTimer.NoPostpone; // reset postpone, new data
 
-                    if(isSeeder)
+                    if (isSeeder)
                     {
                         // mark as seeder
                         peer.InterestedForPackagesSeederCount++;
@@ -418,6 +430,10 @@ namespace ShareCluster.Network
 
                 logger.LogTrace("Received update from {0:s} at {1} for {2}.", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo);
 
+                // reset postpone (new status data)
+                status.PostponeTimer = PostponeTimer.NoPostpone;
+                status.Peer.PostponeTimer = PostponeTimer.NoPostpone;
+
                 // update status and number of seeders
                 bool wasSeeder = status.IsSeeder;
                 status.StatusDetail = detail;
@@ -443,7 +459,7 @@ namespace ShareCluster.Network
             public void PostPonePeer(PeerInfo peer, TimeSpan postponeInterval)
             {
                 if (!peerStatuses.TryGetValue(peer, out var status)) return;
-                status.PostponeTimer = new PostponeTimer(postponeInterval);
+                status.PostponeTimer = postponeInterval <= TimeSpan.Zero ? PostponeTimer.NoPostpone : new PostponeTimer(postponeInterval);
             }
 
             public bool TrygetBitmapOfPeer(PeerInfo peer, out byte[] remoteBitmap)

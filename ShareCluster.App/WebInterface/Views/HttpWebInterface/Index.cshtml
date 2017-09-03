@@ -1,6 +1,7 @@
 ﻿@model ShareCluster.WebInterface.StatusViewModel
 
 <p>Instance <tt>@Model.Instance.Hash</tt></p>
+<p>Download slots / upload slots: <strong>@Model.DownloadSlotsAvailable / @Model.UploadSlotsAvailable</strong></p>
 <div class="pull-right">
     <a href="@Url.Action(nameof(HttpWebInterfaceController.CreatePackage))" class="btn btn-default">
         <span class="glyphicon glyphicon-plus"></span>

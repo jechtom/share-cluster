@@ -19,11 +19,11 @@ namespace ShareCluster.WebInterface
         private readonly IPackageRegistry packageRegistry;
         private readonly InstanceHash instanceHash;
         private readonly LongRunningTasksManager tasks;
-
+        private readonly PeersCluster peersCluster;
         private readonly object syncLock = new object();
         private readonly HashSet<Hash> packagesInVerify = new HashSet<Hash>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageDataValidator validator, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageDataValidator validator, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             this.packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -33,6 +33,7 @@ namespace ShareCluster.WebInterface
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             this.instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
             this.tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
+            this.peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
         }
 
         public void TryChangeDownloadPackage(Hash packageId, bool start)
@@ -134,6 +135,8 @@ namespace ShareCluster.WebInterface
             result.PackagesAvailableToDownload = packageRegistry.ImmutableDiscoveredPackages;
             result.Instance = instanceHash;
             result.Tasks = tasks.Tasks.Concat(tasks.CompletedTasks);
+            result.UploadSlotsAvailable = peersCluster.UploadSlotsAvailable;
+            result.DownloadSlotsAvailable = packageDownloadManager.DownloadStotsAvailable;
             return result;
         }
 

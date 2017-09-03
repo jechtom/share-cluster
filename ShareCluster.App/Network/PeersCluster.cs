@@ -30,7 +30,9 @@ namespace ShareCluster.Network
         private bool isStatusUpdateScheduled;
         private bool isStatusUpdateInProgress;
         private int uploadSlots;
-        
+
+        public int UploadSlotsAvailable => uploadSlots;
+
         public PeersCluster(AppInfo appInfo, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry, PackageDownloadManager packageDownloadManager)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));

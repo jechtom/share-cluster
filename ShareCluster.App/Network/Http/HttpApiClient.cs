@@ -18,7 +18,9 @@ namespace ShareCluster.Network.Http
         private readonly CompatibilityChecker compatibility;
         private readonly InstanceHash instanceHash;
 
-        //enable to use Fiddler @ localhost: string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
+        //enable to use Fiddler @ localhost: 
+        //string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
+
         string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
 
         public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceHash instanceHash)

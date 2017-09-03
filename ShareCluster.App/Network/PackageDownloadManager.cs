@@ -51,6 +51,17 @@ namespace ShareCluster.Network
 
         public int MaximumDownloadSlots => appInfo.NetworkSettings.MaximumDownloadSlots;
 
+        public int DownloadStotsAvailable
+        {
+            get
+            {
+                lock(syncLock)
+                {
+                    return MaximumDownloadSlots - downloadSlots.Count;
+                }
+            }
+        }
+
         public void RestoreUnfinishedDownloads()
         {
             lock (syncLock)
@@ -277,7 +288,12 @@ namespace ShareCluster.Network
                     // create slot and try find
                     var slot = new PackageDownloadSlot(this, package, peer);
                     (PackageDownloadSlotResult result, Task<bool> task) = slot.TryStart();
-                    if (task == null) continue; // cannot allocate
+
+                    // exit now (cannot continue for package) - package has been deleted or we're waiting for last part to finish download
+                    if (result == PackageDownloadSlotResult.MarkedForDelete || result == PackageDownloadSlotResult.NoMoreToDownload) return;
+
+                    // cannot allocate for other reasons - continue
+                    if (task == null) continue;
 
                     // schedule next check to deploy slots
                     task.ContinueWith(t =>
@@ -371,6 +387,7 @@ namespace ShareCluster.Network
                     if (!parent.packageStatusUpdater.TryGetBitmapOfPeer(package, peer, out byte[] remoteBitmap))
                     {
                         // this peer didn't provided bitmap yet, skip it
+                        parent.packageStatusUpdater.PostponePeersPackage(package, peer);
                         return (PackageDownloadSlotResult.NoMatchWithPeer, null);
                     }
 
@@ -385,6 +402,7 @@ namespace ShareCluster.Network
                             // remark: fast update when we don't have lot of package downloaded => it is big chance that peer will download part we don't have
                             parent.packageStatusUpdater.MarkPeerForFastUpdate(peer);
                         }
+                        parent.packageStatusUpdater.PostponePeersPackage(package, peer);
                         return (PackageDownloadSlotResult.NoMatchWithPeer, null);
                     }
                     isSegmentsReleasedNeeded = true;
@@ -473,6 +491,7 @@ namespace ShareCluster.Network
                     }
                 }
 
+                parent.packageStatusUpdater.PostponePeerReset(peer, package);
                 return true; // success
             }
 
@@ -552,6 +571,7 @@ namespace ShareCluster.Network
                     // choked response?
                     if (errorResponse.IsChoked)
                     {
+                        parent.packageStatusUpdater.PostponePeer(peer);
                         parent.logger.LogTrace($"Choke response from {peer.PeerId:s} at {peer.ServiceEndPoint}.");
                         return result;
                     }

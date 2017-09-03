@@ -13,5 +13,7 @@ namespace ShareCluster.WebInterface
         public IEnumerable<DiscoveredPackage> PackagesAvailableToDownload { get; set; }
         public InstanceHash Instance { get; set; }
         public IEnumerable<LongRunningTask> Tasks { get; internal set; }
+        public int UploadSlotsAvailable { get; set; }
+        public int DownloadSlotsAvailable { get; set; }
     }
 }
