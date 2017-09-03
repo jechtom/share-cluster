@@ -21,7 +21,6 @@ namespace ShareCluster.Network.Http
         //enable to use Fiddler @ localhost: string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
         string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
 
-
         public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceHash instanceHash)
         {
             this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
@@ -110,6 +109,7 @@ namespace ShareCluster.Network.Http
                     {
                         resultMessage.Dispose();
                     }
+                    throw;
                 }
                 return resultMessage;
             }
