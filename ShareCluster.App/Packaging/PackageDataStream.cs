@@ -208,7 +208,6 @@ namespace ShareCluster.Packaging
             long diff = Length - Position;
             if (diff != 0)
             {
-                Debugger.Break();
                 logger.LogWarning($"Stream disposed before processing all data. Position {Position}B of {Length}B.");
             }
         }
@@ -234,6 +233,12 @@ namespace ShareCluster.Packaging
                 // nothing more to read
                 controller.OnStreamPartChange(currentPart, null);
                 currentPart = null;
+
+                if (Length != Position)
+                {
+                    throw new InvalidOperationException("By stream Length we should not be at the end of stream controller didn't returned next part.");
+                }
+
                 return false;
             }
 

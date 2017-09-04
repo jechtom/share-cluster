@@ -29,5 +29,22 @@ namespace ShareCluster
                 ArrayPool<byte>.Shared.Return(buffer, clearArray: false);
             }
         }
+
+        public static byte[] Serialize<T>(this IMessageSerializer serializer, T value)
+        {
+            using (var memStream = new MemoryStream())
+            {
+                serializer.Serialize<T>(value);
+                return memStream.ToArray();
+            }
+        }
+
+        public static T Deserialize<T>(this IMessageSerializer serializer, byte[] data)
+        {
+            using (var memStream = new MemoryStream(data))
+            {
+                return serializer.Deserialize<T>(memStream);
+            }
+        }
     }
 }

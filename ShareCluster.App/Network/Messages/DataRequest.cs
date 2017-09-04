@@ -6,7 +6,7 @@ using System.Text;
 namespace ShareCluster.Network.Messages
 {
     [ProtoContract]
-    public class DataRequest
+    public class DataRequest : IMessage
     {
         [ProtoMember(1)]
         public Hash PackageHash { get; set; }

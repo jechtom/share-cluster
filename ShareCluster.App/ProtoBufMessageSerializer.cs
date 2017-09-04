@@ -12,13 +12,18 @@ namespace ShareCluster
     public class ProtoBufMessageSerializer : IMessageSerializer
     {
         const PrefixStyle LengthPrefixStyle = PrefixStyle.Base128;
+        const int LengthPrefixField = 0;
 
-        static ProtoBufMessageSerializer()
+        RuntimeTypeModel typeModel;
+
+        public ProtoBufMessageSerializer()
         {
+            typeModel = RuntimeTypeModel.Create();
+
             // these types cannot be serialized - replace then with surrogate on wire
-            RuntimeTypeModel.Default[typeof(IPAddress)].SetSurrogate(typeof(IPAddressSurrogate));
-            RuntimeTypeModel.Default[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
-            RuntimeTypeModel.Default.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
+            typeModel[typeof(IPAddress)].SetSurrogate(typeof(IPAddressSurrogate));
+            typeModel[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
+            typeModel.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
         }
         
         public byte[] Serialize<T>(T value)
@@ -29,37 +34,19 @@ namespace ShareCluster
                 return memStream.ToArray();
             }
         }
-
-        public T Deserialize<T>(byte[] bytes)
+        public T Deserialize<T>(Stream stream)
         {
-            using (var ms = new MemoryStream(bytes))
-            {
-                return ProtoBuf.Serializer.Deserialize<T>(ms);
-            }
+            return (T)Deserialize(stream, typeof(T));
         }
 
         public void Serialize<T>(T value, Stream stream)
         {
-            ProtoBuf.Serializer.Serialize(stream, value);
+            typeModel.SerializeWithLengthPrefix(stream, value, typeof(T), LengthPrefixStyle, LengthPrefixField);
         }
-        public void SerializeWithLengthPrefix<T>(T value, Stream stream)
-        {
-            ProtoBuf.Serializer.SerializeWithLengthPrefix(stream, value, LengthPrefixStyle);
-        }
-
+        
         public object Deserialize(Stream stream, Type type)
         {
-            return ProtoBuf.Serializer.Deserialize(type, stream);
-        }
-
-        public T Deserialize<T>(Stream stream)
-        {
-            return ProtoBuf.Serializer.Deserialize<T>(stream);
-        }
-
-        public T DeserializeWithLengthPrefix<T>(Stream stream)
-        {
-            return ProtoBuf.Serializer.DeserializeWithLengthPrefix<T>(stream, LengthPrefixStyle);
+            return typeModel.DeserializeWithLengthPrefix(stream, null, type, LengthPrefixStyle, LengthPrefixField);
         }
 
         public string MimeType => "application/protobuf";

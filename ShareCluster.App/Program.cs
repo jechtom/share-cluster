@@ -49,10 +49,10 @@ namespace ShareCluster
                 var bootstrapper = instance.Start(appSettings);
             }
 
-            //Task.Run(() => { CreateInstance(1); });
-            //Task.Run(() => { CreateInstance(2); });
-            //Task.Run(() => { CreateInstance(3); });
-            //Task.Run(() => { CreateInstance(4); });
+            Task.Run(() => { CreateInstance(1); });
+            Task.Run(() => { CreateInstance(2); });
+            Task.Run(() => { CreateInstance(3); });
+            Task.Run(() => { CreateInstance(4); });
 
             ////bootstrapper.PackageRegistry.CreatePackageFromFolder(@"c:\SQLServer2016Media", "sql2016");
 
@@ -81,7 +81,7 @@ namespace ShareCluster
             {
                 EnableUdpDiscoveryListener = (index == 0),
                 EnableUdpDiscoveryClient = true,
-                DownloadEverything = true
+                DownloadEverything = false
             };
 
             var instance = new AppInstance(appInfo);

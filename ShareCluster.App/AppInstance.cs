@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using ShareCluster.Network.Http;
 using ShareCluster.WebInterface;
 using System.Reflection;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace ShareCluster
 {
@@ -50,7 +51,11 @@ namespace ShareCluster
             string urls = $"http://*:{appInfo.NetworkSettings.TcpServicePort}";
             string exeFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             webHost = new WebHostBuilder()
-                .UseKestrel()
+                .UseKestrel(c =>
+                {
+                    // extend grace period so server don't kick peer waiting for opening file etc.
+                    c.Limits.MinResponseDataRate = new MinDataRate(240, TimeSpan.FromSeconds(20));
+                })
                 .UseEnvironment("Development")
                 .UseContentRoot(Path.Combine(exeFolder, "WebInterface"))
                 .UseUrls(urls)

@@ -23,6 +23,7 @@ namespace ShareCluster
                         { "Default", LogLevel.Trace },
                         { "System", LogLevel.Warning },
                         { "Microsoft", LogLevel.Warning },
+                        //{ "Microsoft.AspNetCore", LogLevel.Debug },
                         { "ShareCluster.Packaging.ValidatePackageDataStreamController", LogLevel.Debug },
                         { "ShareCluster.Packaging.WritePackageDataStreamController", LogLevel.Debug }
                     }
