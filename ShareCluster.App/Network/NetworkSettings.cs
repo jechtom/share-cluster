@@ -10,7 +10,7 @@ namespace ShareCluster.Network
 
         public UInt16 UdpAnnouncePort { get; set; } = 13977;
         public UInt16 TcpServicePort { get; set; } = 13978;
-        public TimeSpan DiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
+        public TimeSpan UdpDiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
         public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(1);
 
         /// <summary>

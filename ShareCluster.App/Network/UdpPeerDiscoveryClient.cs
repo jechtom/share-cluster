@@ -43,7 +43,7 @@ namespace ShareCluster.Network
                     throw new InvalidOperationException("Cannot send discovery datagram.");
                 }
 
-                var timeout = new CancellationTokenSource(settings.DiscoveryTimeout);
+                var timeout = new CancellationTokenSource(settings.UdpDiscoveryTimeout);
                 while(!timeout.IsCancellationRequested)
                 {
                     DiscoveryAnnounceMessage response = null; 
