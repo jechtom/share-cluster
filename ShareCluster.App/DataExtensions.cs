@@ -34,7 +34,7 @@ namespace ShareCluster
         {
             using (var memStream = new MemoryStream())
             {
-                serializer.Serialize<T>(value);
+                serializer.Serialize<T>(value, memStream);
                 return memStream.ToArray();
             }
         }
