@@ -36,8 +36,7 @@ namespace ShareCluster
             {
                 // instance 1
                 var appInfo = AppInfo.CreateCurrent();
-                appInfo.DataRootPath = @"c:\temp\temp";
-
+                
                 var appSettings = new AppInstanceSettings()
                 {
                     EnableUdpDiscoveryListener = true,
@@ -50,10 +49,10 @@ namespace ShareCluster
                 var bootstrapper = instance.Start(appSettings);
             }
 
-            Task.Run(() => { CreateInstance(1); });
-            Task.Run(() => { CreateInstance(2); });
-            Task.Run(() => { CreateInstance(3); });
-            Task.Run(() => { CreateInstance(4); });
+            //Task.Run(() => { CreateInstance(1); });
+            //Task.Run(() => { CreateInstance(2); });
+            //Task.Run(() => { CreateInstance(3); });
+            //Task.Run(() => { CreateInstance(4); });
 
             ////bootstrapper.PackageRegistry.CreatePackageFromFolder(@"c:\SQLServer2016Media", "sql2016");
 

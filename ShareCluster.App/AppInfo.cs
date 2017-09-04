@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ShareCluster.Packaging;
 using System.IO;
+using System.Reflection;
 
 namespace ShareCluster
 {
@@ -30,6 +31,7 @@ namespace ShareCluster
             var serializer = new ProtoBufMessageSerializer();
             var result = new AppInfo()
             {
+                DataRootPath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "data"),
                 Crypto = CreateDefaultCryptoProvider(),
                 MessageSerializer = serializer,
                 Version = new ClientVersion(1),

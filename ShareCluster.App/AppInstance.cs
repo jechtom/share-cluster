@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using ShareCluster.Network.Http;
 using ShareCluster.WebInterface;
+using System.Reflection;
 
 namespace ShareCluster
 {
@@ -47,10 +48,11 @@ namespace ShareCluster
 
             // configure services
             string urls = $"http://*:{appInfo.NetworkSettings.TcpServicePort}";
+            string exeFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             webHost = new WebHostBuilder()
                 .UseKestrel()
                 .UseEnvironment("Development")
-                .UseContentRoot(Path.Combine(Directory.GetCurrentDirectory(), "WebInterface"))
+                .UseContentRoot(Path.Combine(exeFolder, "WebInterface"))
                 .UseUrls(urls)
                 .ConfigureServices(ConfigureService)
                 .UseStartup<HttpStartup>()

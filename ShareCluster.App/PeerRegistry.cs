@@ -130,18 +130,23 @@ namespace ShareCluster
 
             if (!updateLists) return;
 
+            PeerInfoChange[] changeArgs = null;
+
             lock (peersLock)
             {
                 if (disablePeer)
                 {
                     logger.LogTrace("Peer {0:s} at {1} has failed and is now disabled.", peer.PeerId, peer.ServiceEndPoint);
                     peer.IsEnabled = false;
-                    PeersChanged?.Invoke(new[] { new PeerInfoChange(peer, isRemoved: true) });
+                    changeArgs = new[] { new PeerInfoChange(peer, isRemoved: true) };
                 }
                 
                 // update immutable
                 OnPeersListChanged();
             }
+
+            // after lock and processing notify
+            if (changeArgs != null) PeersChanged?.Invoke(changeArgs);
         }
 
         public bool TryGetPeer(Hash peerId, out PeerInfo peerInfo)
