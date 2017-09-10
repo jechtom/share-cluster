@@ -9,13 +9,13 @@ namespace ShareCluster.Network.Messages
     public class DataResponseFaul : IMessage
     {
         [ProtoMember(1)]
-        public bool IsChoked { get; set; }
+        public virtual bool IsChoked { get; set; }
 
         [ProtoMember(2)]
-        public bool PackageNotFound { get; set; }
+        public virtual bool PackageNotFound { get; set; }
 
         [ProtoMember(3)]
-        public bool PackageSegmentsNotFound { get; set; }
+        public virtual bool PackageSegmentsNotFound { get; set; }
 
         public static DataResponseFaul CreateDataPackageNotFoundMessage() => new DataResponseFaul() { PackageNotFound = true };
         public static DataResponseFaul CreateDataPackageSegmentsNotFoundMessage() => new DataResponseFaul() { PackageSegmentsNotFound = true };

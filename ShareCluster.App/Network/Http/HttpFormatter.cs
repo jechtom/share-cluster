@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 
 namespace ShareCluster.Network.Http
 {
+    /// <summary>
+    /// Provides serialization and deserialization of messages for ASP.NET MVC.
+    /// </summary>
     public class HttpFormatter : IInputFormatter, IOutputFormatter
     {
         bool IInputFormatter.CanRead(InputFormatterContext context)
@@ -24,7 +27,6 @@ namespace ShareCluster.Network.Http
 
             if (context.ModelType.Name != typeHeadValues.ToString())
             {
-
                 return false;
             }
 
@@ -58,7 +60,7 @@ namespace ShareCluster.Network.Http
             context.ContentType = serializer.MimeType;
 
             // serialize
-            serializer.Serialize(context.Object, context.HttpContext.Response.Body);
+            serializer.Serialize(context.Object, context.HttpContext.Response.Body, context.ObjectType);
             return Task.CompletedTask;
         }
     }

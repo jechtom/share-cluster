@@ -9,7 +9,7 @@ using ShareCluster.Network.Messages;
 
 namespace ShareCluster
 {
-    public class ProtoBufMessageSerializer : IMessageSerializer
+    public class ProtoBufMessageSerializer : MessageSerializerBase
     {
         const PrefixStyle LengthPrefixStyle = PrefixStyle.Base128;
         const int LengthPrefixField = 0;
@@ -25,31 +25,18 @@ namespace ShareCluster
             typeModel[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
             typeModel.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
         }
-        
-        public byte[] Serialize<T>(T value)
+
+        public override void Serialize(object value, Stream stream, Type type)
         {
-            using (var memStream = new MemoryStream())
-            {
-                Serialize(value, memStream);
-                return memStream.ToArray();
-            }
-        }
-        public T Deserialize<T>(Stream stream)
-        {
-            return (T)Deserialize(stream, typeof(T));
+            typeModel.SerializeWithLengthPrefix(stream, value, type, LengthPrefixStyle, LengthPrefixField);
         }
 
-        public void Serialize<T>(T value, Stream stream)
-        {
-            typeModel.SerializeWithLengthPrefix(stream, value, typeof(T), LengthPrefixStyle, LengthPrefixField);
-        }
-        
-        public object Deserialize(Stream stream, Type type)
+        public override object Deserialize(Stream stream, Type type)
         {
             return typeModel.DeserializeWithLengthPrefix(stream, null, type, LengthPrefixStyle, LengthPrefixField);
         }
 
-        public string MimeType => "application/protobuf";
+        public override string MimeType => "application/protobuf";
 
         [ProtoContract]
         private class IPAddressSurrogate

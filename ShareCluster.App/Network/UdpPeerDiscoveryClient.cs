@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Messages;
+using System.Diagnostics;
 
 namespace ShareCluster.Network
 {
@@ -36,7 +37,8 @@ namespace ShareCluster.Network
             using (client = new UdpClient())
             {
                 var ip = new IPEndPoint(IPAddress.Broadcast, settings.UdpAnnouncePort);
-                
+
+                Debug.Assert(announceBytes.Length > 0);
                 var lengthSent = await client.SendAsync(announceBytes, announceBytes.Length, ip);
                 if(lengthSent != announceBytes.Length)
                 {

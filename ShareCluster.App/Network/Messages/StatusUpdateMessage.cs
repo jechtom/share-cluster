@@ -11,7 +11,7 @@ namespace ShareCluster.Network.Messages
     public class StatusUpdateMessage : IMessage
     {
         [ProtoMember(1)]
-        public virtual Hash InstanceHash { get; set; }
+        public Hash InstanceHash { get; set; }
 
         [ProtoMember(2)]
         public DiscoveryPeerData[] KnownPeers { get; set; }

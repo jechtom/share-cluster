@@ -18,7 +18,7 @@ namespace ShareCluster.Packaging.Dto
         /// No more data after ending entry are allowed.
         /// </summary>
         [ProtoMember(1)]
-        public string Name { get; set; }
+        public virtual string Name { get; set; }
 
         /// <summary>
         /// Gets or sets size of file in bytes. This value is required for files. 
@@ -27,31 +27,31 @@ namespace ShareCluster.Packaging.Dto
         /// If this is file entry then file content will follow after this structure.
         /// </summary>
         [ProtoMember(2)]
-        public long? FileSize { get; set; }
+        public virtual long? FileSize { get; set; }
 
         /// <summary>
         /// Defines how many levels of directories go up. This is allowed only for directory entries. 
         /// It is required for ending entry to pop out all opened directories (including root directory).
         /// </summary>
         [ProtoMember(3)]
-        public int PopDirectories { get; set; }
+        public virtual int PopDirectories { get; set; }
 
         /// <summary>
         /// Attributes of file or directory.
         /// </summary>
         [ProtoMember(4)]
-        public FileAttributes Attributes { get; set; }
+        public virtual FileAttributes Attributes { get; set; }
 
         /// <summary>
         /// Creation time of file or directory.
         /// </summary>
         [ProtoMember(5)]
-        public DateTime CreationTimeUtc { get; set; }
+        public virtual DateTime CreationTimeUtc { get; set; }
 
         /// <summary>
         /// Last write time of file or directory.
         /// </summary>
         [ProtoMember(6)]
-        public DateTime LastWriteTimeUtc { get; set; }
+        public virtual DateTime LastWriteTimeUtc { get; set; }
     }
 }

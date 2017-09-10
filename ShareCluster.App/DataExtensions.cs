@@ -39,6 +39,16 @@ namespace ShareCluster
             }
         }
 
+        public static byte[] Serialize(this IMessageSerializer serializer, object value, Type type)
+        {
+            using (var memStream = new MemoryStream())
+            {
+                serializer.Serialize(value, memStream, type);
+                return memStream.ToArray();
+            }
+        }
+
+
         public static T Deserialize<T>(this IMessageSerializer serializer, byte[] data)
         {
             using (var memStream = new MemoryStream(data))

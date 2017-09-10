@@ -9,18 +9,18 @@ namespace ShareCluster.Packaging.Dto
     public class PackageMeta : IPackageInfoDto
     {
         [ProtoMember(1)]
-        public ClientVersion Version { get; set; }
+        public virtual ClientVersion Version { get; set; }
 
         [ProtoMember(2)]
-        public Hash PackageId { get; set; }
+        public virtual Hash PackageId { get; set; }
 
         [ProtoMember(3)]
-        public long PackageSize { get; set; }
+        public virtual long PackageSize { get; set; }
 
         [ProtoMember(4)]
-        public DateTimeOffset Created { get; set; }
+        public virtual DateTimeOffset Created { get; set; }
 
         [ProtoMember(5)]
-        public string Name { get; set; }
+        public virtual string Name { get; set; }
     }
 }

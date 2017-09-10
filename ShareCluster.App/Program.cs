@@ -29,8 +29,11 @@ namespace ShareCluster
             if (args.Length > 2)
             {
                 args[0] = "dev";
-                var index = int.Parse(args[1]);
-                CreateInstance(index);
+                var count = int.Parse(args[1]);
+                for (int i = 0; i < count; i++)
+                {
+                    Task.Run(() => { CreateInstance(i); });
+                }
             }
             else
             {
@@ -50,11 +53,6 @@ namespace ShareCluster
             }
 
             //Task.Run(() => { CreateInstance(1); });
-            //Task.Run(() => { CreateInstance(2); });
-            //Task.Run(() => { CreateInstance(3); });
-            //Task.Run(() => { CreateInstance(4); });
-
-            ////bootstrapper.PackageRegistry.CreatePackageFromFolder(@"c:\SQLServer2016Media", "sql2016");
 
             Console.ReadLine();
             Stop();

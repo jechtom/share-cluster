@@ -6,12 +6,12 @@ namespace ShareCluster.Network.Messages
     public class PackageStatusDetail
     {
         [ProtoMember(1)]
-        public bool IsFound { get; set; }
+        public virtual bool IsFound { get; set; }
 
         [ProtoMember(2)]
-        public long BytesDownloaded { get; set; }
+        public virtual long BytesDownloaded { get; set; }
 
         [ProtoMember(3)]
-        public byte[] SegmentsBitmap { get; set; }
+        public virtual byte[] SegmentsBitmap { get; set; }
     }
 }

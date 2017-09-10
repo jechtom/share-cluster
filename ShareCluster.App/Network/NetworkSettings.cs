@@ -43,5 +43,10 @@ namespace ShareCluster.Network
         /// Gets or sets maximum number of concurrent upload tasks.
         /// </summary>
         public int MaximumUploadsSlots { get; set; } = 5;
+
+        public void Validate()
+        {
+            if (TcpServicePort == 0) throw new InvalidOperationException("Service port can't be 0.");
+        }
     }
 }

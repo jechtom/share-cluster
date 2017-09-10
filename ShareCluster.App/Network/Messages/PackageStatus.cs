@@ -35,7 +35,7 @@ namespace ShareCluster.Network.Messages
         }
 
         [ProtoMember(1)]
-        public PackageMeta Meta
+        public virtual PackageMeta Meta
         {
             get => useDataFromPackage ? packageInfo.Metadata : meta;
             set
@@ -46,7 +46,7 @@ namespace ShareCluster.Network.Messages
         }
 
         [ProtoMember(2)]
-        public bool IsSeeder
+        public virtual bool IsSeeder
         {
             get => useDataFromPackage ? packageInfo.DownloadStatus.IsDownloaded : isSeeder;
             set

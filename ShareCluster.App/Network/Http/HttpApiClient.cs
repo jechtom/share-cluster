@@ -47,6 +47,11 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
+            if(message.ServicePort == 0)
+            {
+                throw new ArgumentException("Service port can't be 0.", nameof(message));
+            }
+
             return SendRequestAndGetRespone<Messages.StatusUpdateMessage, Messages.StatusUpdateMessage>(endpoint, nameof(HttpApiController.StatusUpdate), message);
         }
 
@@ -90,7 +95,12 @@ namespace ShareCluster.Network.Http
             string uri = BuildUrl(endpoint, apiName);
             byte[] requestBytes = serializer.Serialize(req);
 
-            var requestContent = new ByteArrayContent(requestBytes ?? new byte[0]);
+            if(requestBytes == null)
+            {
+                throw new InvalidOperationException("Message byte array can't be null.");
+            }
+
+            var requestContent = new ByteArrayContent(requestBytes);
             requestContent.Headers.ContentType = new MediaTypeHeaderValue(serializer.MimeType);
             requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibility.Version.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());

@@ -16,6 +16,6 @@ namespace ShareCluster.Network.Messages
         }
 
         [ProtoMember(1)]
-        public Hash PackageId { get; set; }
+        public virtual Hash PackageId { get; set; }
     }
 }

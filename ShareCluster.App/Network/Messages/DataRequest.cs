@@ -9,9 +9,9 @@ namespace ShareCluster.Network.Messages
     public class DataRequest : IMessage
     {
         [ProtoMember(1)]
-        public Hash PackageHash { get; set; }
+        public virtual Hash PackageHash { get; set; }
 
         [ProtoMember(2)]
-        public int[] RequestedParts { get; set; }
+        public virtual int[] RequestedParts { get; set; }
     }
 }

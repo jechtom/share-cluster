@@ -65,7 +65,7 @@ namespace ShareCluster
                         if (peer.SuccessesSinceLastFail == 0 && !peer.ServiceEndPoint.Equals(newPeer.ServiceEndPoint))
                         {
                             logger.LogTrace("Peer {0:s} has changed endpoint from {1} to {2}.", peer.PeerId, peer.ServiceEndPoint, newPeer.ServiceEndPoint);
-                            peer.ServiceEndPoint = newPeer.ServiceEndPoint;
+                            peer.UpdateEndPoint(newPeer.ServiceEndPoint);
                             notifyAsEndpointChanged = true; // announce new peer as endpoint has changed
                         }
 

@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "ShareCluster": {
+      "commandName": "Project"
+    }
+  }
+}

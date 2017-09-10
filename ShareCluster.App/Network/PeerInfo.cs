@@ -26,11 +26,28 @@ namespace ShareCluster.Network
             IsOtherPeerDiscovery = isOtherPeerDiscovery;
             IsLoopback = isLoopback;
             KnownPackages = new Dictionary<Hash, PackageStatus>(0);
+
+            if (endPoint.Port == 0) throw new ArgumentException("Zero port is not allowed.", nameof(endPoint));
         }
 
         // identification
         public Hash PeerId { get; }
-        public IPEndPoint ServiceEndPoint { get; set; }
+        public IPEndPoint ServiceEndPoint { get; private set; }
+
+        public void UpdateEndPoint(IPEndPoint endpoint)
+        {
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if(endpoint.Port == 0)
+            {
+                throw new ArgumentException("Port cannot be zero.", nameof(endpoint));
+            }
+
+            ServiceEndPoint = endpoint;
+        }
 
         // how it was discovered?
         public bool IsLoopback { get; set; }

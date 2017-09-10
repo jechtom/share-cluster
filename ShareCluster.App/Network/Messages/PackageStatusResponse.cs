@@ -9,6 +9,6 @@ namespace ShareCluster.Network.Messages
     public class PackageStatusResponse : IMessage
     {
         [ProtoMember(1)]
-        public PackageStatusDetail[] Packages { get; set; }
+        public virtual PackageStatusDetail[] Packages { get; set; }
     }
 }

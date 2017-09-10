@@ -1,0 +1,97 @@
+using ShareCluster.Network.Messages;
+using ShareCluster.Packaging;
+using ShareCluster.Packaging.Dto;
+using System;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
+using Xunit;
+
+namespace ShareCluster.Tests
+{
+    public class SerializationTests
+    {
+        [Fact]
+        public void ThreadSafeTest()
+        {
+            IMessageSerializer serializer = new ProtoBufMessageSerializer();
+            var r = Enumerable.Range(0, 50).AsParallel()
+                .WithDegreeOfParallelism(10)
+                .Select(i => serializer.Serialize(new IPEndPoint(IPAddress.Parse("1.2.3.4"), 567)))
+                .ToArray();
+            Assert.All(r, ri =>
+            {
+                var result = serializer.Deserialize<IPEndPoint>(ri);
+                Assert.Equal(567, result.Port);
+                Assert.Equal(IPAddress.Parse("1.2.3.4"), result.Address);
+            });
+        }
+
+        [Fact]
+        public void IPEndpointTest()
+        {
+            IMessageSerializer serializer = new ProtoBufMessageSerializer();
+            var endPoint = new IPEndPoint(IPAddress.Parse("1.2.3.4"), 567);
+            byte[] bytes = serializer.Serialize(endPoint);
+            var result = serializer.Deserialize<IPEndPoint>(bytes);
+            Assert.Equal(endPoint.Port, result.Port);
+            Assert.Equal(endPoint.Address, result.Address);
+        }
+
+        [Fact]
+        public void IPv6AddressTest()
+        {
+            IMessageSerializer serializer = new ProtoBufMessageSerializer();
+            IPAddress adr = IPAddress.Parse("2001:db8::ff00:42:8329");
+
+            byte[] bytes = serializer.Serialize(adr);
+            var result = serializer.Deserialize<IPAddress>(bytes);
+            Assert.Equal(adr, result);
+        }
+
+        [Fact]
+        public void IPv4AddressTest()
+        {
+            IMessageSerializer serializer = new ProtoBufMessageSerializer();
+            IPAddress adr = IPAddress.Parse("8.8.8.8");
+
+            byte[] bytes = serializer.Serialize(adr);
+            var result = serializer.Deserialize<IPAddress>(bytes);
+            Assert.Equal(adr, result);
+        }
+
+        [Fact]
+        public void StatusUpdateTest()
+        {
+            // sample message (this caused deserialization issues)
+            var message = new StatusUpdateMessage()
+            {
+                InstanceHash = new Hash(new byte[] { 1, 2, 3 }),
+                KnownPackages = new PackageStatus[0],
+                KnownPeers = new DiscoveryPeerData[] {
+                    new DiscoveryPeerData()
+                    {
+                        ServiceEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.110"), 1234),
+                        PeerId = new Hash(new byte[] { 4,5,6})
+                    }
+                },
+                ServicePort = 5432,
+                PeerEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.109"), 5678)
+            };
+            
+            // serialize/deserialize
+            IMessageSerializer serializer = new ProtoBufMessageSerializer();
+            byte[] bytes = serializer.Serialize((object)message, typeof(StatusUpdateMessage));
+            var des = serializer.Deserialize<StatusUpdateMessage>(bytes);
+
+            // compare
+            Assert.NotNull(des);
+            Assert.Equal(message.ServicePort, des.ServicePort);
+            Assert.Equal(message.InstanceHash, des.InstanceHash);
+            Assert.Equal(message.PeerEndpoint, des.PeerEndpoint);
+            Assert.NotNull(des.KnownPeers);
+            Assert.Equal(message.KnownPeers, des.KnownPeers, DiscoveryPeerData.Comparer);
+        }
+    }
+}

@@ -9,6 +9,7 @@ using System.Net;
 using System.IO;
 using ShareCluster.Network.Messages;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace ShareCluster.Network
 {
@@ -59,6 +60,7 @@ namespace ShareCluster.Network
             while (!cancel.IsCancellationRequested)
             {
                 var rec = await client.ReceiveAsync().WithCancellation(cancel.Token);
+                Debug.Assert(rec.Buffer.Length > 0);
                 try
                 {
                     DiscoveryAnnounceMessage messageReq;

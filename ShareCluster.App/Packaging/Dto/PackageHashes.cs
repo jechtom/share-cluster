@@ -42,21 +42,21 @@ namespace ShareCluster.Packaging.Dto
         }
 
         [ProtoMember(1)]
-        public ClientVersion Version { get; }
+        public virtual ClientVersion Version { get; }
 
         [ProtoMember(2)]
-        public Hash PackageId { get; }
+        public virtual Hash PackageId { get; }
 
         [ProtoMember(3)]
-        public long PackageSize { get; }
+        public virtual long PackageSize { get; }
 
         [ProtoMember(4)]
-        public Hash[] PackageSegmentsHashes { get; }
+        public virtual Hash[] PackageSegmentsHashes { get; }
 
         [ProtoMember(5)]
-        public long SegmentLength { get; }
+        public virtual long SegmentLength { get; }
 
         [ProtoMember(6)]
-        public long DataFileLength { get; }
+        public virtual long DataFileLength { get; }
     }
 }

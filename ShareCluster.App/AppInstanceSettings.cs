@@ -1,4 +1,6 @@
-﻿namespace ShareCluster
+﻿using System;
+
+namespace ShareCluster
 {
     public class AppInstanceSettings
     {

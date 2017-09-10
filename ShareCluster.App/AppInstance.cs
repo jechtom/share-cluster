@@ -46,6 +46,7 @@ namespace ShareCluster
             isStarted = true;
 
             appInfo.LogStart();
+            appInfo.Validate();
 
             // configure services
             string urls = $"http://*:{appInfo.NetworkSettings.TcpServicePort}";

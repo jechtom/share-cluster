@@ -10,12 +10,25 @@ namespace ShareCluster.Network.Messages
     public class DiscoveryPeerData
     {
         [ProtoMember(1)]
-        public IPEndPoint ServiceEndpoint { get; set; }
+        public virtual IPEndPoint ServiceEndpoint { get; set; }
 
         [ProtoMember(2)]
-        public Hash PeerId { get; set; }
+        public virtual Hash PeerId { get; set; }
+        
+        public static IEqualityComparer<DiscoveryPeerData> Comparer { get; } = new ComparerClass();
+        private class ComparerClass : IEqualityComparer<DiscoveryPeerData>
+        {
+            public bool Equals(DiscoveryPeerData x, DiscoveryPeerData y)
+            {
+                if (!x.PeerId.Equals(y.PeerId)) return false;
+                if (!x.ServiceEndpoint.Equals(y.ServiceEndpoint)) return false;
+                return true;
+            }
 
-        [ProtoMember(3)]
-        public TimeSpan SinceLastActivity { get; set; }
+            public int GetHashCode(DiscoveryPeerData obj)
+            {
+                return obj.PeerId.GetHashCode();
+            }
+        }
     }
 }

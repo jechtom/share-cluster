@@ -9,18 +9,18 @@ namespace ShareCluster.Packaging.Dto
     public class PackageDownload : IPackageInfoDto
     {
         [ProtoMember(1)]
-        public ClientVersion Version { get; set; }
+        public virtual ClientVersion Version { get; set; }
 
         [ProtoMember(2)]
-        public Hash PackageId { get; set; }
+        public virtual Hash PackageId { get; set; }
 
         [ProtoMember(3)]
-        public bool IsDownloading { get; set; }
+        public virtual bool IsDownloading { get; set; }
 
         [ProtoMember(4)]
-        public long DownloadedBytes { get; set; }
+        public virtual long DownloadedBytes { get; set; }
 
         [ProtoMember(5)]
-        public byte[] SegmentsBitmap { get; set; }
+        public virtual byte[] SegmentsBitmap { get; set; }
     }
 }

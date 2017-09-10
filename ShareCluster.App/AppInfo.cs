@@ -29,7 +29,9 @@ namespace ShareCluster
                     }
             });
 
+            //to enable logging of messages: var serializer = new LoggingMessageSerializer(new ProtoBufMessageSerializer(), @"c:\todel\logs2\");
             var serializer = new ProtoBufMessageSerializer();
+
             var result = new AppInfo()
             {
                 DataRootPath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "data"),
@@ -47,6 +49,11 @@ namespace ShareCluster
             result.InstanceHash = new InstanceHash(result.Crypto);
 
             return result;
+        }
+
+        public void Validate()
+        {
+            NetworkSettings.Validate();
         }
 
         public void LogStart()
