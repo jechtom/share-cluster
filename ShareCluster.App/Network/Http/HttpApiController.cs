@@ -59,7 +59,7 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(request));
             }
             var address = RemoteIpAddress;
-            peersCluster.ProcessDiscoveryMessage(request, address);
+            peersCluster.ProcessStatusUpdateMessage(request, address);
             var response = peersCluster.CreateStatusUpdateMessage(new IPEndPoint(address, request.ServicePort));
             return response;
         }

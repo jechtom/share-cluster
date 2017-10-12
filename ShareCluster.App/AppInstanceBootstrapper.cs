@@ -42,7 +42,7 @@ namespace ShareCluster
         {
             if (settings.DownloadEverything)
             {
-                PackageRegistry.NewDiscoveredPackage += (package) =>
+                PackageRegistry.RemotePackageDiscovered += (package) =>
                 {
                     if (PackageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(package, out var task))
                     {

@@ -4,6 +4,7 @@ using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -31,6 +32,9 @@ namespace ShareCluster.Network
         private bool isStatusUpdateInProgress;
         private int uploadSlots;
 
+        private int updateStamp;
+        private Stopwatch updateStopwatch;
+
         public int UploadSlotsAvailable => uploadSlots;
 
         public PeersCluster(AppInfo appInfo, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry, PackageDownloadManager packageDownloadManager)
@@ -40,18 +44,20 @@ namespace ShareCluster.Network
             this.client = client ?? throw new ArgumentNullException(nameof(client));
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             this.packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
+            updateStamp = 1;
+            updateStopwatch = Stopwatch.StartNew();
             statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
             uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
             peerRegistry.PeersChanged += PeerRegistry_PeersChanged;
-            packageRegistry.NewLocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
+            packageRegistry.LocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
             packageRegistry.LocalPackageDeleted += PackageRegistry_LocalPackageDeleted;
             packageDownloadManager.DownloadStatusChange += PackageDownloadManager_DownloadStatusChange;
         }
 
         private void PackageRegistry_LocalPackageDeleted(LocalPackageInfo obj)
         {
-            PlanSendingClusterUpdate();
+            PlanSendingClusterUpdate(notifyAll: true);
         }
 
         private void PackageDownloadManager_DownloadStatusChange(DownloadStatusChange obj)
@@ -59,14 +65,14 @@ namespace ShareCluster.Network
             // download started? make sure other peers knows we know this package
             if (obj.HasStarted)
             {
-                PlanSendingClusterUpdate();
+                PlanSendingClusterUpdate(notifyAll: true);
             }
         }
 
         private void PackageRegistry_NewLocalPackageCreated(LocalPackageInfo obj)
         {
             // new local package created? announce it to peers
-            PlanSendingClusterUpdate();
+            PlanSendingClusterUpdate(notifyAll: true);
         }
 
         private void PeerRegistry_PeersChanged(IEnumerable<PeerInfoChange> peers)
@@ -74,17 +80,23 @@ namespace ShareCluster.Network
             // any new peers? send update to other peers
             if (peers.Any(p => p.IsAdded))
             {
-                PlanSendingClusterUpdate();
+                PlanSendingClusterUpdate(notifyAll: false);
             }
         }
 
         /// <summary>
         /// Schedules sending cluster update.
         /// </summary>
-        public void PlanSendingClusterUpdate()
+        public void PlanSendingClusterUpdate(bool notifyAll)
         {
             lock (clusterNodeLock)
             {
+                // notify all peers? then update stamp to invalidate all peers
+                if (notifyAll)
+                {
+                    updateStamp++;
+                }
+
                 if (isStatusUpdateScheduled) return; // already scheduled
                 isStatusUpdateScheduled = true;
 
@@ -176,11 +188,35 @@ namespace ShareCluster.Network
 
         private void SendStatusUpdateInternal()
         {
-            logger.LogTrace("Sending cluster update to all peers.");
+            int stamp = updateStamp;
+            TimeSpan time = updateStopwatch.Elapsed;
+            TimeSpan timeMaximum = time.Subtract(appInfo.NetworkSettings.PeerStatusUpdateStatusMaximumTimer);
+            TimeSpan timeFast = time.Subtract(appInfo.NetworkSettings.PeerStatusUpdateStatusFastTimer);
+
+            // get clients that should be updated 
+            var allRemotePeers = peerRegistry
+                .ImmutablePeers
+                .Where(p => !p.IsLoopback)
+                .Where(p => 
+                    // maximum time to update expired
+                    p.Status.LastKnownStateUpdateAttemptTime > timeMaximum
+                    // data has changed and minimum time to update has expired
+                    || (p.Status.LastKnownStateUpdateAttemptTime > timeFast && p.Status.LastKnownStateUdpateStamp < stamp)
+                );
+
+            // recap
+            int allRemotePeersCount = allRemotePeers.Count();
+            if(allRemotePeersCount == 0)
+            {
+                logger.LogTrace($"Sending cluster update skip - no peers.");
+                return;
+            }
+            logger.LogTrace($"Sending cluster update to all {allRemotePeersCount} peers.");
+
+            // run update
             Task.Run(() =>
             {
-                peerRegistry.ImmutablePeers.AsParallel()
-                    .Where(p => !p.IsLoopback)
+                allRemotePeers.AsParallel()
                     .ForAll(p =>
                     {
                         StatusUpdateMessage response;
@@ -192,11 +228,11 @@ namespace ShareCluster.Network
                         catch (Exception e)
                         {
                             logger.LogWarning("Communication failed with peer {0}: {1}", p.ServiceEndPoint, e.Message);
-                            p.ClientHasFailed();
+                            OnPeerStatusUpdateFail(p);
                             return;
                         }
-                        logger.LogTrace("Getting status from peer {0}",p.ServiceEndPoint);
-                        ProcessDiscoveryMessage(response, p.ServiceEndPoint.Address);
+                        logger.LogTrace("Got status update from {0}", p.ServiceEndPoint);
+                        ProcessStatusUpdateMessage(response, p.ServiceEndPoint.Address);
                     });
             }).ContinueWith(t =>
             {
@@ -207,7 +243,7 @@ namespace ShareCluster.Network
             });
         }
 
-        public void ProcessDiscoveryMessage(StatusUpdateMessage message, IPAddress address)
+        public void ProcessStatusUpdateMessage(StatusUpdateMessage message, IPAddress address)
         {
             // is this request from myself?
             bool isLoopback = appInfo.InstanceHash.Hash.Equals(message.InstanceHash);
@@ -219,22 +255,15 @@ namespace ShareCluster.Network
                 .Select(kp => new PeerInfo(kp.ServiceEndpoint, isOtherPeerDiscovery: true)) // peers known to peer we're communicating with
                 .Concat(new[] { new PeerInfo(endPoint, isDirectDiscovery: true, isLoopback: isLoopback) }); // direct peer we're communicating with
 
-            // if one of known peers is me, mark as loopback
-            discoveredPeers = discoveredPeers.Select(discoveredPeer =>
-            {
-                if (discoveredPeer.ServiceEndPoint.Equals(message.PeerEndpoint))
-                {
-                    discoveredPeer.IsLoopback = true;
-                    discoveredPeer.IsDirectDiscovery = true;
-                }
-                return discoveredPeer;
-            });
-
-            peerRegistry.RegisterPeers(discoveredPeers);
+            peerRegistry.UpdatePeers(discoveredPeers);
             if(!peerRegistry.TryGetPeer(endPoint, out PeerInfo peer))
             {
                 throw new InvalidOperationException($"Can't find peer in internal registry: {endPoint}");
             }
+
+            // don't process requests from myself
+            if (peer.IsLoopback) return;
+
             // update known packages if different
             peer.ReplaceKnownPackages(message.KnownPackages ?? Array.Empty<PackageStatus>());
 
@@ -244,8 +273,44 @@ namespace ShareCluster.Network
                 packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp.Meta)));
             }
 
-            // mark as success peer
-            peer.ClientHasSuccess();
+            // mark peer have new information
+            OnPeerStatusUpdateSuccess(peer);
+        }
+
+        private void OnPeerStatusUpdateSuccess(PeerInfo peer)
+        {
+            TimeSpan time = updateStopwatch.Elapsed;
+            peer.Status.LastKnownStateUpdateAttemptTime = time;
+            peer.Status.LastKnownStateUdpateStamp = updateStamp;
+            peer.Status.FailsSinceLastSuccess = 0;
+        }
+
+        private void OnPeerStatusUpdateFail(PeerInfo peer)
+        {
+            TimeSpan time = updateStopwatch.Elapsed;
+            peer.Status.LastKnownStateUpdateAttemptTime = time;
+            int fails = peer.Status.FailsSinceLastSuccess++;
+            if (fails == 0)
+            {
+                peer.Status.FirstFailedCommunicationTime = time;
+            }
+
+            if(
+                peer.Status.FailsSinceLastSuccess >= appInfo.NetworkSettings.DisablePeerAfterFails
+                && peer.Status.FirstFailedCommunicationTime.Add(appInfo.NetworkSettings.DisablePeerAfterTime) <= time
+            )
+            {
+                // disable peer
+                DisableFailedPeer(peer);
+            }
+        }
+
+        private void DisableFailedPeer(PeerInfo peer)
+        {
+            if (!peer.Status.IsEnabled) return; // disabled already
+
+            peer.Status.DisabledSince = updateStopwatch.Elapsed;
+            // TODO notify rest of system
         }
 
         public StatusUpdateMessage CreateStatusUpdateMessage(IPEndPoint endpoint)
@@ -268,7 +333,7 @@ namespace ShareCluster.Network
         {
             logger.LogInformation($"Adding manual peer {endpoint}");
             var status = client.GetStatus(endpoint, CreateStatusUpdateMessage(endpoint));
-            ProcessDiscoveryMessage(status, endpoint.Address);
+            ProcessStatusUpdateMessage(status, endpoint.Address);
         }
     }
 }

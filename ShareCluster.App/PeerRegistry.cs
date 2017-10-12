@@ -34,9 +34,7 @@ namespace ShareCluster
             logger = app.LoggerFactory.CreateLogger<PeerRegistry>();
         }
         
-        public void RegisterPeer(PeerInfo discoveredPeer) => RegisterPeers(new[] { discoveredPeer });
-
-        public void RegisterPeers(IEnumerable<PeerInfo> discoveredPeers)
+        public void UpdatePeers(IEnumerable<PeerInfo> discoveredPeers)
         {
             List<PeerInfoChange> changedPeers = null;
 
@@ -73,7 +71,7 @@ namespace ShareCluster
                         // update source of discovery
                         peer.IsDirectDiscovery |= newPeer.IsDirectDiscovery;
                         peer.IsLoopback |= newPeer.IsLoopback;
-                        peer.IsPermanent |= newPeer.IsPermanent;
+                        peer.IsManualDiscovery |= newPeer.IsManualDiscovery;
                         peer.IsOtherPeerDiscovery |= newPeer.IsOtherPeerDiscovery;
                     }
 

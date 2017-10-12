@@ -175,7 +175,7 @@ namespace ShareCluster.Network
             PeerOverallStatus[] peersToUpdate;
             var elapsed = stopwatch.Elapsed;
             var elapsedThresholdRegular = elapsed.Subtract(settings.PeerUpdateStatusTimer);
-            var elapsedThresholdFast = elapsed.Subtract(settings.PeerUpdateStatusFastTimer);
+            var elapsedThresholdFast = elapsed.Subtract(settings.PeerStatusUpdateStatusFastTimer);
 
             // prepare list of peers and list of packages we're interested in
             lock (syncLock)
