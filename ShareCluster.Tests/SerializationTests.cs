@@ -72,8 +72,7 @@ namespace ShareCluster.Tests
                 KnownPeers = new DiscoveryPeerData[] {
                     new DiscoveryPeerData()
                     {
-                        ServiceEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.110"), 1234),
-                        PeerId = new Hash(new byte[] { 4,5,6})
+                        ServiceEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.110"), 1234)
                     }
                 },
                 ServicePort = 5432,

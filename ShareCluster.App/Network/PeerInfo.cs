@@ -10,16 +10,18 @@ using System.Threading;
 
 namespace ShareCluster.Network
 {
+    /// <summary>
+    /// Represents information known about peer endpoint.
+    /// </summary>
     public class PeerInfo : IEquatable<PeerInfo>
     {
         private int fails;
         private int successes;
         private readonly object syncLock = new object();
 
-        public PeerInfo(Hash peerId, IPEndPoint endPoint, bool isPermanent = false, bool isDirectDiscovery = false, bool isOtherPeerDiscovery = false, bool isLoopback = false)
+        public PeerInfo(IPEndPoint endPoint, bool isPermanent = false, bool isDirectDiscovery = false, bool isOtherPeerDiscovery = false, bool isLoopback = false)
         {
             IsEnabled = true;
-            PeerId = peerId;
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
             IsPermanent = isPermanent;
             IsDirectDiscovery = isDirectDiscovery;
@@ -31,23 +33,7 @@ namespace ShareCluster.Network
         }
 
         // identification
-        public Hash PeerId { get; }
-        public IPEndPoint ServiceEndPoint { get; private set; }
-
-        public void UpdateEndPoint(IPEndPoint endpoint)
-        {
-            if (endpoint == null)
-            {
-                throw new ArgumentNullException(nameof(endpoint));
-            }
-
-            if(endpoint.Port == 0)
-            {
-                throw new ArgumentException("Port cannot be zero.", nameof(endpoint));
-            }
-
-            ServiceEndPoint = endpoint;
-        }
+        public IPEndPoint ServiceEndPoint { get; set; }
 
         // how it was discovered?
         public bool IsLoopback { get; set; }
@@ -116,19 +102,19 @@ namespace ShareCluster.Network
 
         public override int GetHashCode()
         {
-            return PeerId.GetHashCode();
+            return ServiceEndPoint.GetHashCode();
         }
 
         public override bool Equals(object obj)
         {
             if (obj == null) return false;
-            return PeerId.Equals(((PeerInfo)obj).PeerId);
+            return ServiceEndPoint.Equals(((PeerInfo)obj).ServiceEndPoint);
         }
 
         public bool Equals(PeerInfo other)
         {
             if (other == null) return false;
-            return PeerId.Equals(other.PeerId);
+            return ServiceEndPoint.Equals(other.ServiceEndPoint);
         }
     }
 }

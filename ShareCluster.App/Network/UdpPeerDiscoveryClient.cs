@@ -55,7 +55,8 @@ namespace ShareCluster.Network
                         response = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(responseData.Buffer);
                         var endpoint = new IPEndPoint(responseData.RemoteEndPoint.Address, response.ServicePort);
                         if(!compatibilityChecker.IsCompatibleWith(endpoint, response.Version)) continue;
-                        registry.RegisterPeer(new PeerInfo(response.PeerId, endpoint, isDirectDiscovery: true));
+                        bool isLoopback = response.PeerId.Equals(announce.PeerId);
+                        registry.RegisterPeer(new PeerInfo(endpoint, isDirectDiscovery: true, isLoopback: isLoopback));
                     }
                     catch(OperationCanceledException)
                     {

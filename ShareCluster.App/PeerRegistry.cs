@@ -19,7 +19,7 @@ namespace ShareCluster
     {
         private readonly AppInfo app;
         private readonly ILogger<PeerRegistry> logger;
-        private Dictionary<Hash, PeerInfo> peers;
+        private Dictionary<IPEndPoint, PeerInfo> peers;
         private readonly object peersLock = new object();
 
         private DiscoveryPeerData[] immutablePeersDiscoveryDataArray;
@@ -28,7 +28,7 @@ namespace ShareCluster
         public PeerRegistry(AppInfo app)
         {
             this.app = app ?? throw new ArgumentNullException(nameof(app));
-            peers = new Dictionary<Hash, PeerInfo>();
+            peers = new Dictionary<IPEndPoint, PeerInfo>();
             immutablePeersDiscoveryDataArray = new DiscoveryPeerData[0];
             immutablePeersArray = new PeerInfo[0];
             logger = app.LoggerFactory.CreateLogger<PeerRegistry>();
@@ -49,11 +49,11 @@ namespace ShareCluster
                     bool notifyAsEndpointChanged = false;
 
                     // exists in list?
-                    bool exists = peers.TryGetValue(newPeer.PeerId, out PeerInfo peer);
+                    bool exists = peers.TryGetValue(newPeer.ServiceEndPoint, out PeerInfo peer);
                     if (!exists)
                     {
-                        peers.Add(newPeer.PeerId, (peer = newPeer));
-                        logger.LogTrace("Found new peer {0:s} at {1}. Flags: {2}", newPeer.PeerId, newPeer.ServiceEndPoint, newPeer.StatusString);
+                        peers.Add(newPeer.ServiceEndPoint, (peer = newPeer));
+                        logger.LogTrace("Found new peer {0}. Flags: {1}", newPeer.ServiceEndPoint, newPeer.ServiceEndPoint, newPeer.StatusString);
                         immutableListNeedsRefresh = true;
                         notifyAsAdded = true;
                         peer.KnownPackageChanged += (info) => PeersChanged?.Invoke(new PeerInfoChange[] { new PeerInfoChange(info, hasKnownPackagesChanged: true) });
@@ -61,18 +61,10 @@ namespace ShareCluster
                     }
                     else
                     {
-                        // update endpoint if current one is not proven working
-                        if (peer.SuccessesSinceLastFail == 0 && !peer.ServiceEndPoint.Equals(newPeer.ServiceEndPoint))
-                        {
-                            logger.LogTrace("Peer {0:s} has changed endpoint from {1} to {2}.", peer.PeerId, peer.ServiceEndPoint, newPeer.ServiceEndPoint);
-                            peer.UpdateEndPoint(newPeer.ServiceEndPoint);
-                            notifyAsEndpointChanged = true; // announce new peer as endpoint has changed
-                        }
-
                         // reenable disabled endpoint
                         if (!peer.IsEnabled)
                         {
-                            logger.LogTrace("Peer {0:s} at {1} has been reenabled.", peer.PeerId, peer.ServiceEndPoint);
+                            logger.LogTrace("Peer {0} has been reenabled.", peer.ServiceEndPoint, peer.ServiceEndPoint);
                             immutableListNeedsRefresh = true;
                             notifyAsAdded = true; // enabling peer == adding
                             peer.IsEnabled = true;
@@ -109,8 +101,7 @@ namespace ShareCluster
             immutablePeersDiscoveryDataArray = peers
                 .Where(p => p.Value.IsEnabled && p.Value.SuccessesSinceLastFail > 0)
                 .Select(p => new DiscoveryPeerData() {
-                    ServiceEndpoint = p.Value.ServiceEndPoint,
-                    PeerId = p.Key
+                    ServiceEndpoint = p.Value.ServiceEndPoint
                 })
                 .ToArray();
 
@@ -136,7 +127,7 @@ namespace ShareCluster
             {
                 if (disablePeer)
                 {
-                    logger.LogTrace("Peer {0:s} at {1} has failed and is now disabled.", peer.PeerId, peer.ServiceEndPoint);
+                    logger.LogTrace("Peer {0} has failed and is now disabled.", peer.ServiceEndPoint);
                     peer.IsEnabled = false;
                     changeArgs = new[] { new PeerInfoChange(peer, isRemoved: true) };
                 }
@@ -149,11 +140,16 @@ namespace ShareCluster
             if (changeArgs != null) PeersChanged?.Invoke(changeArgs);
         }
 
-        public bool TryGetPeer(Hash peerId, out PeerInfo peerInfo)
+        public bool TryGetPeer(IPEndPoint endpoint, out PeerInfo peerInfo)
         {
-            lock(peersLock)
+            if (endpoint == null)
             {
-                bool result = peers.TryGetValue(peerId, out var item);
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            lock (peersLock)
+            {
+                bool result = peers.TryGetValue(endpoint, out var item);
                 if(!result)
                 {
                     peerInfo = null;

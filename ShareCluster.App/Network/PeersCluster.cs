@@ -191,12 +191,12 @@ namespace ShareCluster.Network
                         }
                         catch (Exception e)
                         {
-                            logger.LogWarning("Communication failed with peer {0} at {1:s}: {2}", p.ServiceEndPoint, p.PeerId, e.Message);
+                            logger.LogWarning("Communication failed with peer {0}: {1}", p.ServiceEndPoint, e.Message);
                             p.ClientHasFailed();
                             return;
                         }
-                        logger.LogTrace("Getting status from peer {0:s} at {1}", p.PeerId, p.ServiceEndPoint);
-                        ProcessDiscoveryMessage(response, p.ServiceEndPoint.Address, p.PeerId);
+                        logger.LogTrace("Getting status from peer {0}",p.ServiceEndPoint);
+                        ProcessDiscoveryMessage(response, p.ServiceEndPoint.Address);
                     });
             }).ContinueWith(t =>
             {
@@ -207,7 +207,7 @@ namespace ShareCluster.Network
             });
         }
 
-        public void ProcessDiscoveryMessage(StatusUpdateMessage message, IPAddress address, Hash peerId)
+        public void ProcessDiscoveryMessage(StatusUpdateMessage message, IPAddress address)
         {
             // is this request from myself?
             bool isLoopback = appInfo.InstanceHash.Hash.Equals(message.InstanceHash);
@@ -216,8 +216,8 @@ namespace ShareCluster.Network
 
             // register peers
             IEnumerable<PeerInfo> discoveredPeers = (message.KnownPeers ?? new DiscoveryPeerData[0])
-                .Select(kp => new PeerInfo(kp.PeerId, kp.ServiceEndpoint, isOtherPeerDiscovery: true)) // peers known to peer we're communicating with
-                .Concat(new[] { new PeerInfo(peerId, endPoint, isDirectDiscovery: true, isLoopback: isLoopback) }); // direct peer we're communicating with
+                .Select(kp => new PeerInfo(kp.ServiceEndpoint, isOtherPeerDiscovery: true)) // peers known to peer we're communicating with
+                .Concat(new[] { new PeerInfo(endPoint, isDirectDiscovery: true, isLoopback: isLoopback) }); // direct peer we're communicating with
 
             // if one of known peers is me, mark as loopback
             discoveredPeers = discoveredPeers.Select(discoveredPeer =>
@@ -231,9 +231,9 @@ namespace ShareCluster.Network
             });
 
             peerRegistry.RegisterPeers(discoveredPeers);
-            if(!peerRegistry.TryGetPeer(peerId, out PeerInfo peer))
+            if(!peerRegistry.TryGetPeer(endPoint, out PeerInfo peer))
             {
-                throw new InvalidOperationException($"Can't find peer in internal registry: {peerId} {address}");
+                throw new InvalidOperationException($"Can't find peer in internal registry: {endPoint}");
             }
             // update known packages if different
             peer.ReplaceKnownPackages(message.KnownPackages ?? Array.Empty<PackageStatus>());
@@ -268,7 +268,7 @@ namespace ShareCluster.Network
         {
             logger.LogInformation($"Adding manual peer {endpoint}");
             var status = client.GetStatus(endpoint, CreateStatusUpdateMessage(endpoint));
-            ProcessDiscoveryMessage(status, endpoint.Address, status.InstanceHash);
+            ProcessDiscoveryMessage(status, endpoint.Address);
         }
     }
 }

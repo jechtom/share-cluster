@@ -11,7 +11,7 @@ namespace ShareCluster.Network
         public UInt16 UdpAnnouncePort { get; set; } = 13977;
         public UInt16 TcpServicePort { get; set; } = 13978;
         public TimeSpan UdpDiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
-        public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(1);
+        public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(5);
 
         /// <summary>
         /// How many communication fails there have to be to remove from peer list.
