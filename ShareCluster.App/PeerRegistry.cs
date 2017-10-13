@@ -97,7 +97,7 @@ namespace ShareCluster
             // do not provide in discovery loopback peer - they already know who they communicating with
             immutablePeersDiscoveryDataArray = peers
                 .Where(p => p.Value.Status.IsEnabled && !p.Value.IsLoopback)
-                .Select(p => new DiscoveryPeerData(p.Value))
+                .Select(p => new DiscoveryPeerData().WithPeer(p.Value))
                 .ToArray();
 
             immutablePeersArray = peers

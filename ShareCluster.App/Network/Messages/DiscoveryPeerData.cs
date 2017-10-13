@@ -9,7 +9,10 @@ namespace ShareCluster.Network.Messages
     [ProtoContract]
     public class DiscoveryPeerData
     {
+        [ProtoIgnore]
         PeerInfo peer;
+
+        [ProtoIgnore]
         long lastSuccessCommunication;
 
         public DiscoveryPeerData() { }
@@ -17,9 +20,11 @@ namespace ShareCluster.Network.Messages
         /// <summary>
         /// Creates readonly instance used to provide live data.
         /// </summary>
-        public DiscoveryPeerData(PeerInfo peer)
+        public DiscoveryPeerData WithPeer(PeerInfo peer)
         {
             this.peer = peer ?? throw new ArgumentNullException(nameof(peer));
+            ServiceEndpoint = peer.ServiceEndPoint;
+            return this;
         }
 
         [ProtoMember(1)]
