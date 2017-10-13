@@ -55,8 +55,10 @@ namespace ShareCluster.Network
                         response = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(responseData.Buffer);
                         var endpoint = new IPEndPoint(responseData.RemoteEndPoint.Address, response.ServicePort);
                         if(!compatibilityChecker.IsCompatibleWith(endpoint, response.Version)) continue;
+                        PeerDiscoveryMode mode = PeerDiscoveryMode.UdpDiscovery;
                         bool isLoopback = response.PeerId.Equals(announce.PeerId);
-                        registry.UpdatePeers(new PeerUpdateInfo[] { new PeerUpdateInfo(endpoint, PeerDiscoveryMode.UdpDiscovery, TimeSpan.Zero) });
+                        if (isLoopback) { mode |= PeerDiscoveryMode.Loopback; }
+                        registry.UpdatePeers(new PeerUpdateInfo[] { new PeerUpdateInfo(endpoint, mode, TimeSpan.Zero) });
                     }
                     catch(OperationCanceledException)
                     {
