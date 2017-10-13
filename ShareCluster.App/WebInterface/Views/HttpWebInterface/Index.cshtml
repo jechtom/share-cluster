@@ -123,7 +123,6 @@
         <table class="table table-bordered table-hover table-responsive">
             <thead>
                 <tr>
-                    <th>Id</th>
                     <th>Endpoint</th>
                     <th>Status</th>
                 </tr>
@@ -132,25 +131,9 @@
                 @foreach (var peer in Model.Peers)
                 {
                     <tr>
-                        <td><tt>@($"{peer.PeerId:s}")</tt></td>
                         <td>@peer.ServiceEndPoint</td>
                         <td class="@(peer.IsDirectDiscovery ? "success" : "")">
-                            @if (!peer.IsDirectDiscovery)
-                            { 
-                                <span class="glyphicon glyphicon-hourglass" title="No direct connection"></span>
-                            }
-                            else
-                            {
-                                <span class="glyphicon glyphicon-ok" title="Direct connection"></span>
-                            }
-                            @if (peer.IsOtherPeerDiscovery)
-                            {
-                                <span class="glyphicon glyphicon-send" title="Other peer(s) knows this"></span>
-                            }
-                            @if (peer.IsLoopback)
-                            {
-                                <span class="glyphicon glyphicon-home" title="Loopback connection"></span>
-                            }
+                            @peer.StatusString
                         </td>
                     </tr>
                 }
