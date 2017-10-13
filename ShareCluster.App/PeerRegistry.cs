@@ -34,7 +34,7 @@ namespace ShareCluster
             logger = app.LoggerFactory.CreateLogger<PeerRegistry>();
         }
         
-        public void UpdatePeers(IEnumerable<PeerInfo> discoveredPeers)
+        public void UpdatePeers(IEnumerable<PeerUpdateInfo> discoveredPeers)
         {
             List<PeerInfoChange> changedPeers = null;
 
@@ -44,41 +44,40 @@ namespace ShareCluster
                 foreach (var newPeer in discoveredPeers)
                 {
                     bool notifyAsAdded = false;
-                    bool notifyAsEndpointChanged = false;
 
                     // exists in list?
-                    bool exists = peers.TryGetValue(newPeer.ServiceEndPoint, out PeerInfo peer);
+                    bool exists = peers.TryGetValue(newPeer.ServiceEndpoint, out PeerInfo peer);
+
                     if (!exists)
                     {
-                        peers.Add(newPeer.ServiceEndPoint, (peer = newPeer));
-                        logger.LogTrace("Found new peer {0}. Flags: {1}", newPeer.ServiceEndPoint, newPeer.ServiceEndPoint, newPeer.StatusString);
+                        // new peer registration
+                        peer = new PeerInfo(new PeerClusterStatus(app.Clock, app.NetworkSettings), newPeer.ServiceEndpoint, newPeer.DiscoveryMode);
+                        peers.Add(newPeer.ServiceEndpoint, peer);
+                        logger.LogTrace("Found new peer {0}. Flags: {1}", peer.ServiceEndPoint, peer.StatusString);
                         immutableListNeedsRefresh = true;
                         notifyAsAdded = true;
                         peer.KnownPackageChanged += (info) => PeersChanged?.Invoke(new PeerInfoChange[] { new PeerInfoChange(info, hasKnownPackagesChanged: true) });
-                        newPeer.ClientSuccessChanged += Peer_ClientSuccessChanged;
+                        peer.Status.IsEnabledChanged += () => Peer_ChangedIsEnabled(peer);
                     }
                     else
                     {
-                        // reenable disabled endpoint
-                        if (!peer.IsEnabled)
+                        // is there peer marked with new success later than our last communication fail - reenable
+                        if (!peer.Status.IsEnabled && peer.Status.LastFailedCommunication < newPeer.LastSuccessCommunication)
                         {
+                            // existing peer but disabled - reenable
                             logger.LogTrace("Peer {0} has been reenabled.", peer.ServiceEndPoint, peer.ServiceEndPoint);
                             immutableListNeedsRefresh = true;
-                            notifyAsAdded = true; // enabling peer == adding
-                            peer.IsEnabled = true;
+                            peer.Status.Reenable();
                         }
 
                         // update source of discovery
-                        peer.IsDirectDiscovery |= newPeer.IsDirectDiscovery;
-                        peer.IsLoopback |= newPeer.IsLoopback;
-                        peer.IsManualDiscovery |= newPeer.IsManualDiscovery;
-                        peer.IsOtherPeerDiscovery |= newPeer.IsOtherPeerDiscovery;
+                        peer.DiscoveryMode |= newPeer.DiscoveryMode;
                     }
 
                     // signal updated peer
-                    if (notifyAsAdded | notifyAsEndpointChanged)
+                    if (notifyAsAdded)
                     {
-                        var changedPeer = new PeerInfoChange(peer, isAdded: notifyAsAdded, hasEndPointHasChanged: notifyAsEndpointChanged);
+                        var changedPeer = new PeerInfoChange(peer, isAdded: notifyAsAdded);
                         (changedPeers ?? (changedPeers = new List<PeerInfoChange>())).Add(changedPeer);
                     }
                 }
@@ -95,40 +94,30 @@ namespace ShareCluster
 
         private void OnPeersListChanged()
         {
-            // don't provide peers we don't have confirmed for discovery - there would be risk of poisoning with already inactive peers
+            // do not provide in discovery loopback peer - they already know who they communicating with
             immutablePeersDiscoveryDataArray = peers
-                .Where(p => p.Value.IsEnabled && p.Value.SuccessesSinceLastFail > 0)
-                .Select(p => new DiscoveryPeerData() {
-                    ServiceEndpoint = p.Value.ServiceEndPoint
-                })
+                .Where(p => p.Value.Status.IsEnabled && !p.Value.IsLoopback)
+                .Select(p => new DiscoveryPeerData(p.Value))
                 .ToArray();
 
             immutablePeersArray = peers
-                .Where(p => p.Value.IsEnabled)
+                .Where(p => p.Value.Status.IsEnabled)
                 .Select(pv => pv.Value)
                 .ToArray();
         }
         
-        private void Peer_ClientSuccessChanged(PeerInfo peer, (bool firstSuccess, bool firstFail) arg2)
+        private void Peer_ChangedIsEnabled(PeerInfo peer)
         {
             // disable peer if inactive
-            bool disablePeer = peer.FailsSinceLastSuccess >= app.NetworkSettings.DisablePeerAfterFails;
-
-            // if peer will be disabled or first fail or success - these can remove/return peer from immutable arrays
-            bool updateLists = disablePeer || arg2.firstFail || arg2.firstSuccess;
-
-            if (!updateLists) return;
-
             PeerInfoChange[] changeArgs = null;
 
             lock (peersLock)
             {
-                if (disablePeer)
-                {
-                    logger.LogTrace("Peer {0} has failed and is now disabled.", peer.ServiceEndPoint);
-                    peer.IsEnabled = false;
-                    changeArgs = new[] { new PeerInfoChange(peer, isRemoved: true) };
-                }
+                bool newStatus = peer.Status.IsEnabled;
+
+                logger.LogTrace("Peer {0} is now {1}", peer.ServiceEndPoint, newStatus ? "enabled" : "disabled");
+
+                changeArgs = new[] { new PeerInfoChange(peer, isRemoved: !newStatus, isAdded: newStatus) };
                 
                 // update immutable
                 OnPeersListChanged();

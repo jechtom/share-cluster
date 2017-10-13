@@ -97,7 +97,7 @@ namespace ShareCluster.Packaging
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (var controller = new CreatePackageDataStreamController(app.Version, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
+            using (var controller = new CreatePackageDataStreamController(app.PackageVersion, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
             {
                 using (var packageStream = new PackageDataStream(app.LoggerFactory, controller) { Measure = writeMeasure })
                 {
@@ -114,7 +114,7 @@ namespace ShareCluster.Packaging
 
             // store download status
             PackageSequenceInfo packageSequence = packageHashes.CreatePackageSequence();
-            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(app.Version, packageHashes.PackageId, packageSequence);
+            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(app.PackageVersion, packageHashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
             // store metadata
@@ -123,7 +123,7 @@ namespace ShareCluster.Packaging
                 Created = DateTimeOffset.Now,
                 Name = name,
                 PackageSize = packageHashes.PackageSize,
-                Version = app.Version,
+                Version = app.PackageVersion,
                 PackageId = packageHashes.PackageId
             };
             UpdateMetadata(metadata, directoryPath: buildDirectory.FullName);
@@ -239,7 +239,7 @@ namespace ShareCluster.Packaging
                 throw new InvalidOperationException("Local package hash mismatch.");
             }
 
-            app.CompatibilityChecker.ThrowIfNotCompatibleWith($"{filePath}", data.Version);
+            app.CompatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, $"{filePath}", data.Version);
 
             return data;
         }
@@ -275,7 +275,7 @@ namespace ShareCluster.Packaging
 
             // store data
             var packageSequence = hashes.CreatePackageSequence();
-            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.Version, hashes.PackageId, packageSequence);
+            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.PackageVersion, hashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);
             UpdateMetadata(metadata);

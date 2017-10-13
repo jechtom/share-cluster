@@ -174,8 +174,8 @@ namespace ShareCluster.Network
             PackageStatusRequest requestMessage;
             PeerOverallStatus[] peersToUpdate;
             var elapsed = stopwatch.Elapsed;
-            var elapsedThresholdRegular = elapsed.Subtract(settings.PeerUpdateStatusTimer);
-            var elapsedThresholdFast = elapsed.Subtract(settings.PeerStatusUpdateStatusFastTimer);
+            var elapsedThresholdRegular = elapsed.Subtract(settings.PeerPackageUpdateStatusMaximumTimer);
+            var elapsedThresholdFast = elapsed.Subtract(settings.PeerPackageUpdateStatusFastTimer);
 
             // prepare list of peers and list of packages we're interested in
             lock (syncLock)
@@ -271,12 +271,12 @@ namespace ShareCluster.Network
             {
                 // send request
                 statusResult = await client.GetPackageStatusAsync(peer.PeerInfo.ServiceEndPoint, requestMessage);
-                peer.PeerInfo.ClientHasSuccess();
+                peer.PeerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null);
                 success = true;
             }
             catch (Exception e)
             {
-                peer.PeerInfo.ClientHasFailed();
+                peer.PeerInfo.Status.MarkStatusUpdateFail();
                 logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
             }
             return (peer: peer, result: statusResult, success: success);
@@ -426,7 +426,7 @@ namespace ShareCluster.Network
                 catch(Exception e)
                 {
                     logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.ServiceEndPoint, packageInfo, e.Message);
-                    peer.PeerInfo.ClientHasFailed();
+                    peer.PeerInfo.Status.MarkStatusUpdateFail();
                 }
 
                 logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);

@@ -19,14 +19,11 @@ namespace ShareCluster.Network
         private int successes;
         private readonly object syncLock = new object();
 
-        public PeerInfo(IPEndPoint endPoint, bool isManualDiscovery = false, bool isDirectDiscovery = false, bool isOtherPeerDiscovery = false, bool isLoopback = false)
+        public PeerInfo(PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerDiscoveryMode discoveryMode)
         {
-            Status = new PeerClusterStatus();
+            Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
-            IsManualDiscovery = isManualDiscovery;
-            IsDirectDiscovery = isDirectDiscovery;
-            IsOtherPeerDiscovery = isOtherPeerDiscovery;
-            IsLoopback = isLoopback;
+            DiscoveryMode = discoveryMode;
             KnownPackages = new Dictionary<Hash, PackageStatus>(0);
 
             if (endPoint.Port == 0) throw new ArgumentException("Zero port is not allowed.", nameof(endPoint));
@@ -36,10 +33,13 @@ namespace ShareCluster.Network
         public IPEndPoint ServiceEndPoint { get; set; }
 
         // how it was discovered?
-        public bool IsLoopback { get; set; }
-        public bool IsDirectDiscovery { get; set; }
-        public bool IsOtherPeerDiscovery { get; set; }
-        public bool IsManualDiscovery { get; set; }
+        public bool IsLoopback => (DiscoveryMode & PeerDiscoveryMode.Loopback) > 0;
+        public bool IsDirectDiscovery => (DiscoveryMode & PeerDiscoveryMode.DirectDiscovery) > 0;
+        public bool IsOtherPeerDiscovery => (DiscoveryMode & PeerDiscoveryMode.OtherPeerDiscovery) > 0;
+        public bool IsManualDiscovery => (DiscoveryMode & PeerDiscoveryMode.ManualDiscovery) > 0;
+        public bool IsUdpDiscovery => (DiscoveryMode & PeerDiscoveryMode.UdpDiscovery) > 0;
+
+        public PeerDiscoveryMode DiscoveryMode { get; set; }
 
         // known packages
         public IDictionary<Hash, PackageStatus> KnownPackages { get; private set; }
@@ -50,10 +50,9 @@ namespace ShareCluster.Network
                         IsLoopback ? "Loopback" : null,
                         IsDirectDiscovery ? "Direct" : null,
                         IsOtherPeerDiscovery ? "OtherPeer" : null,
-                        IsManualDiscovery ? "Manual" : null
+                        IsManualDiscovery ? "Manual" : null,
+                        IsUdpDiscovery ? "Udp" : null
                     }.Where(s => s != null));
-
-        public event Action<PeerInfo, (bool firstSuccess, bool firstFail)> ClientSuccessChanged;
 
         public event Action<PeerInfo> KnownPackageChanged;
 

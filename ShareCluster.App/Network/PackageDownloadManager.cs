@@ -131,13 +131,13 @@ namespace ShareCluster.Network
                         try
                         {
                             response = client.GetPackage(peer.ServiceEndPoint, new PackageRequest(packageToDownload.PackageId));
-                            peer.ClientHasSuccess(); // responded = working
+                            peer.Status.MarkStatusUpdateSuccess(statusVersion: null); // responded = working
                             if (response.Found) break; // found
                             peer.RemoveKnownPackage(packageToDownload.PackageId); // don't have it anymore
                         }
                         catch (Exception e)
                         {
-                            peer.ClientHasFailed(); // mark as failed - this will remove peer from peer list if hit fail limit
+                            peer.Status.MarkStatusUpdateFail(); // mark as failed - this will remove peer from peer list if hit fail limit
                             logger.LogTrace(e, $"Error contacting client {peer.ServiceEndPoint}");
                         }
                     }
@@ -559,13 +559,13 @@ namespace ShareCluster.Network
                 catch (HashMismatchException e)
                 {
                     parent.logger.LogError($"Client {peer.ServiceEndPoint} failed to provide valid data segment: {e.Message}");
-                    peer.ClientHasFailed();
+                    peer.Status.MarkStatusUpdateFail();
                     return result;
                 }
                 catch (Exception e)
                 {
                     parent.logger.LogError(e, $"Failed to download data segment from {peer.ServiceEndPoint}.");
-                    peer.ClientHasFailed();
+                    peer.Status.MarkStatusUpdateFail();
                     return result;
                 }
 
@@ -595,7 +595,7 @@ namespace ShareCluster.Network
                 if (totalSizeOfParts != bytes)
                 {
                     parent.logger.LogWarning($"Stream ended too soon from {peer.ServiceEndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.");
-                    peer.ClientHasFailed();
+                    peer.Status.MarkStatusUpdateFail();
                     return result;
                 }
 

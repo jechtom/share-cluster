@@ -9,8 +9,32 @@ namespace ShareCluster.Network.Messages
     [ProtoContract]
     public class DiscoveryPeerData
     {
+        PeerInfo peer;
+        long lastSuccessCommunication;
+
+        public DiscoveryPeerData() { }
+
+        /// <summary>
+        /// Creates readonly instance used to provide live data.
+        /// </summary>
+        public DiscoveryPeerData(PeerInfo peer)
+        {
+            this.peer = peer ?? throw new ArgumentNullException(nameof(peer));
+        }
+
         [ProtoMember(1)]
         public virtual IPEndPoint ServiceEndpoint { get; set; }
+
+        [ProtoMember(2)]
+        public virtual long LastSuccessCommunication
+        {
+            get => peer != null ? peer.Status.LastSuccessCommunication.Ticks : lastSuccessCommunication;
+            set
+            {
+                if (peer != null) throw new InvalidOperationException("Value is readonly.");
+                lastSuccessCommunication = value;
+            }
+        }
         
         public static IEqualityComparer<DiscoveryPeerData> Comparer { get; } = new ComparerClass();
         private class ComparerClass : IEqualityComparer<DiscoveryPeerData>
@@ -18,6 +42,7 @@ namespace ShareCluster.Network.Messages
             public bool Equals(DiscoveryPeerData x, DiscoveryPeerData y)
             {
                 if (!x.ServiceEndpoint.Equals(y.ServiceEndpoint)) return false;
+                if (!x.LastSuccessCommunication.Equals(y.LastSuccessCommunication)) return false;
                 return true;
             }
 

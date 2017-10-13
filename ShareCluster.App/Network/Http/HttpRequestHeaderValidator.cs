@@ -46,7 +46,7 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
-            if(!CompatibilityChecker.IsCompatibleWith(context.HttpContext.Connection.RemoteIpAddress.ToString(), version))
+            if(!CompatibilityChecker.IsCompatibleWith(CompatibilitySet.Network, context.HttpContext.Connection.RemoteIpAddress.ToString(), version))
             {
                 ProcessInvalidVersion(context, $"Server is incompatible with version defined in header {VersionHeaderName}");
                 return;

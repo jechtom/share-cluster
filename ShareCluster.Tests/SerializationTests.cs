@@ -72,11 +72,13 @@ namespace ShareCluster.Tests
                 KnownPeers = new DiscoveryPeerData[] {
                     new DiscoveryPeerData()
                     {
-                        ServiceEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.110"), 1234)
+                        ServiceEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.110"), 1234),
+                        LastSuccessCommunication = TimeSpan.FromMilliseconds(1234).Ticks
                     }
                 },
                 ServicePort = 5432,
-                PeerEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.109"), 5678)
+                PeerEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.109"), 5678),
+                Clock = TimeSpan.FromMilliseconds(12345).Ticks
             };
             
             // serialize/deserialize
@@ -89,6 +91,7 @@ namespace ShareCluster.Tests
             Assert.Equal(message.ServicePort, des.ServicePort);
             Assert.Equal(message.InstanceHash, des.InstanceHash);
             Assert.Equal(message.PeerEndpoint, des.PeerEndpoint);
+            Assert.Equal(message.Clock, des.Clock);
             Assert.NotNull(des.KnownPeers);
             Assert.Equal(message.KnownPeers, des.KnownPeers, DiscoveryPeerData.Comparer);
         }

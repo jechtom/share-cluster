@@ -10,27 +10,32 @@ namespace ShareCluster
     public class CompatibilityChecker
     {
         private readonly ILogger<CompatibilityChecker> logger;
-        private readonly ClientVersion requiredVersion;
+        private readonly ClientVersion requiredNetworkVersion;
+        private readonly ClientVersion requiredPackageVersion;
         private readonly HashSet<string> notifiedSites;
         private readonly LogLevel notificationsLevel = LogLevel.Debug;
         private readonly object notificationsLock = new object();
 
-        public ClientVersion Version => requiredVersion;
+        public ClientVersion NetworkVersion => requiredNetworkVersion;
+        public ClientVersion PackageVersion => requiredPackageVersion;
 
-        public CompatibilityChecker(ILogger<CompatibilityChecker> logger, ClientVersion requiredVersion)
+        public CompatibilityChecker(ILogger<CompatibilityChecker> logger, ClientVersion requiredPackageVersion, ClientVersion requiredNetworkVersion)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this.requiredVersion = requiredVersion;
+            this.requiredPackageVersion = requiredPackageVersion;
+            this.requiredNetworkVersion = requiredNetworkVersion;
             this.notifiedSites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public bool IsCompatibleWith(IPEndPoint endpoint, ClientVersion version) => IsCompatibleWith(endpoint.ToString(), version);
+        public bool IsCompatibleWith(IPEndPoint endpoint, ClientVersion version) => IsCompatibleWith(CompatibilitySet.Network, endpoint.ToString(), version);
 
-        public void ThrowIfNotCompatibleWith(IPEndPoint endpoint, ClientVersion version) => ThrowIfNotCompatibleWith(endpoint.ToString(), version);
+        public void ThrowIfNotCompatibleWith(IPEndPoint endpoint, ClientVersion version) => ThrowIfNotCompatibleWith(CompatibilitySet.Network, endpoint.ToString(), version);
 
-        public bool IsCompatibleWith(string site, ClientVersion version)
+        public bool IsCompatibleWith(CompatibilitySet set, string site, ClientVersion version)
         {
-            if (requiredVersion.IsCompatibleWith(version)) return true;
+            ClientVersion reqVer = RequiredVersionBySet(set);
+
+            if (reqVer.IsCompatibleWith(version)) return true;
 
             if (logger.IsEnabled(notificationsLevel))
             {
@@ -38,7 +43,7 @@ namespace ShareCluster
                 {
                     if(notifiedSites.Add(site))
                     {
-                        var log = new FormattedLogValues("Incompatibility with site \"{0}\". Site version: {1}, required version: {2}", site, version, requiredVersion);
+                        var log = new FormattedLogValues("Incompatibility with {0} \"{1}\". Site version: {2}, required version: {3}", set, site, version, reqVer);
                         logger.Log(notificationsLevel, 0, log, null, (t,e) =>t.ToString());
                     }
                 }
@@ -46,10 +51,23 @@ namespace ShareCluster
             return false;
         }
 
-        public void ThrowIfNotCompatibleWith(string site, ClientVersion version)
+        private ClientVersion RequiredVersionBySet(CompatibilitySet set)
         {
-            if (IsCompatibleWith(site, version)) return;
-            throw new InvalidOperationException($"Version mismatch. Site \"{site}\" with version {version} is incompatible.");
+            switch (set)
+            {
+                case CompatibilitySet.Network:
+                    return requiredNetworkVersion;
+                case CompatibilitySet.Package:
+                    return requiredPackageVersion;
+                default:
+                    throw new InvalidOperationException("Unknown enum value: " + set.ToString());
+            }
+        }
+
+        public void ThrowIfNotCompatibleWith(CompatibilitySet set, string site, ClientVersion version)
+        {
+            if (IsCompatibleWith(set, site, version)) return;
+            throw new InvalidOperationException($"Version mismatch. Set {set} \"{site}\" with version {version} is incompatible.");
         }
     }
 }

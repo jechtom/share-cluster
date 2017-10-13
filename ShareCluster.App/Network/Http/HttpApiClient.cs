@@ -102,7 +102,7 @@ namespace ShareCluster.Network.Http
 
             var requestContent = new ByteArrayContent(requestBytes);
             requestContent.Headers.ContentType = new MediaTypeHeaderValue(serializer.MimeType);
-            requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibility.Version.ToString());
+            requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibility.NetworkVersion.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, typeof(TReq).Name);
 

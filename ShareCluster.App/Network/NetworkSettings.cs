@@ -57,8 +57,7 @@ namespace ShareCluster.Network
         /// What is maximum frequency of package status updates. This prevents sending updates everytime something changes. 
         /// </summary>
         public TimeSpan PeerPackageUpdateStatusFastTimer { get; set; } = TimeSpan.FromSeconds(20);
-
-
+        
         /// <summary>
         /// Number of segments to be requested from peers.
         /// </summary>

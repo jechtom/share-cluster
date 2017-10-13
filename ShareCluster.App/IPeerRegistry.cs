@@ -11,7 +11,7 @@ namespace ShareCluster
     {
         DiscoveryPeerData[] ImmutablePeersDiscoveryData { get; }
         PeerInfo[] ImmutablePeers { get; }
-        void UpdatePeers(IEnumerable<PeerInfo> peers);
+        void UpdatePeers(IEnumerable<PeerUpdateInfo> peers);
         bool TryGetPeer(IPEndPoint endpoint, out PeerInfo peerInfo);
         event Action<IEnumerable<PeerInfoChange>> PeersChanged;
     }

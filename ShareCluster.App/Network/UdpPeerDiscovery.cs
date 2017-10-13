@@ -36,7 +36,7 @@ namespace ShareCluster.Network
             var announceMessage = new DiscoveryAnnounceMessage()
             {
                 PeerId = app.InstanceHash.Hash,
-                Version = app.Version,
+                Version = app.NetworkVersion,
                 ServicePort = app.NetworkSettings.TcpServicePort
             };
 

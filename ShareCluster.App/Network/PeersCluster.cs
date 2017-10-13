@@ -20,6 +20,7 @@ namespace ShareCluster.Network
     public class PeersCluster
     {
         private readonly AppInfo appInfo;
+        private readonly IClock clock;
         private readonly IPeerRegistry peerRegistry;
         private readonly HttpApiClient client;
         private readonly IPackageRegistry packageRegistry;
@@ -32,20 +33,19 @@ namespace ShareCluster.Network
         private bool isStatusUpdateInProgress;
         private int uploadSlots;
 
-        private int updateStamp;
-        private Stopwatch updateStopwatch;
+        private int statusVersion;
 
         public int UploadSlotsAvailable => uploadSlots;
 
-        public PeersCluster(AppInfo appInfo, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry, PackageDownloadManager packageDownloadManager)
+        public PeersCluster(AppInfo appInfo, IClock clock, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry, PackageDownloadManager packageDownloadManager)
         {
             this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
+            this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
             this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             this.client = client ?? throw new ArgumentNullException(nameof(client));
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             this.packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
-            updateStamp = 1;
-            updateStopwatch = Stopwatch.StartNew();
+            statusVersion = 1;
             statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
             uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
@@ -94,7 +94,7 @@ namespace ShareCluster.Network
                 // notify all peers? then update stamp to invalidate all peers
                 if (notifyAll)
                 {
-                    updateStamp++;
+                    statusVersion++;
                 }
 
                 if (isStatusUpdateScheduled) return; // already scheduled
@@ -188,8 +188,8 @@ namespace ShareCluster.Network
 
         private void SendStatusUpdateInternal()
         {
-            int stamp = updateStamp;
-            TimeSpan time = updateStopwatch.Elapsed;
+            int stamp = statusVersion;
+            TimeSpan time = clock.Time;
             TimeSpan timeMaximum = time.Subtract(appInfo.NetworkSettings.PeerStatusUpdateStatusMaximumTimer);
             TimeSpan timeFast = time.Subtract(appInfo.NetworkSettings.PeerStatusUpdateStatusFastTimer);
 
@@ -201,7 +201,7 @@ namespace ShareCluster.Network
                     // maximum time to update expired
                     p.Status.LastKnownStateUpdateAttemptTime > timeMaximum
                     // data has changed and minimum time to update has expired
-                    || (p.Status.LastKnownStateUpdateAttemptTime > timeFast && p.Status.LastKnownStateUdpateStamp < stamp)
+                    || (p.Status.LastKnownStateUpdateAttemptTime > timeFast && p.Status.LastKnownStateUdpateVersion < stamp)
                 );
 
             // recap
@@ -251,9 +251,9 @@ namespace ShareCluster.Network
             var endPoint = new IPEndPoint(address, message.ServicePort);
 
             // register peers
-            IEnumerable<PeerInfo> discoveredPeers = (message.KnownPeers ?? new DiscoveryPeerData[0])
-                .Select(kp => new PeerInfo(kp.ServiceEndpoint, isOtherPeerDiscovery: true)) // peers known to peer we're communicating with
-                .Concat(new[] { new PeerInfo(endPoint, isDirectDiscovery: true, isLoopback: isLoopback) }); // direct peer we're communicating with
+            IEnumerable<PeerUpdateInfo> discoveredPeers = (message.KnownPeers ?? new DiscoveryPeerData[0])
+                .Select(kp => new PeerUpdateInfo(kp.ServiceEndpoint, PeerDiscoveryMode.OtherPeerDiscovery, clock.ConvertToLocal(message.Clock, kp.LastSuccessCommunication))) // peers known to peer we're communicating with
+                .Concat(new[] { new PeerUpdateInfo(endPoint, PeerDiscoveryMode.DirectDiscovery, clock.Time) }); // direct peer we're communicating with
 
             peerRegistry.UpdatePeers(discoveredPeers);
             if(!peerRegistry.TryGetPeer(endPoint, out PeerInfo peer))
@@ -279,40 +279,14 @@ namespace ShareCluster.Network
 
         private void OnPeerStatusUpdateSuccess(PeerInfo peer)
         {
-            TimeSpan time = updateStopwatch.Elapsed;
-            peer.Status.LastKnownStateUpdateAttemptTime = time;
-            peer.Status.LastKnownStateUdpateStamp = updateStamp;
-            peer.Status.FailsSinceLastSuccess = 0;
+            peer.Status.MarkStatusUpdateSuccess(statusVersion: statusVersion);
         }
 
         private void OnPeerStatusUpdateFail(PeerInfo peer)
         {
-            TimeSpan time = updateStopwatch.Elapsed;
-            peer.Status.LastKnownStateUpdateAttemptTime = time;
-            int fails = peer.Status.FailsSinceLastSuccess++;
-            if (fails == 0)
-            {
-                peer.Status.FirstFailedCommunicationTime = time;
-            }
-
-            if(
-                peer.Status.FailsSinceLastSuccess >= appInfo.NetworkSettings.DisablePeerAfterFails
-                && peer.Status.FirstFailedCommunicationTime.Add(appInfo.NetworkSettings.DisablePeerAfterTime) <= time
-            )
-            {
-                // disable peer
-                DisableFailedPeer(peer);
-            }
+            peer.Status.MarkStatusUpdateFail();
         }
-
-        private void DisableFailedPeer(PeerInfo peer)
-        {
-            if (!peer.Status.IsEnabled) return; // disabled already
-
-            peer.Status.DisabledSince = updateStopwatch.Elapsed;
-            // TODO notify rest of system
-        }
-
+        
         public StatusUpdateMessage CreateStatusUpdateMessage(IPEndPoint endpoint)
         {
             lock (clusterNodeLock)
@@ -323,7 +297,8 @@ namespace ShareCluster.Network
                     KnownPackages = packageRegistry.ImmutablePackagesStatuses,
                     KnownPeers = peerRegistry.ImmutablePeersDiscoveryData,
                     ServicePort = appInfo.NetworkSettings.TcpServicePort,
-                    PeerEndpoint = endpoint
+                    PeerEndpoint = endpoint,
+                    Clock = appInfo.Clock.Time.Ticks
                 };
                 return result;
             }
