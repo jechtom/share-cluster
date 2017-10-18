@@ -37,15 +37,20 @@ namespace ShareCluster
                 DataRootPath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "data"),
                 Crypto = CreateDefaultCryptoProvider(),
                 MessageSerializer = serializer,
-                Version = new ClientVersion(1),
+                PackageVersion = new ClientVersion(1),
+                NetworkVersion = new ClientVersion(2),
+                AppVersion = new ClientVersion(3),
                 NetworkSettings = new Network.NetworkSettings()
                 {
                     MessageSerializer = serializer
                 },
-                LoggerFactory = loggerFactory
+                LoggerFactory = loggerFactory,
+                Clock = new Clock()
             };
 
-            result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(), result.Version);
+            result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(),
+                requiredPackageVersion: result.PackageVersion,
+                requiredNetworkVersion: result.NetworkVersion);
             result.InstanceHash = new InstanceHash(result.Crypto);
 
             return result;
@@ -59,8 +64,9 @@ namespace ShareCluster
         public void LogStart()
         {
             var logger = LoggerFactory.CreateLogger<AppInfo>();
-            logger.LogInformation($"Starting app {Version}. Instance {InstanceHash.Hash:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
+            logger.LogInformation($"Starting app {AppVersion}. Instance {InstanceHash.Hash:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
             logger.LogDebug($"Repository path: {DataRootPathPackageRepository}");
+            logger.LogInformation($"Start browser http://localhost:{NetworkSettings.TcpServicePort}");
         }
 
         private string dataRootPath;
@@ -90,9 +96,12 @@ namespace ShareCluster
         public string DataRootPathExtractDefault { get; private set; }
         
         public CryptoProvider Crypto { get; private set; }
-        public ClientVersion Version { get; private set; }
+        public ClientVersion PackageVersion { get; private set; }
+        public ClientVersion NetworkVersion { get; private set; }
+        public ClientVersion AppVersion { get; private set; }
         public IMessageSerializer MessageSerializer { get; private set; }
         public Network.NetworkSettings NetworkSettings { get; private set; }
+        public IClock Clock { get; private set; }
         public ILoggerFactory LoggerFactory { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
         public InstanceHash InstanceHash { get; private set; }

@@ -27,8 +27,8 @@ namespace ShareCluster
         private LocalPackageInfo[] immutablePackages;
         private DiscoveredPackage[] immutableDiscoveredPackagesArray;
 
-        public event Action<LocalPackageInfo> NewLocalPackageCreated;
-        public event Action<DiscoveredPackage> NewDiscoveredPackage;
+        public event Action<LocalPackageInfo> LocalPackageCreated;
+        public event Action<DiscoveredPackage> RemotePackageDiscovered;
         public event Action<LocalPackageInfo> LocalPackageDeleting;
         public event Action<LocalPackageInfo> LocalPackageDeleted;
 
@@ -155,7 +155,7 @@ namespace ShareCluster
 
             foreach (var packageMetaItem in newDiscoveredPackages)
             {
-                NewDiscoveredPackage?.Invoke(packageMetaItem);
+                RemotePackageDiscovered?.Invoke(packageMetaItem);
             }
         }
 
@@ -176,7 +176,7 @@ namespace ShareCluster
         {
             var package = localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
             RegisterPackageInternal(package);
-            NewLocalPackageCreated?.Invoke(package);
+            LocalPackageCreated?.Invoke(package);
             return package;
         }
         

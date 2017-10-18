@@ -24,5 +24,8 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(5)]
         public IPEndPoint PeerEndpoint { get; set; }
+
+        [ProtoMember(6)]
+        public long Clock { get; set; }
     }
 }

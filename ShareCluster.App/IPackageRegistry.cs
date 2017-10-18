@@ -17,8 +17,8 @@ namespace ShareCluster
         PackageStatus[] ImmutablePackagesStatuses { get; }
         DiscoveredPackage[] ImmutableDiscoveredPackages { get; }
 
-        event Action<LocalPackageInfo> NewLocalPackageCreated;
-        event Action<DiscoveredPackage> NewDiscoveredPackage;
+        event Action<LocalPackageInfo> LocalPackageCreated;
+        event Action<DiscoveredPackage> RemotePackageDiscovered;
         event Action<LocalPackageInfo> LocalPackageDeleting;
         event Action<LocalPackageInfo> LocalPackageDeleted;
 

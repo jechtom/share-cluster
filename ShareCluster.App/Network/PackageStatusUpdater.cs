@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,8 +28,8 @@ namespace ShareCluster.Network
         private readonly Timer statusTimer;
         private readonly Stopwatch stopwatch;
 
-        Dictionary<Hash, PackagePeersStatus> states;
-        Dictionary<Hash, PeerOverallStatus> peers;
+        Dictionary<Hash, PackagePeersStatus> packageStates;
+        Dictionary<IPEndPoint, PeerOverallStatus> peers;
         private readonly ILoggerFactory loggerFactory;
         private readonly NetworkSettings settings;
         private readonly HttpApiClient client;
@@ -38,8 +39,8 @@ namespace ShareCluster.Network
             this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
             stopwatch = Stopwatch.StartNew();
-            states = new Dictionary<Hash, PackagePeersStatus>();
-            peers = new Dictionary<Hash, PeerOverallStatus>();
+            packageStates = new Dictionary<Hash, PackagePeersStatus>();
+            peers = new Dictionary<IPEndPoint, PeerOverallStatus>();
             statusTimer = new Timer(StatusTimeoutCallback, null, statusTimerInterval, Timeout.InfiniteTimeSpan);
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.client = client ?? throw new ArgumentNullException(nameof(client));
@@ -52,9 +53,9 @@ namespace ShareCluster.Network
             logger.LogDebug("Started looking for peers having: {0}", packageInfo);
             lock(syncLock)
             {
-                if (states.ContainsKey(packageInfo.Id)) return; // already there
+                if (packageStates.ContainsKey(packageInfo.Id)) return; // already there
                 var status = new PackagePeersStatus(loggerFactory.CreateLogger<PackagePeersStatus>(), packageInfo);
-                states.Add(packageInfo.Id, status);
+                packageStates.Add(packageInfo.Id, status);
 
                 // add status for each peer that knows package
                 int alreadyFound = 0;
@@ -75,9 +76,9 @@ namespace ShareCluster.Network
             logger.LogDebug("Stopped looking for peers having: {0}", packageInfo);
             lock (syncLock)
             {
-                if (!states.ContainsKey(packageInfo.Id)) return; // already there
-                states[packageInfo.Id].RemoveAllPeers(); // unregister peers
-                states.Remove(packageInfo.Id); // remove
+                if (!packageStates.ContainsKey(packageInfo.Id)) return; // already there
+                packageStates[packageInfo.Id].RemoveAllPeers(); // unregister peers
+                packageStates.Remove(packageInfo.Id); // remove
             }
         }
 
@@ -97,15 +98,15 @@ namespace ShareCluster.Network
                     if (peerChange.IsRemoved)
                     {
                         // exists in local cache?
-                        if (!peers.TryGetValue(peer.PeerId, out PeerOverallStatus status)) continue;
+                        if (!peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) continue;
 
                         // remove peer from package statuses and peers list
-                        foreach (var packageState in states.Values)
+                        foreach (var packageState in packageStates.Values)
                         {
                             packageState.RemovePeer(status);
                         }
 
-                        peers.Remove(peer.PeerId);
+                        peers.Remove(peer.ServiceEndPoint);
 
                         continue;
                     }
@@ -115,13 +116,13 @@ namespace ShareCluster.Network
                         refreshStatus = true;
 
                         // create?
-                        if (!peers.TryGetValue(peer.PeerId, out PeerOverallStatus status))
+                        if (!peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status))
                         {
-                            peers.Add(peer.PeerId, (status = new PeerOverallStatus(peer)));
+                            peers.Add(peer.ServiceEndPoint, (status = new PeerOverallStatus(peer)));
                         }
 
                         // update and add to peers list
-                        foreach (var packageState in states)
+                        foreach (var packageState in packageStates)
                         {
                             if(peer.KnownPackages.TryGetValue(packageState.Key, out PackageStatus ps))
                             {
@@ -163,7 +164,7 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                if (!peers.TryGetValue(peer.PeerId, out PeerOverallStatus status)) return;
+                if (!peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) return;
                 status.UseFastUpdate = true;
             }
         }
@@ -173,13 +174,13 @@ namespace ShareCluster.Network
             PackageStatusRequest requestMessage;
             PeerOverallStatus[] peersToUpdate;
             var elapsed = stopwatch.Elapsed;
-            var elapsedThresholdRegular = elapsed.Subtract(settings.PeerUpdateStatusTimer);
-            var elapsedThresholdFast = elapsed.Subtract(settings.PeerUpdateStatusFastTimer);
+            var elapsedThresholdRegular = elapsed.Subtract(settings.PeerPackageUpdateStatusMaximumTimer);
+            var elapsedThresholdFast = elapsed.Subtract(settings.PeerPackageUpdateStatusFastTimer);
 
             // prepare list of peers and list of packages we're interested in
             lock (syncLock)
             {
-                if (states.Count == 0) return;
+                if (packageStates.Count == 0) return;
 
                 peersToUpdate = peers.Values
                     .Where(c => c.LastUpdateTry < (c.UseFastUpdate ? elapsedThresholdFast : elapsedThresholdRegular) && c.DoUpdateStatus)
@@ -193,7 +194,7 @@ namespace ShareCluster.Network
                     item.LastUpdateTry = elapsed;
                 }
 
-                requestMessage = new PackageStatusRequest() { PackageIds = states.Keys.ToArray() };
+                requestMessage = new PackageStatusRequest() { PackageIds = packageStates.Keys.ToArray() };
             }
 
             logger.LogTrace("Sending update request for {0} package(s) to {1} peer(s).", requestMessage.PackageIds.Length, peersToUpdate.Length);
@@ -247,7 +248,7 @@ namespace ShareCluster.Network
                     var result = input.result.Packages[i];
 
                     // download state (are we still interested in packages?)
-                    if (!states.TryGetValue(packageId, out PackagePeersStatus state)) continue;
+                    if (!packageStates.TryGetValue(packageId, out PackagePeersStatus state)) continue;
 
                     // remove not found packages
                     if (!result.IsFound)
@@ -270,13 +271,13 @@ namespace ShareCluster.Network
             {
                 // send request
                 statusResult = await client.GetPackageStatusAsync(peer.PeerInfo.ServiceEndPoint, requestMessage);
-                peer.PeerInfo.ClientHasSuccess();
+                peer.PeerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null);
                 success = true;
             }
             catch (Exception e)
             {
-                peer.PeerInfo.ClientHasFailed();
-                logger.LogDebug("Can't reach client {0:s} at {1}: {2}", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, e.Message);
+                peer.PeerInfo.Status.MarkStatusUpdateFail();
+                logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
             }
             return (peer: peer, result: statusResult, success: success);
         }
@@ -285,7 +286,7 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                if (!states.TryGetValue(package.Id, out PackagePeersStatus status)) return new List<PeerInfo>(capacity: 0);
+                if (!packageStates.TryGetValue(package.Id, out PackagePeersStatus status)) return new List<PeerInfo>(capacity: 0);
                 return status.GetClientList();
             }
         }
@@ -294,7 +295,7 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                if (!states.TryGetValue(package.Id, out var packageStatus))
+                if (!packageStates.TryGetValue(package.Id, out var packageStatus))
                 {
                     remoteBitmap = null;
                     return false;
@@ -306,22 +307,22 @@ namespace ShareCluster.Network
 
         public void PostponePeersPackage(LocalPackageInfo package, PeerInfo peer)
         {
-            logger.LogTrace("Peer {0:s} at {1} for package {2} has been postponed.", peer.PeerId, peer.ServiceEndPoint, package);
+            logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.ServiceEndPoint, package);
 
             lock (syncLock)
             {
-                if (!states.TryGetValue(package.Id, out var packageStatus)) return;
+                if (!packageStates.TryGetValue(package.Id, out var packageStatus)) return;
                 packageStatus.PostPonePeer(peer, postponeInterval);
             }
         }
 
         public void PostponePeer(PeerInfo peer)
         {
-            logger.LogTrace("Peer {0:s} at {1} for all packages has been postponed.", peer.PeerId, peer.ServiceEndPoint);
+            logger.LogTrace("Peer {0} for all packages has been postponed.", peer.ServiceEndPoint);
 
             lock (syncLock)
             {
-                if (!peers.TryGetValue(peer.PeerId, out var peerStatus)) return;
+                if (!peers.TryGetValue(peer.ServiceEndPoint, out var peerStatus)) return;
                 peerStatus.PostponeTimer = new PostponeTimer(postponeInterval);
             }
         }
@@ -330,9 +331,9 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                if (!peers.TryGetValue(peer.PeerId, out var peerStatus)) return;
+                if (!peers.TryGetValue(peer.ServiceEndPoint, out var peerStatus)) return;
                 peerStatus.PostponeTimer = PostponeTimer.NoPostpone;
-                if (!states.TryGetValue(package.Id, out var packageStatus)) return;
+                if (!packageStates.TryGetValue(package.Id, out var packageStatus)) return;
                 packageStatus.PostPonePeer(peer, TimeSpan.Zero);
             }
         }
@@ -341,7 +342,7 @@ namespace ShareCluster.Network
         {
             lock (syncLock)
             {
-                if (!states.TryGetValue(package.Id, out var packageStatus)) return;
+                if (!packageStates.TryGetValue(package.Id, out var packageStatus)) return;
                 packageStatus.StatsUpdateSuccessPart(peer, downloadedBytes);
             }
         }
@@ -380,13 +381,13 @@ namespace ShareCluster.Network
 
                 if(status.DownloadedBytes > 0)
                 {
-                    logger.LogTrace($"Stats: Package {packageInfo.Metadata.Name} {packageInfo.Id:s} from {peer.PeerInfo.PeerId:s} at {peer.PeerInfo.ServiceEndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
+                    logger.LogTrace($"Stats: Package {packageInfo.Metadata.Name} {packageInfo.Id:s} from {peer.PeerInfo.ServiceEndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
                 }
             }
 
             public void AddPeer(PeerOverallStatus peer, bool isSeeder)
             {
-                logger.LogTrace("Peer {0:s} at {1} knows package {2}.", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo);
+                logger.LogTrace("Peer {0} knows package {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);
 
                 var newStatus = new PackagePeerStatus(peer);
                 if (peerStatuses.TryAdd(peer.PeerInfo, newStatus))
@@ -424,11 +425,11 @@ namespace ShareCluster.Network
                 }
                 catch(Exception e)
                 {
-                    logger.LogWarning("Invalid package status data from peer {0:s} at {1} for package {2}: {3}", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo, e.Message);
-                    peer.PeerInfo.ClientHasFailed();
+                    logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.ServiceEndPoint, packageInfo, e.Message);
+                    peer.PeerInfo.Status.MarkStatusUpdateFail();
                 }
 
-                logger.LogTrace("Received update from {0:s} at {1} for {2}.", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo);
+                logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);
 
                 // reset postpone (new status data)
                 status.PostponeTimer = PostponeTimer.NoPostpone;
@@ -443,7 +444,7 @@ namespace ShareCluster.Network
 
                 if(wasSeeder != status.IsSeeder)
                 {
-                    logger.LogTrace("Found seeder {0:s} at {1} of {2}.", peer.PeerInfo.PeerId, peer.PeerInfo.ServiceEndPoint, packageInfo);
+                    logger.LogTrace("Found seeder {0} of {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);
                     peer.InterestedForPackagesSeederCount += status.IsSeeder ? 1 : -1;
                 }
             }

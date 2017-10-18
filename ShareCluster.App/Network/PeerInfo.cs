@@ -10,82 +10,49 @@ using System.Threading;
 
 namespace ShareCluster.Network
 {
+    /// <summary>
+    /// Represents information known about peer endpoint.
+    /// </summary>
     public class PeerInfo : IEquatable<PeerInfo>
     {
         private int fails;
         private int successes;
         private readonly object syncLock = new object();
 
-        public PeerInfo(Hash peerId, IPEndPoint endPoint, bool isPermanent = false, bool isDirectDiscovery = false, bool isOtherPeerDiscovery = false, bool isLoopback = false)
+        public PeerInfo(PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerDiscoveryMode discoveryMode)
         {
-            IsEnabled = true;
-            PeerId = peerId;
+            Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
-            IsPermanent = isPermanent;
-            IsDirectDiscovery = isDirectDiscovery;
-            IsOtherPeerDiscovery = isOtherPeerDiscovery;
-            IsLoopback = isLoopback;
+            DiscoveryMode = discoveryMode;
             KnownPackages = new Dictionary<Hash, PackageStatus>(0);
 
             if (endPoint.Port == 0) throw new ArgumentException("Zero port is not allowed.", nameof(endPoint));
         }
 
         // identification
-        public Hash PeerId { get; }
-        public IPEndPoint ServiceEndPoint { get; private set; }
-
-        public void UpdateEndPoint(IPEndPoint endpoint)
-        {
-            if (endpoint == null)
-            {
-                throw new ArgumentNullException(nameof(endpoint));
-            }
-
-            if(endpoint.Port == 0)
-            {
-                throw new ArgumentException("Port cannot be zero.", nameof(endpoint));
-            }
-
-            ServiceEndPoint = endpoint;
-        }
+        public IPEndPoint ServiceEndPoint { get; set; }
 
         // how it was discovered?
-        public bool IsLoopback { get; set; }
-        public bool IsPermanent { get; set; }
-        public bool IsDirectDiscovery { get; set; }
-        public bool IsOtherPeerDiscovery { get; set; }
+        public bool IsLoopback => (DiscoveryMode & PeerDiscoveryMode.Loopback) > 0;
+        public bool IsDirectDiscovery => (DiscoveryMode & PeerDiscoveryMode.DirectDiscovery) > 0;
+        public bool IsOtherPeerDiscovery => (DiscoveryMode & PeerDiscoveryMode.OtherPeerDiscovery) > 0;
+        public bool IsManualDiscovery => (DiscoveryMode & PeerDiscoveryMode.ManualDiscovery) > 0;
+        public bool IsUdpDiscovery => (DiscoveryMode & PeerDiscoveryMode.UdpDiscovery) > 0;
 
-        public bool IsEnabled { get; set; }
+        public PeerDiscoveryMode DiscoveryMode { get; set; }
 
         // known packages
         public IDictionary<Hash, PackageStatus> KnownPackages { get; private set; }
 
-        // communication stats
-        public int FailsSinceLastSuccess => fails;
-        public int SuccessesSinceLastFail => successes;
-
-        public void ClientHasFailed()
-        {
-            Interlocked.Exchange(ref successes, 0);
-            bool firstFail = Interlocked.Increment(ref fails) == 1;
-            ClientSuccessChanged?.Invoke(this, (firstSuccess: false, firstFail: firstFail));
-        }
-
-        public void ClientHasSuccess()
-        {
-            bool firstSuccess = Interlocked.Increment(ref successes) == 1;
-            Interlocked.Exchange(ref fails, 0);
-            ClientSuccessChanged?.Invoke(this, (firstSuccess: firstSuccess, firstFail: false));
-        }
-
+        public PeerClusterStatus Status { get; private set; }
+        
         public string StatusString => string.Join(";", new string[] {
                         IsLoopback ? "Loopback" : null,
-                        IsDirectDiscovery ? "DirectDiscovery" : null,
-                        IsOtherPeerDiscovery ? "OtherPeerDiscovery" : null,
-                        IsPermanent ? "Permanent" : null
+                        IsDirectDiscovery ? "Direct" : null,
+                        IsOtherPeerDiscovery ? "OtherPeer" : null,
+                        IsManualDiscovery ? "Manual" : null,
+                        IsUdpDiscovery ? "Udp" : null
                     }.Where(s => s != null));
-
-        public event Action<PeerInfo, (bool firstSuccess, bool firstFail)> ClientSuccessChanged;
 
         public event Action<PeerInfo> KnownPackageChanged;
 
@@ -116,19 +83,19 @@ namespace ShareCluster.Network
 
         public override int GetHashCode()
         {
-            return PeerId.GetHashCode();
+            return ServiceEndPoint.GetHashCode();
         }
 
         public override bool Equals(object obj)
         {
             if (obj == null) return false;
-            return PeerId.Equals(((PeerInfo)obj).PeerId);
+            return ServiceEndPoint.Equals(((PeerInfo)obj).ServiceEndPoint);
         }
 
         public bool Equals(PeerInfo other)
         {
             if (other == null) return false;
-            return PeerId.Equals(other.PeerId);
+            return ServiceEndPoint.Equals(other.ServiceEndPoint);
         }
     }
 }

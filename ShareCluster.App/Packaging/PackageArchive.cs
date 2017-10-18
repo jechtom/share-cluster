@@ -74,7 +74,7 @@ namespace ShareCluster.Packaging
             if (!rootPath.Exists) throw new InvalidOperationException($"Folder not found: { sourceDirectoryName }");
 
             // write version
-            serializer.Serialize(compatibilityChecker.Version, stream);
+            serializer.Serialize(compatibilityChecker.PackageVersion, stream);
 
             var foldersToProcessStack = new Stack<DirectoryInfo>(); // use stack (instead of queue) to process sub-folders first
             var foldersTreeStack = new Stack<DirectoryInfo>();
@@ -185,7 +185,7 @@ namespace ShareCluster.Packaging
             rootDirectoryInfo.Create();
 
             var version = serializer.Deserialize<ClientVersion>(readStream);
-            compatibilityChecker.ThrowIfNotCompatibleWith("Package", version);
+            compatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, "Package", version);
 
             var foldersStack = new Stack<string>();
 

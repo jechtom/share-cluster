@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Network.Messages;
+using System.Net;
 
 namespace ShareCluster
 {
@@ -10,9 +11,8 @@ namespace ShareCluster
     {
         DiscoveryPeerData[] ImmutablePeersDiscoveryData { get; }
         PeerInfo[] ImmutablePeers { get; }
-        void RegisterPeer(PeerInfo peer);
-        void RegisterPeers(IEnumerable<PeerInfo> peers);
-        bool TryGetPeer(Hash peerId, out PeerInfo peerInfo);
+        void UpdatePeers(IEnumerable<PeerUpdateInfo> peers);
+        bool TryGetPeer(IPEndPoint endpoint, out PeerInfo peerInfo);
         event Action<IEnumerable<PeerInfoChange>> PeersChanged;
     }
 }

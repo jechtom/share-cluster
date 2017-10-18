@@ -65,14 +65,13 @@ namespace ShareCluster.Network
                 {
                     DiscoveryAnnounceMessage messageReq;
                     messageReq = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(rec.Buffer);
-                    if(messageReq.PeerId.Equals(announce.PeerId))
-                    {
-                        continue; // own request
-                    }
-
+                    
                     var endpoint = new IPEndPoint(rec.RemoteEndPoint.Address, messageReq.ServicePort);
                     if (!compatibilityChecker.IsCompatibleWith(endpoint, messageReq.Version)) continue;
-                    registry.RegisterPeer(new PeerInfo(messageReq.PeerId, endpoint, isDirectDiscovery: true));
+                    PeerDiscoveryMode mode = PeerDiscoveryMode.UdpDiscovery;
+                    bool isLoopback = messageReq.PeerId.Equals(announce.PeerId);
+                    if (isLoopback) mode |= PeerDiscoveryMode.Loopback;
+                    registry.UpdatePeers(new PeerUpdateInfo[] { new PeerUpdateInfo(endpoint, mode, TimeSpan.Zero) });
 
                     logger.LogTrace($"Received request from {rec.RemoteEndPoint.Address}.");
                 }

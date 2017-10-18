@@ -8,27 +8,56 @@ namespace ShareCluster.Network
     {
         public IMessageSerializer MessageSerializer { get; set; }
 
+        /// <summary>
+        /// Gets or sets UDP announce port. This has to be same for all clients.
+        /// </summary>
         public UInt16 UdpAnnouncePort { get; set; } = 13977;
-        public UInt16 TcpServicePort { get; set; } = 13978;
-        public TimeSpan UdpDiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
-        public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(1);
 
         /// <summary>
-        /// How many communication fails there have to be to remove from peer list.
+        /// Gets or sets TCP service port. This can vary by each client but predefined default is used.
+        /// </summary>
+        public UInt16 TcpServicePort { get; set; } = 13978;
+
+        /// <summary>
+        /// Gets or sets how long application waits for response from UDP discovery.
+        /// </summary>
+        public TimeSpan UdpDiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Gets or sets how often UPD broadcast is send.
+        /// </summary>
+        public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// How many fails we protected peer from removing from peers list.
         /// </summary>
         public int DisablePeerAfterFails { get; set; } = 2;
 
         /// <summary>
-        /// How often peer will be contacted with package status update request.
+        /// How long we protect failing peer from removing from peers list.
         /// </summary>
-        public TimeSpan PeerUpdateStatusTimer { get; set; } = TimeSpan.FromMinutes(2);
+        public TimeSpan DisablePeerAfterTime { get; set; } = TimeSpan.FromSeconds(90);
 
         /// <summary>
-        /// How often peer will be contacted with package status update request if not enough seeders are available. 
-        /// This is done when we want to start reading from other peers quickly but last time we asked they didn't have enough segments.
+        /// How often peer will be contacted with peer status update request if nothing has changed.
         /// </summary>
-        public TimeSpan PeerUpdateStatusFastTimer { get; set; } = TimeSpan.FromSeconds(20);
+        public TimeSpan PeerStatusUpdateStatusMaximumTimer { get; set; } = TimeSpan.FromMinutes(10);
+        
+        /// <summary>
+        /// What is maximum frequency of peer status updates. This prevents sending updates everytime something changes. 
+        /// </summary>
+        public TimeSpan PeerStatusUpdateStatusFastTimer { get; set; } = TimeSpan.FromSeconds(20);
 
+        /// <summary>
+        /// How often peer will be contacted with package status update request if nothing has changed.
+        /// </summary>
+        public TimeSpan PeerPackageUpdateStatusMaximumTimer { get; set; } = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// What is maximum frequency of package status updates. This prevents sending updates everytime something changes. 
+        /// </summary>
+        public TimeSpan PeerPackageUpdateStatusFastTimer { get; set; } = TimeSpan.FromSeconds(20);
+        
         /// <summary>
         /// Number of segments to be requested from peers.
         /// </summary>
