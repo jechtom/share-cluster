@@ -156,6 +156,63 @@ namespace ShareCluster.Network
             return (stream, null);
         }
 
+
+        public (Stream stream, DataResponseFaul error) CreateUploadStream2(LocalPackageInfo package, int[] requestedSegments)
+        {
+            if (package != null)
+            {
+                if (requestedSegments != null)
+                {
+                    if (package.DownloadStatus.ValidateRequestedParts(requestedSegments))
+                    {
+                        // allocate slot
+                        int newUploadSlotsCount = Interlocked.Decrement(ref uploadSlots);
+                        if (newUploadSlotsCount <= 0)
+                        {
+                            // not enough slots
+                            Interlocked.Increment(ref uploadSlots);
+                            logger.LogTrace($"Peer choked when requested {package} segments: {requestedSegments.Format()}");
+                            return (null, DataResponseFaul.CreateChokeMessage());
+                        }
+
+                        // obtain lock
+                        if (package.LockProvider.TryLock(out object lockToken))
+                        {
+                            // create reader stream
+                            var sequencer = new PackagePartsSequencer();
+                            logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
+                            IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, requestedSegments);
+                            var controller = new ReadPackageDataStreamController(appInfo.LoggerFactory, package.Reference, package.Sequence, partsSource);
+                            var stream = new PackageDataStream(appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
+                            stream.Disposing += () =>
+                            {
+                                int currentSlots = Interlocked.Increment(ref uploadSlots);
+                                package.LockProvider.Unlock(lockToken);
+                            };
+                            return (stream, null);
+                        }
+                        else
+                        {
+                            return (null, DataResponseFaul.CreateDataPackageNotFoundMessage());
+                        }
+                    }
+                    else
+                    {
+                        logger.LogTrace($"Requested segments not valid for {package}: {requestedSegments.Format()}");
+                        return (null, DataResponseFaul.CreateDataPackageSegmentsNotFoundMessage());
+                    }
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(requestedSegments));
+                }
+            }
+            else
+            {
+                throw new ArgumentNullException(nameof(package));
+            }
+        }
+
         private void StatusUpdateTimerCallback(object state)
         {
             lock(clusterNodeLock)
