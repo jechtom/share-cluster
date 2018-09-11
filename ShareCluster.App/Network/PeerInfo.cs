@@ -2,6 +2,7 @@
 using ShareCluster.Packaging.Dto;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -15,8 +16,6 @@ namespace ShareCluster.Network
     /// </summary>
     public class PeerInfo : IEquatable<PeerInfo>
     {
-        private int fails;
-        private int successes;
         private readonly object syncLock = new object();
 
         public PeerInfo(PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerDiscoveryMode discoveryMode)
@@ -56,12 +55,12 @@ namespace ShareCluster.Network
 
         public event Action<PeerInfo> KnownPackageChanged;
 
-        public void ReplaceKnownPackages(PackageStatus[] newPackages)
+        public void ReplaceKnownPackages(IImmutableList<PackageStatus> newPackages)
         {
             bool changed = false;
             lock (syncLock)
             {
-                if (newPackages.Length != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.Meta.PackageId)))
+                if (newPackages.Count != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.Meta.PackageId)))
                 {
                     KnownPackages = newPackages.ToDictionary(p => p.Meta.PackageId);
                     changed = true;

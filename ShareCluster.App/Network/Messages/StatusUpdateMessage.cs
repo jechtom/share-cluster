@@ -2,6 +2,7 @@
 using ShareCluster.Packaging.Dto;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Net;
 using System.Text;
 
@@ -17,7 +18,7 @@ namespace ShareCluster.Network.Messages
         public DiscoveryPeerData[] KnownPeers { get; set; }
 
         [ProtoMember(3)]
-        public PackageStatus[] KnownPackages { get; set; }
+        public IImmutableList<PackageStatus> KnownPackages { get; set; }
 
         [ProtoMember(4)]
         public ushort ServicePort { get; set; }

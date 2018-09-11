@@ -4,6 +4,7 @@ using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -322,7 +323,7 @@ namespace ShareCluster.Network
             if (peer.IsLoopback) return;
 
             // update known packages if different
-            peer.ReplaceKnownPackages(message.KnownPackages ?? Array.Empty<PackageStatus>());
+            peer.ReplaceKnownPackages(message.KnownPackages ?? ImmutableList<PackageStatus>.Empty);
 
             // register discovered packages
             if (message.KnownPackages?.Any() == true)

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
 using ShareCluster.Packaging;
 using System.Threading.Tasks;
+using System.Collections.Immutable;
 
 namespace ShareCluster
 {
@@ -23,7 +24,7 @@ namespace ShareCluster
         private readonly object packagesLock = new object();
 
         // pre-calculated
-        private PackageStatus[] immutablePackagesStatus;
+        private ImmutableList<PackageStatus> immutablePackagesStatus;
         private LocalPackageInfo[] immutablePackages;
         private DiscoveredPackage[] immutableDiscoveredPackagesArray;
 
@@ -39,7 +40,7 @@ namespace ShareCluster
             Init();
         }
 
-        public PackageStatus[] ImmutablePackagesStatuses => immutablePackagesStatus;
+        public IImmutableList<PackageStatus> ImmutablePackagesStatuses => immutablePackagesStatus;
 
         public LocalPackageInfo[] ImmutablePackages => immutablePackages;
 
@@ -112,7 +113,7 @@ namespace ShareCluster
                     localPackages = packageSource.ToDictionary(p => p.Id);
 
                     immutablePackages = localPackages.Values.Select(p => p).ToArray();
-                    immutablePackagesStatus = localPackages.Values.Select(p => new PackageStatus(p)).ToArray();
+                    immutablePackagesStatus = localPackages.Values.Select(p => new PackageStatus(p)).ToImmutableList();
 
                     // regenerate discovered - to remove new packages already move to local packages list
                     discoveredPackages = (discoveredPackages).Values.Where(dp => !localPackages.ContainsKey(dp.PackageId)).ToDictionary(dp => dp.PackageId);

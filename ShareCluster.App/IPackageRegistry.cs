@@ -5,6 +5,7 @@ using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
 using System.Threading.Tasks;
 using ShareCluster.Network.Messages;
+using System.Collections.Immutable;
 
 namespace ShareCluster
 {
@@ -14,7 +15,7 @@ namespace ShareCluster
     public interface IPackageRegistry
     {
         LocalPackageInfo[] ImmutablePackages { get; }
-        PackageStatus[] ImmutablePackagesStatuses { get; }
+        IImmutableList<PackageStatus> ImmutablePackagesStatuses { get; }
         DiscoveredPackage[] ImmutableDiscoveredPackages { get; }
 
         event Action<LocalPackageInfo> LocalPackageCreated;

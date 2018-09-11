@@ -7,8 +7,8 @@ using System.Text;
 namespace ShareCluster.Repository.DataFiles
 {
     /// <summary>
-    /// Used as decorator stream between two <see cref="CryptoStream"/> classes. Don't do anything.
-    /// Because closing <see cref="CryptoStream"/> will close also nested <see cref="Stream"/> if also of type <see cref="CryptoStream"/>. This behavior is unwanted in some cases. Setting leaveOpen to true does not help.
+    /// Used as decorator stream between two <see cref="CryptoStream"/> classes. It is doing nothing.
+    /// Because closing <see cref="CryptoStream"/> will close also nested <see cref="Stream"/> if also of type <see cref="CryptoStream"/>. This behavior is unwanted in some cases. Setting leaveOpen to true does not have any effect.
     /// </summary>
     public class FlowThruStream : Stream
     {

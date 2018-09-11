@@ -2,6 +2,7 @@ using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
 using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -68,7 +69,7 @@ namespace ShareCluster.Tests
             var message = new StatusUpdateMessage()
             {
                 InstanceHash = new Hash(new byte[] { 1, 2, 3 }),
-                KnownPackages = new PackageStatus[0],
+                KnownPackages = ImmutableList<PackageStatus>.Empty,
                 KnownPeers = new DiscoveryPeerData[] {
                     new DiscoveryPeerData()
                     {
