@@ -18,7 +18,7 @@ namespace ShareCluster.Network
     {
         private readonly object syncLock = new object();
 
-        public PeerInfo(PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerDiscoveryMode discoveryMode)
+        public PeerInfo(PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerFlags discoveryMode)
         {
             Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
@@ -32,13 +32,13 @@ namespace ShareCluster.Network
         public IPEndPoint ServiceEndPoint { get; set; }
 
         // how it was discovered?
-        public bool IsLoopback => (DiscoveryMode & PeerDiscoveryMode.Loopback) > 0;
-        public bool IsDirectDiscovery => (DiscoveryMode & PeerDiscoveryMode.DirectDiscovery) > 0;
-        public bool IsOtherPeerDiscovery => (DiscoveryMode & PeerDiscoveryMode.OtherPeerDiscovery) > 0;
-        public bool IsManualDiscovery => (DiscoveryMode & PeerDiscoveryMode.ManualDiscovery) > 0;
-        public bool IsUdpDiscovery => (DiscoveryMode & PeerDiscoveryMode.UdpDiscovery) > 0;
+        public bool IsLoopback => (DiscoveryMode & PeerFlags.Loopback) > 0;
+        public bool IsDirectDiscovery => (DiscoveryMode & PeerFlags.DirectDiscovery) > 0;
+        public bool IsOtherPeerDiscovery => (DiscoveryMode & PeerFlags.OtherPeerDiscovery) > 0;
+        public bool IsManualDiscovery => (DiscoveryMode & PeerFlags.ManualDiscovery) > 0;
+        public bool IsUdpDiscovery => (DiscoveryMode & PeerFlags.DiscoveredByUdp) > 0;
 
-        public PeerDiscoveryMode DiscoveryMode { get; set; }
+        public PeerFlags DiscoveryMode { get; set; }
 
         // known packages
         public IDictionary<Hash, PackageStatus> KnownPackages { get; private set; }

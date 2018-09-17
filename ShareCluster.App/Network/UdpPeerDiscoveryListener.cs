@@ -68,9 +68,9 @@ namespace ShareCluster.Network
                     
                     var endpoint = new IPEndPoint(rec.RemoteEndPoint.Address, messageReq.ServicePort);
                     if (!compatibilityChecker.IsCompatibleWith(endpoint, messageReq.Version)) continue;
-                    PeerDiscoveryMode mode = PeerDiscoveryMode.UdpDiscovery;
+                    PeerFlags mode = PeerFlags.DiscoveredByUdp;
                     bool isLoopback = messageReq.PeerId.Equals(announce.PeerId);
-                    if (isLoopback) mode |= PeerDiscoveryMode.Loopback;
+                    if (isLoopback) mode |= PeerFlags.Loopback;
                     registry.UpdatePeers(new PeerUpdateInfo[] { new PeerUpdateInfo(endpoint, mode, TimeSpan.Zero) });
 
                     logger.LogTrace($"Received request from {rec.RemoteEndPoint.Address}.");

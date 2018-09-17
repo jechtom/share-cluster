@@ -309,30 +309,31 @@ namespace ShareCluster.Network
             var endPoint = new IPEndPoint(address, message.ServicePort);
 
             // register peers
-            IEnumerable<PeerUpdateInfo> discoveredPeers = (message.KnownPeers ?? new DiscoveryPeerData[0])
-                .Select(kp => new PeerUpdateInfo(kp.ServiceEndpoint, PeerDiscoveryMode.OtherPeerDiscovery, clock.ConvertToLocal(message.Clock, kp.LastSuccessCommunication))) // peers known to peer we're communicating with
-                .Concat(new[] { new PeerUpdateInfo(endPoint, PeerDiscoveryMode.DirectDiscovery, clock.Time) }); // direct peer we're communicating with
+            throw new NotImplementedException();
+            //IEnumerable<PeerUpdateInfo> discoveredPeers = (message.KnownPeers ?? new DiscoveryPeerData[0])
+            //    .Select(kp => new PeerUpdateInfo(kp.ServiceEndpoint, PeerFlags.OtherPeerDiscovery, clock.ConvertToLocal(message.Clock, kp.LastSuccessCommunication))) // peers known to peer we're communicating with
+            //    .Concat(new[] { new PeerUpdateInfo(endPoint, PeerFlags.DirectDiscovery, clock.Time) }); // direct peer we're communicating with
 
-            peerRegistry.UpdatePeers(discoveredPeers);
-            if(!peerRegistry.TryGetPeer(endPoint, out PeerInfo peer))
-            {
-                throw new InvalidOperationException($"Can't find peer in internal registry: {endPoint}");
-            }
+            //peerRegistry.UpdatePeers(discoveredPeers);
+            //if(!peerRegistry.TryGetPeer(endPoint, out PeerInfo peer))
+            //{
+            //    throw new InvalidOperationException($"Can't find peer in internal registry: {endPoint}");
+            //}
 
-            // don't process requests from myself
-            if (peer.IsLoopback) return;
+            //// don't process requests from myself
+            //if (peer.IsLoopback) return;
 
-            // update known packages if different
-            peer.ReplaceKnownPackages(message.KnownPackages ?? ImmutableList<PackageStatus>.Empty);
+            //// update known packages if different
+            //peer.ReplaceKnownPackages(message.KnownPackages ?? ImmutableList<PackageStatus>.Empty);
 
-            // register discovered packages
-            if (message.KnownPackages?.Any() == true)
-            {
-                packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp.Meta)));
-            }
+            //// register discovered packages
+            //if (message.KnownPackages?.Any() == true)
+            //{
+            //    packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp.Meta)));
+            //}
 
-            // mark peer have new information
-            OnPeerStatusUpdateSuccess(peer);
+            //// mark peer have new information
+            //OnPeerStatusUpdateSuccess(peer);
         }
 
         private void OnPeerStatusUpdateSuccess(PeerInfo peer)
