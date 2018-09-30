@@ -55,7 +55,7 @@ namespace ShareCluster.Network.Http
 
             // add headers
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibilityChecker.NetworkVersion.ToString());
+            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibilityChecker.NetworkProtocolVersion.ToString());
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());
             context.ContentType = serializer.MimeType;
 

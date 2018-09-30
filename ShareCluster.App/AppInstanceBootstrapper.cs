@@ -17,6 +17,7 @@ namespace ShareCluster
         public AppInstanceBootstrapper(
             PackageDownloadManager packageDownloadManager,
             UdpPeerDiscovery udpPeerDiscovery,
+            NetworkChangeNotifier networkChangeNotifier,
             IPeerRegistry peerRegistry,
             IPackageRegistry packageRegistry,
             LocalPackageManager localPackageManager,
@@ -25,6 +26,7 @@ namespace ShareCluster
         {
             PackageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             UdpPeerDiscovery = udpPeerDiscovery ?? throw new ArgumentNullException(nameof(udpPeerDiscovery));
+            NetworkChangeNotifier = networkChangeNotifier ?? throw new ArgumentNullException(nameof(networkChangeNotifier));
             PeerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             PackageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             LocalPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
@@ -33,6 +35,7 @@ namespace ShareCluster
 
         public PackageDownloadManager PackageDownloadManager { get; }
         public UdpPeerDiscovery UdpPeerDiscovery { get; }
+        public NetworkChangeNotifier NetworkChangeNotifier { get; }
         public IPeerRegistry PeerRegistry { get; }
         public IPackageRegistry PackageRegistry { get; }
         public LocalPackageManager LocalPackageManager { get; }
@@ -51,11 +54,18 @@ namespace ShareCluster
                 };
             }
 
-            UdpPeerDiscovery.EnableAutoSearch(
+            // 
+
+            // start UDP announcer/listener
+            UdpPeerDiscovery.Start(
                 allowListener: settings.EnableUdpDiscoveryListener,
-                allowClient: settings.EnableUdpDiscoveryClient
+                allowAnnouncer: settings.EnableUdpDiscoveryClient
             );
 
+            // send announce on network change
+            NetworkChangeNotifier.Change += (s, e) => UdpPeerDiscovery.AnnounceNow();
+
+            // continue with unfinished download
             PackageDownloadManager.RestoreUnfinishedDownloads();
         }
     }

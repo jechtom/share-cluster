@@ -7,18 +7,18 @@ using System.Threading.Tasks;
 namespace ShareCluster.Network.Http
 {
     /// <summary>
-    /// Model binding for MVC of type <see cref="Hash"/>.
+    /// Model binding for MVC of type <see cref="Id"/>.
     /// </summary>
-    public class HashModelBinder : IModelBinder
+    public class IdModelBinder : IModelBinder
     {
         public Task BindModelAsync(ModelBindingContext bindingContext)
         {
-            if (bindingContext.ModelType != typeof(Hash)) throw new NotSupportedException();
+            if (bindingContext.ModelType != typeof(Id)) throw new NotSupportedException();
 
             var value = bindingContext.ValueProvider.GetValue(bindingContext.ModelName).FirstValue;
-            if(!Hash.TryParse(value, out Hash hash))
+            if(!Id.TryParse(value, out Id hash))
             {
-                bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Can't parse hash.");
+                bindingContext.ModelState.AddModelError(bindingContext.ModelName, "Can't parse Id.");
                 return Task.CompletedTask;
             }
 

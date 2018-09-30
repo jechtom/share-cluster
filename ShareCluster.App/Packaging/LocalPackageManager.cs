@@ -64,7 +64,7 @@ namespace ShareCluster.Packaging
                     continue;
                 }
 
-                if(!Hash.TryParse(name, out Hash hash))
+                if(!Id.TryParse(name, out Id hash))
                 {
                     logger.LogWarning("Cannot parse hash from folder name \"{0}\". Skipping.", name);
                 }
@@ -75,7 +75,7 @@ namespace ShareCluster.Packaging
         }
 
         private string CreateBuildPath() => Path.Combine(PackageRepositoryPath, $"{BuildFolderPrefix}{app.Crypto.CreateRandom()}");
-        private string CreatePackagePath(Hash hash) => Path.Combine(PackageRepositoryPath, $"{hash}");
+        private string CreatePackagePath(Id hash) => Path.Combine(PackageRepositoryPath, $"{hash}");
 
         private void EnsurePath()
         {

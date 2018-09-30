@@ -184,7 +184,7 @@ namespace ShareCluster.Packaging
             var rootDirectoryInfo = new DirectoryInfo(rootDirectory);
             rootDirectoryInfo.Create();
 
-            var version = serializer.Deserialize<ClientVersion>(readStream);
+            var version = serializer.Deserialize<VersionNumber>(readStream);
             compatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, "Package", version);
 
             var foldersStack = new Stack<string>();

@@ -26,10 +26,6 @@ namespace ShareCluster
 
         static void Main(string[] args)
         {
-            var a = new NetworkInterfacesDiscovery();
-            a.Start();
-
-
             if (args.Length > 2)
             {
                 args[0] = "dev";

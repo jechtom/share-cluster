@@ -254,7 +254,6 @@ namespace ShareCluster.Network
             // get clients that should be updated 
             var allRemotePeers = peerRegistry
                 .ImmutablePeers
-                .Where(p => !p.IsLoopback)
                 .Where(p => 
                     // maximum time to update expired
                     p.Status.LastKnownStateUpdateAttemptTime > timeMaximum
@@ -304,7 +303,7 @@ namespace ShareCluster.Network
         public void ProcessStatusUpdateMessage(StatusUpdateMessage message, IPAddress address)
         {
             // is this request from myself?
-            bool isLoopback = appInfo.InstanceHash.Hash.Equals(message.InstanceHash);
+            bool isLoopback = appInfo.InstanceId.Hash.Equals(message.InstanceHash);
 
             var endPoint = new IPEndPoint(address, message.ServicePort);
 
@@ -352,7 +351,7 @@ namespace ShareCluster.Network
             {
                 var result = new StatusUpdateMessage
                 {
-                    InstanceHash = appInfo.InstanceHash.Hash,
+                    InstanceHash = appInfo.InstanceId.Hash,
                     KnownPackages = packageRegistry.ImmutablePackagesStatuses,
                     KnownPeers = peerRegistry.ImmutablePeersDiscoveryData,
                     ServicePort = appInfo.NetworkSettings.TcpServicePort,

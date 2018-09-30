@@ -40,13 +40,13 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
-            if(!ClientVersion.TryParse(valueString, out ClientVersion version))
+            if(!VersionNumber.TryParse(valueString, out VersionNumber version))
             {
                 ProcessInvalidVersion(context, $"Invalid value of header {VersionHeaderName}");
                 return;
             }
 
-            if(!CompatibilityChecker.IsCompatibleWith(CompatibilitySet.Network, context.HttpContext.Connection.RemoteIpAddress.ToString(), version))
+            if(!CompatibilityChecker.IsCompatibleWith(CompatibilitySet.NetworkProtocol, context.HttpContext.Connection.RemoteIpAddress.ToString(), version))
             {
                 ProcessInvalidVersion(context, $"Server is incompatible with version defined in header {VersionHeaderName}");
                 return;
@@ -59,7 +59,7 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
-            if (!Hash.TryParse(valueString, out Hash hash))
+            if (!Id.TryParse(valueString, out Id hash))
             {
                 ProcessInvalidVersion(context, $"Invalid value of header {InstanceHeaderName}");
                 return;

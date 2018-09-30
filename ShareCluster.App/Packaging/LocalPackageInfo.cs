@@ -23,7 +23,7 @@ namespace ShareCluster.Packaging
             if (!Metadata.PackageSize.Equals(Sequence.PackageSize)) throw new ArgumentException("Invalid size of package sequence.", nameof(sequence));
         }
 
-        public Hash Id => Reference.Id;
+        public Id Id => Reference.Id;
         public PackageReference Reference { get; }
         public PackageDownloadInfo DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }

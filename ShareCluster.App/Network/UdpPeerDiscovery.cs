@@ -8,76 +8,99 @@ using System.Threading;
 namespace ShareCluster.Network
 {
     /// <summary>
-    /// Provides full discovery services over UDP - both listening and sending broadcasts in specific interval.
+    /// Provides full discovery services over UDP - both listening and sending broadcasts in specific interval or when needed.
     /// Discovered peers are added to given <see cref="IPeerRegistry"/>.
     /// </summary>
-    public class UdpPeerDiscovery : IDisposable
+    public class UdpPeerDiscovery : IDisposable, IAnnounceMessageProvider
     {
-        private bool announceResponseEnabled = false;
-        private UdpPeerDiscoveryListener udpAnnouncer;
-        private UdpPeerDiscoveryClient udpDiscovery;
-        private Timer udpDiscoveryTimer;
-        private readonly AppInfo app;
-        private readonly IPeerRegistry peerRegistry;
-        private readonly ILogger<UdpPeerDiscovery> logger;
+        private bool _isStarted = false;
+        private UdpPeerDiscoveryListener _udpAnnouncer;
+        private UdpPeerDiscoverySender _udpDiscovery;
+        private Timer _udpAnnouncerTimer;
+        private readonly AppInfo _app;
+        private readonly IPeerRegistry _peerRegistry;
+        private readonly ILogger<UdpPeerDiscovery> _logger;
+        private bool _allowAnnouncer, _allowListener;
 
         public UdpPeerDiscovery(AppInfo app, IPeerRegistry peerRegistry)
         {
-            this.app = app ?? throw new ArgumentNullException(nameof(app));
-            this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            logger = app.LoggerFactory.CreateLogger<UdpPeerDiscovery>();
+            _app = app ?? throw new ArgumentNullException(nameof(app));
+            _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _logger = app.LoggerFactory.CreateLogger<UdpPeerDiscovery>();
         }
 
-        public void EnableAutoSearch(bool allowListener = true, bool allowClient = true)
+        public void Start(bool allowListener = true, bool allowAnnouncer = true)
         {
-            if (announceResponseEnabled) throw new InvalidOperationException("Already started.");
-            announceResponseEnabled = true;
+            if (_isStarted) throw new InvalidOperationException("Already started.");
+            _isStarted = true;
+            _allowAnnouncer = allowAnnouncer;
+            _allowListener = allowListener;
 
-            var announceMessage = new DiscoveryAnnounceMessage()
-            {
-                PeerId = app.InstanceHash.Hash,
-                Version = app.NetworkVersion,
-                ServicePort = app.NetworkSettings.TcpServicePort
-            };
+            StartInternal();
+        }
 
-            if (allowListener)
+        private void StartInternal()
+        {
+            if (_allowListener)
             {
                 // enable announcer
-                udpAnnouncer = new UdpPeerDiscoveryListener(app.LoggerFactory, app.CompatibilityChecker, peerRegistry, app.NetworkSettings, announceMessage);
-                udpAnnouncer.Start();
+                _udpAnnouncer = new UdpPeerDiscoveryListener(_app.LoggerFactory, _app.CompatibilityChecker, _app.NetworkSettings);
+                _udpAnnouncer.Discovery += HandleDiscovery;
+                _udpAnnouncer.Start();
             }
 
-            if (allowClient)
+            if (_allowAnnouncer)
             {
-                // timer discovery
-                udpDiscovery = new UdpPeerDiscoveryClient(app.LoggerFactory, app.CompatibilityChecker, app.NetworkSettings, announceMessage, peerRegistry);
-                udpDiscoveryTimer = new Timer(DiscoveryTimerCallback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+                _udpDiscovery = new UdpPeerDiscoverySender(_app.LoggerFactory, _app.NetworkSettings, this);
+                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
             }
         }
 
-        private void DiscoveryTimerCallback(object state)
+        public void AnnounceNow()
         {
-            logger.LogTrace("Starting UDP peer discovery.");
-            udpDiscovery.Discover().ContinueWith(d =>
+            if (!_isStarted) throw new InvalidOperationException("Not started.");
+            if (!_allowAnnouncer) return;
+            SendAnnouncementIteration();
+        }
+
+        private void SendAnnouncementIteration()
+        {
+            _logger.LogDebug("Sending UDP announcement");
+            _udpDiscovery.SendAnnouncement().ContinueWith(d =>
             {
                 // plan next round
-                try { udpDiscoveryTimer?.Change(app.NetworkSettings.UdpDiscoveryTimer, Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
+                try { _udpAnnouncerTimer?.Change(_app.NetworkSettings.UdpDiscoveryTimer, Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
             });
         }
 
         public void Dispose()
         {
-            if (udpAnnouncer != null)
+            if (_udpAnnouncer != null)
             {
-                udpAnnouncer.Dispose();
-                udpAnnouncer = null;
+                _udpAnnouncer.Dispose();
+                _udpAnnouncer = null;
             }
 
-            if (udpDiscoveryTimer != null)
+            if (_udpAnnouncerTimer != null)
             {
-                udpDiscoveryTimer.Dispose();
-                udpDiscoveryTimer = null;
+                _udpAnnouncerTimer.Dispose();
+                _udpAnnouncerTimer = null;
             }
+        }
+
+        byte[] IAnnounceMessageProvider.GetCurrentMessage()
+        {
+            throw new NotImplementedException();
+        }
+
+        private void HandleDiscovery(object sender, UdpPeerDiscoveryInfo e)
+        {
+            if(e.PeerId.Equals(_app.InstanceId))
+            {
+                return; // loopback
+            }
+
+            throw new NotImplementedException();
         }
     }
 }

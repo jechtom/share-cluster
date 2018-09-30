@@ -81,10 +81,11 @@ namespace ShareCluster
             services.AddSingleton(appInfo.CompatibilityChecker);
             services.AddSingleton(appInfo.NetworkSettings);
             services.AddSingleton(appInfo.MessageSerializer);
-            services.AddSingleton(appInfo.InstanceHash);
+            services.AddSingleton(appInfo.InstanceId);
             services.AddSingleton<IClock>(appInfo.Clock);
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<UdpPeerDiscovery>();
+            services.AddSingleton<NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<LocalPackageManager>();
             services.AddSingleton<IPackageRegistry, PackageRegistry>();

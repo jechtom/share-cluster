@@ -68,7 +68,7 @@ namespace ShareCluster.Tests
             // sample message (this caused deserialization issues)
             var message = new StatusUpdateMessage()
             {
-                InstanceHash = new Hash(new byte[] { 1, 2, 3 }),
+                InstanceHash = new Id(new byte[] { 1, 2, 3 }),
                 KnownPackages = ImmutableList<PackageStatus>.Empty,
                 KnownPeers = new DiscoveryPeerData[] {
                     new DiscoveryPeerData()

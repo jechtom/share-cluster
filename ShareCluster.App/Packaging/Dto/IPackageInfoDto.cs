@@ -6,7 +6,7 @@ namespace ShareCluster.Packaging.Dto
 {
     public interface IPackageInfoDto
     {
-        ClientVersion Version { get; }
-        Hash PackageId { get; }
+        VersionNumber Version { get; }
+        Id PackageId { get; }
     }
 }

@@ -23,7 +23,7 @@ namespace ShareCluster.Network
             Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
             DiscoveryMode = discoveryMode;
-            KnownPackages = new Dictionary<Hash, PackageStatus>(0);
+            KnownPackages = new Dictionary<Id, PackageStatus>(0);
 
             if (endPoint.Port == 0) throw new ArgumentException("Zero port is not allowed.", nameof(endPoint));
         }
@@ -32,7 +32,6 @@ namespace ShareCluster.Network
         public IPEndPoint ServiceEndPoint { get; set; }
 
         // how it was discovered?
-        public bool IsLoopback => (DiscoveryMode & PeerFlags.Loopback) > 0;
         public bool IsDirectDiscovery => (DiscoveryMode & PeerFlags.DirectDiscovery) > 0;
         public bool IsOtherPeerDiscovery => (DiscoveryMode & PeerFlags.OtherPeerDiscovery) > 0;
         public bool IsManualDiscovery => (DiscoveryMode & PeerFlags.ManualDiscovery) > 0;
@@ -41,12 +40,11 @@ namespace ShareCluster.Network
         public PeerFlags DiscoveryMode { get; set; }
 
         // known packages
-        public IDictionary<Hash, PackageStatus> KnownPackages { get; private set; }
+        public IDictionary<Id, PackageStatus> KnownPackages { get; private set; }
 
         public PeerClusterStatus Status { get; private set; }
         
         public string StatusString => string.Join(";", new string[] {
-                        IsLoopback ? "Loopback" : null,
                         IsDirectDiscovery ? "Direct" : null,
                         IsOtherPeerDiscovery ? "OtherPeer" : null,
                         IsManualDiscovery ? "Manual" : null,
@@ -69,7 +67,7 @@ namespace ShareCluster.Network
             if(changed) KnownPackageChanged?.Invoke(this);
         }
 
-        public void RemoveKnownPackage(Hash packageId)
+        public void RemoveKnownPackage(Id packageId)
         {
             lock (syncLock)
             {

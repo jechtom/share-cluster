@@ -19,8 +19,8 @@ namespace ShareCluster
     {
         private readonly ILogger<PackageRegistry> logger;
         private readonly LocalPackageManager localPackageManager;
-        private Dictionary<Hash, LocalPackageInfo> localPackages;
-        private Dictionary<Hash, DiscoveredPackage> discoveredPackages;
+        private Dictionary<Id, LocalPackageInfo> localPackages;
+        private Dictionary<Id, DiscoveredPackage> discoveredPackages;
         private readonly object packagesLock = new object();
 
         // pre-calculated
@@ -48,7 +48,7 @@ namespace ShareCluster
 
         private void Init()
         {
-            localPackages = new Dictionary<Hash, LocalPackageInfo>();
+            localPackages = new Dictionary<Id, LocalPackageInfo>();
 
             var packageReferences = localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
 
@@ -84,8 +84,8 @@ namespace ShareCluster
             lock (packagesLock)
             {
                 // init
-                if (localPackages == null) localPackages = new Dictionary<Hash, LocalPackageInfo>();
-                if (discoveredPackages == null) discoveredPackages = new Dictionary<Hash, DiscoveredPackage>();
+                if (localPackages == null) localPackages = new Dictionary<Id, LocalPackageInfo>();
+                if (discoveredPackages == null) discoveredPackages = new Dictionary<Id, DiscoveredPackage>();
                 bool updateDiscoveredArray = false;
 
                 // update
@@ -193,7 +193,7 @@ namespace ShareCluster
             }
         }
 
-        public bool TryGetPackage(Hash packageHash, out LocalPackageInfo package)
+        public bool TryGetPackage(Id packageHash, out LocalPackageInfo package)
         {
             lock(packagesLock)
             {

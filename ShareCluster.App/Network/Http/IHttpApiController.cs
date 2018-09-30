@@ -6,7 +6,7 @@ namespace ShareCluster.Network.Http
     {
         IPAddress RemoteIpAddress { get; set; }
 
-        Hash PeerId { get; set; }
+        Id PeerId { get; set; }
         bool IsLoopback { get; set; }
     }
 }

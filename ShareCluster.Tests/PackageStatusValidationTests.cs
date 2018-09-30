@@ -12,7 +12,7 @@ namespace ShareCluster.Tests
         public void Valid()
         {
             var id = AppInfo.CreateDefaultCryptoProvider().CreateRandom();
-            var version = new ClientVersion(1);
+            var version = new VersionNumber(1);
             var baseInfo = PackageSequenceBaseInfo.Default;
             long size = baseInfo.SegmentLength * 18; // bitmap length: 8bits + 8bits + 2bits
             var downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(version, id, new PackageSequenceInfo(baseInfo, size));

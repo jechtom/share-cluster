@@ -26,7 +26,7 @@ namespace ShareCluster
         void RegisterDiscoveredPackages(IEnumerable<DiscoveredPackage> enumerable);
         LocalPackageInfo SaveRemotePackage(PackageHashes hashes, PackageMeta meta);
         LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure);
-        bool TryGetPackage(Hash packageHash, out LocalPackageInfo package);
+        bool TryGetPackage(Id packageHash, out LocalPackageInfo package);
         void UpdateDownloadStatus(LocalPackageInfo packageInfo);
         Task DeletePackageAsync(LocalPackageInfo package);
     }

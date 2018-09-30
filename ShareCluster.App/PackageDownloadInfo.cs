@@ -25,7 +25,7 @@ namespace ShareCluster
             lastByteMask = (byte)((1 << (lastSegmentBits == 0 ? 8 : lastSegmentBits)) - 1);
         }
 
-        public static PackageDownloadInfo CreateForCreatedPackage(ClientVersion version, Hash packageId, Packaging.PackageSequenceInfo sequenceInfo)
+        public static PackageDownloadInfo CreateForCreatedPackage(VersionNumber version, Id packageId, Packaging.PackageSequenceInfo sequenceInfo)
         {
             if (sequenceInfo == null)
             {
@@ -43,7 +43,7 @@ namespace ShareCluster
             return new PackageDownloadInfo(data, sequenceInfo);
         }
 
-        public static PackageDownloadInfo CreateForReadyForDownloadPackage(ClientVersion version, Hash packageId, Packaging.PackageSequenceInfo sequenceInfo)
+        public static PackageDownloadInfo CreateForReadyForDownloadPackage(VersionNumber version, Id packageId, Packaging.PackageSequenceInfo sequenceInfo)
         {
             if (sequenceInfo == null)
             {
@@ -66,7 +66,7 @@ namespace ShareCluster
         private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
 
         public PackageDownload Data => dto;
-        public Hash PackageId => dto.PackageId;
+        public Id PackageId => dto.PackageId;
         public bool IsDownloaded => dto.DownloadedBytes == sequenceInfo.PackageSize;
         public bool IsMoreToDownload => Data.DownloadedBytes + progressBytesReserved < sequenceInfo.PackageSize;
         public bool IsDownloading => Data.IsDownloading;

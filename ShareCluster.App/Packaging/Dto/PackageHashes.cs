@@ -14,7 +14,7 @@ namespace ShareCluster.Packaging.Dto
     {
         public PackageHashes() { }
 
-        public PackageHashes(ClientVersion version, IEnumerable<Hash> segmentHashes, CryptoProvider cryptoProvider, PackageSequenceInfo packageSequence)
+        public PackageHashes(VersionNumber version, IEnumerable<Id> segmentHashes, CryptoProvider cryptoProvider, PackageSequenceInfo packageSequence)
         {
             if (cryptoProvider == null)
             {
@@ -42,16 +42,16 @@ namespace ShareCluster.Packaging.Dto
         }
 
         [ProtoMember(1)]
-        public virtual ClientVersion Version { get; }
+        public virtual VersionNumber Version { get; }
 
         [ProtoMember(2)]
-        public virtual Hash PackageId { get; }
+        public virtual Id PackageId { get; }
 
         [ProtoMember(3)]
         public virtual long PackageSize { get; }
 
         [ProtoMember(4)]
-        public virtual Hash[] PackageSegmentsHashes { get; }
+        public virtual Id[] PackageSegmentsHashes { get; }
 
         [ProtoMember(5)]
         public virtual long SegmentLength { get; }

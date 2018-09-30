@@ -115,8 +115,8 @@ namespace ShareCluster.Packaging
             currentPart.HashStream.Close();
             currentPart.HashStream.Dispose();
 
-            Hash partHash = new Hash(currentPart.HashAlgorithm.Hash);
-            Hash expetedHash = hashes.PackageSegmentsHashes[currentPart.Part.SegmentIndex];
+            Id partHash = new Id(currentPart.HashAlgorithm.Hash);
+            Id expetedHash = hashes.PackageSegmentsHashes[currentPart.Part.SegmentIndex];
 
             currentPart.HashAlgorithm.Dispose();
 

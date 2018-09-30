@@ -21,23 +21,23 @@ namespace ShareCluster
 
             using (var hash = algorithmFactory())
             {
-                EmptyHash = new Hash(hash.ComputeHash(new byte[0]));
+                EmptyHash = new Id(hash.ComputeHash(new byte[0]));
             }
         }
 
         public HashAlgorithm CreateHashAlgorithm() => hashAlgFactory();
 
         public int BytesLength { get; }
-        public Hash EmptyHash { get; }
+        public Id EmptyHash { get; }
 
-        public Hash CreateRandom()
+        public Id CreateRandom()
         {
             var result = new byte[BytesLength];
             randomGenerator.GetBytes(result);
-            return new Hash(result);
+            return new Id(result);
         }
 
-        public Hash HashFromHashes(IEnumerable<Hash> hashes)
+        public Id HashFromHashes(IEnumerable<Id> hashes)
         {
             using(var hashAlg = CreateHashAlgorithm())
             using (var cryptoStream = new CryptoStream(Stream.Null, hashAlg, CryptoStreamMode.Write))
@@ -49,7 +49,7 @@ namespace ShareCluster
 
                 // compute and return
                 cryptoStream.FlushFinalBlock();
-                return new Hash(hashAlg.Hash);
+                return new Id(hashAlg.Hash);
             }
         }
     }

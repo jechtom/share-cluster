@@ -26,10 +26,10 @@ namespace ShareCluster.Network
         private readonly IPeerRegistry peerRegistry;
         private readonly List<LocalPackageInfo> downloads;
         private List<PackageDownloadSlot> downloadSlots;
-        private readonly HashSet<Hash> packageDataDownloads = new HashSet<Hash>();
+        private readonly HashSet<Id> packageDataDownloads = new HashSet<Id>();
         private readonly object syncLock = new object();
         private readonly PackageStatusUpdater packageStatusUpdater;
-        private readonly Dictionary<Hash, PostponeTimer> postPoneUpdateDownloadFile;
+        private readonly Dictionary<Id, PostponeTimer> postPoneUpdateDownloadFile;
         private readonly TimeSpan postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
         private bool isNextTryScheduled = false;
 
@@ -40,7 +40,7 @@ namespace ShareCluster.Network
             this.client = client ?? throw new ArgumentNullException(nameof(client));
             this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            postPoneUpdateDownloadFile = new Dictionary<Hash, PostponeTimer>();
+            postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
             downloadSlots = new List<PackageDownloadSlot>(MaximumDownloadSlots);
             downloads = new List<LocalPackageInfo>();
             packageStatusUpdater = new PackageStatusUpdater(appInfo.LoggerFactory, appInfo.NetworkSettings, client);
@@ -210,13 +210,13 @@ namespace ShareCluster.Network
             DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = package, HasStopped = true });
         }
 
-        public PackageStatusResponse GetPackageStatusResponse(Hash[] packageIds)
+        public PackageStatusResponse GetPackageStatusResponse(Id[] packageIds)
         {
             var packages = new PackageStatusDetail[packageIds.Length];
             for (int i = 0; i < packageIds.Length; i++)
             {
                 var detail = new PackageStatusDetail();
-                Hash id = packageIds[i];
+                Id id = packageIds[i];
                 packages[i] = detail;
                 if (!packageRegistry.TryGetPackage(id, out LocalPackageInfo info) || info.LockProvider.IsMarkedToDelete)
                 {

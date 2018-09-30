@@ -14,25 +14,25 @@ namespace ShareCluster.Packaging
     public class CreatePackageDataStreamController : IPackageDataStreamController
     {
         private readonly ILogger<CreatePackageDataStreamController> logger;
-        private readonly ClientVersion version;
+        private readonly VersionNumber version;
         private readonly CryptoProvider cryptoProvider;
         private readonly PackageSequenceBaseInfo sequenceBaseInfo;
         private readonly string packageRootPath;
-        private readonly List<Hash> segmentHashes;
+        private readonly List<Id> segmentHashes;
         private Dto.PackageHashes packageId;
         private CurrentPart currentPart;
         private long totalSize;
         private bool isDisposed;
         private bool isClosed;
 
-        public CreatePackageDataStreamController(ClientVersion version, ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, string packageRootPath)
+        public CreatePackageDataStreamController(VersionNumber version, ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, string packageRootPath)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<CreatePackageDataStreamController>();
             this.version = version;
             this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
             this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
             this.packageRootPath = packageRootPath ?? throw new ArgumentNullException(nameof(packageRootPath));
-            segmentHashes = new List<Hash>();
+            segmentHashes = new List<Id>();
         }
 
         public bool CanWrite => true;
@@ -106,7 +106,7 @@ namespace ShareCluster.Packaging
             currentPart.HashStream.Close();
             currentPart.HashStream.Dispose();
 
-            var partHash = new Hash(currentPart.HashAlgorithm.Hash);
+            var partHash = new Id(currentPart.HashAlgorithm.Hash);
             segmentHashes.Add(partHash);
             currentPart.HashAlgorithm.Dispose();
             currentPart.FileStream.Flush();

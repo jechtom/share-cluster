@@ -6,24 +6,24 @@ using System.Text;
 namespace ShareCluster
 {
     [ProtoContract]
-    public struct ClientVersion : IEquatable<ClientVersion>, IComparable<ClientVersion>
+    public struct VersionNumber : IEquatable<VersionNumber>, IComparable<VersionNumber>
     {
         [ProtoMember(1)]
         public int Version;
 
-        public ClientVersion(int version)
+        public VersionNumber(int version)
         {
             Version = version;
         }
 
-        public int CompareTo(ClientVersion other)
+        public int CompareTo(VersionNumber other)
         {
             return Version.CompareTo(other.Version);
         }
 
         public override bool Equals(object obj)
         {
-            return Equals((ClientVersion)obj);
+            return Equals((VersionNumber)obj);
         }
 
         public override int GetHashCode()
@@ -31,7 +31,7 @@ namespace ShareCluster
             return Version.GetHashCode();
         }
 
-        public bool Equals(ClientVersion other)
+        public bool Equals(VersionNumber other)
         {
             return other.Version == Version;
         }
@@ -41,20 +41,20 @@ namespace ShareCluster
             return $"v{Version}";
         }
 
-        public bool IsCompatibleWith(ClientVersion version)
+        public bool IsCompatibleWith(VersionNumber version)
         {
             return Version == version.Version;
         }
 
-        public static bool TryParse(string valueString, out ClientVersion version)
+        public static bool TryParse(string valueString, out VersionNumber version)
         {
             if(valueString == null || !valueString.StartsWith("v") || !int.TryParse(valueString.Substring(1), out int versionInt))
             {
-                version = default(ClientVersion);
+                version = default(VersionNumber);
                 return false;
             }
 
-            version = new ClientVersion(versionInt);
+            version = new VersionNumber(versionInt);
             return true;
         }
     }

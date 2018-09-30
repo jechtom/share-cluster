@@ -13,67 +13,81 @@ using System.Diagnostics;
 
 namespace ShareCluster.Network
 {
+    /// <summary>
+    /// Listens for UDP discovery announcements sent by <see cref="UdpPeerDiscoverySender"/>.
+    /// </summary>
     public class UdpPeerDiscoveryListener : IDisposable
     {
-        private readonly ILogger<UdpPeerDiscoveryListener> logger;
-        private readonly CompatibilityChecker compatibilityChecker;
-        private readonly IPeerRegistry registry;
-        private readonly NetworkSettings settings;
-        private readonly DiscoveryAnnounceMessage announce;
-        private readonly byte[] announceBytes;
-        private UdpClient client;
-        private CancellationTokenSource cancel;
-        private Task task;
+        private readonly ILogger<UdpPeerDiscoveryListener> _logger;
+        private readonly CompatibilityChecker _compatibilityChecker;
+        private readonly NetworkSettings _settings;
+        private UdpClient _client;
+        private CancellationTokenSource _cancel;
+        private Task _task;
 
-        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, IPeerRegistry registry, NetworkSettings settings, DiscoveryAnnounceMessage announce)
+        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, NetworkSettings settings)
         {
-            this.logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
-            this.compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
-            this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            this.announce = announce ?? throw new ArgumentNullException(nameof(announce));
-            this.announceBytes = settings.MessageSerializer.Serialize(announce);
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
+            _compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
         public void Dispose()
         {
-            cancel.Cancel();
-            task.Wait();
+            _cancel.Cancel();
+            _task.Wait();
         }
 
         public void Start()
         {
-            logger.LogDebug("Starting UDP discovery listening {0}", settings.UdpAnnouncePort);
+            _logger.LogDebug("Starting discovery listening on UDP port {0}", _settings.UdpAnnouncePort);
 
-            client = new UdpClient(settings.UdpAnnouncePort);
-            cancel = new CancellationTokenSource();
-            task = Task.Run(StartInternal, cancel.Token)
+            _client = new UdpClient(_settings.UdpAnnouncePort);
+            _cancel = new CancellationTokenSource();
+            _task = Task.Run(StartInternal, _cancel.Token)
                 .ContinueWith(c=>
                 {
-                    logger.LogDebug("Disposing UDP client.");
-                    client.Dispose();
+                    _logger.LogDebug("Disposing UDP client.");
+                    _client.Dispose();
                 });
         }
 
         private async Task StartInternal()
         {
-            while (!cancel.IsCancellationRequested)
+            while (!_cancel.IsCancellationRequested)
             {
-                var rec = await client.ReceiveAsync().WithCancellation(cancel.Token);
-                Debug.Assert(rec.Buffer.Length > 0);
+                var receiveResult = await _client.ReceiveAsync().WithCancellation(_cancel.Token);
+                Debug.Assert(receiveResult.Buffer.Length > 0);
                 try
                 {
-                    DiscoveryAnnounceMessage messageReq;
-                    messageReq = settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(rec.Buffer);
-                    
-                    var endpoint = new IPEndPoint(rec.RemoteEndPoint.Address, messageReq.ServicePort);
-                    if (!compatibilityChecker.IsCompatibleWith(endpoint, messageReq.Version)) continue;
-                    PeerFlags mode = PeerFlags.DiscoveredByUdp;
-                    bool isLoopback = messageReq.PeerId.Equals(announce.PeerId);
-                    if (isLoopback) mode |= PeerFlags.Loopback;
-                    registry.UpdatePeers(new PeerUpdateInfo[] { new PeerUpdateInfo(endpoint, mode, TimeSpan.Zero) });
+                    DiscoveryAnnounceMessage announceMessage;
+                    using (MemoryStream memStream = new MemoryStream(receiveResult.Buffer, index: 0, count: receiveResult.Buffer.Length, writable: false))
+                    {
+                        // deserialize network protocol version and ignore if incompatible
+                        VersionNumber protocolVersion = _settings.MessageSerializer.Deserialize<VersionNumber>(memStream);
+                        if(!_compatibilityChecker.IsNetworkProtocolCompatibleWith(receiveResult.RemoteEndPoint, protocolVersion))
+                        {
+                            continue;
+                        }
 
-                    logger.LogTrace($"Received request from {rec.RemoteEndPoint.Address}.");
+                        // deserialize following message
+                        announceMessage = _settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(memStream);
+                    }
+
+                    // validate
+                    ValidateMessage(announceMessage);
+
+                    // publish message
+                    var info = new UdpPeerDiscoveryInfo()
+                    {
+                        EndPoint = new IPEndPoint(receiveResult.RemoteEndPoint.Address, announceMessage.ServicePort),
+                        PeerId = announceMessage.PeerId,
+                        IndexRevision = announceMessage.IndexRevision
+                    };
+
+                    Discovery?.Invoke(this, info);
+
+                    _logger.LogTrace($"Received announce from {receiveResult.RemoteEndPoint.Address}");
                 }
                 catch(OperationCanceledException)
                 {
@@ -81,28 +95,30 @@ namespace ShareCluster.Network
                 }
                 catch(Exception e)
                 {
-                    logger.LogDebug($"Cannot read message from {rec.RemoteEndPoint}. Reason: {e.Message}");
+                    _logger.LogWarning(e, $"Cannot read message from {receiveResult.RemoteEndPoint}. Reason: {e.Message}");
                     continue;
-                }
-
-                try
-                {
-                    await client.SendAsync(announceBytes, announceBytes.Length, rec.RemoteEndPoint).WithCancellation(cancel.Token);
-
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (SocketException)
-                {
-                    logger.LogTrace($"Client {rec.RemoteEndPoint} closed connection befory reply.");
-                }
-                catch(Exception e)
-                {
-                    logger.LogDebug($"Error sending response to client {rec.RemoteEndPoint}: {e.Message}");
                 }
             }
         }
+
+        private void ValidateMessage(DiscoveryAnnounceMessage announceMessage)
+        {
+            if(announceMessage.PeerId.IsNullOrEmpty)
+            {
+                throw new InvalidOperationException($"Id is null or empty.");
+            }
+
+            if(announceMessage.ServicePort == 0)
+            {
+                throw new InvalidOperationException("Invalid port 0");
+            }
+
+            if (announceMessage.IndexRevision.Version == 0)
+            {
+                throw new InvalidOperationException("Invalid revision 0");
+            }
+        }
+
+        public event EventHandler<UdpPeerDiscoveryInfo> Discovery;
     }
 }

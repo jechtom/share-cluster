@@ -19,14 +19,14 @@ namespace ShareCluster.Network
         public UInt16 TcpServicePort { get; set; } = 13978;
 
         /// <summary>
-        /// Gets or sets how long application waits for response from UDP discovery.
-        /// </summary>
-        public TimeSpan UdpDiscoveryTimeout { get; set; } = TimeSpan.FromSeconds(5);
-
-        /// <summary>
         /// Gets or sets how often UPD broadcast is send.
         /// </summary>
-        public TimeSpan UdpDiscoveryTimer { get; internal set; } = TimeSpan.FromMinutes(5);
+        public TimeSpan UdpDiscoveryTimer { get; set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// Gets or sets how often changes in network devices and IP addresses are checked.
+        /// </summary>
+        public TimeSpan NetworkChangeDetectionInterval { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// How many fails we protected peer from removing from peers list.

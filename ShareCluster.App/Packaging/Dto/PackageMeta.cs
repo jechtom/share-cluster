@@ -9,10 +9,10 @@ namespace ShareCluster.Packaging.Dto
     public class PackageMeta : IPackageInfoDto
     {
         [ProtoMember(1)]
-        public virtual ClientVersion Version { get; set; }
+        public virtual VersionNumber Version { get; set; }
 
         [ProtoMember(2)]
-        public virtual Hash PackageId { get; set; }
+        public virtual Id PackageId { get; set; }
 
         [ProtoMember(3)]
         public virtual long PackageSize { get; set; }

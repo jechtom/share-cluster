@@ -9,13 +9,15 @@ using Microsoft.Extensions.Primitives;
 namespace ShareCluster
 {
     [ProtoContract]
-    [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.HashModelBinder))]
-    public struct Hash : IEquatable<Hash>, IFormattable
+    [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.IdModelBinder))]
+    public struct Id : IEquatable<Id>, IFormattable
     {
         [ProtoMember(1)]
         public byte[] Data;
 
-        public Hash(byte[] data)
+        public bool IsNullOrEmpty => Data == null || Data.Length == 0;
+
+        public Id(byte[] data)
         {
             Data = data ?? throw new ArgumentNullException(nameof(data));
         }
@@ -27,7 +29,7 @@ namespace ShareCluster
 
         public override bool Equals(object obj)
         {
-            return ((Hash)obj).Equals(this);
+            return ((Id)obj).Equals(this);
         }
 
         public string ToString(string format)
@@ -40,7 +42,7 @@ namespace ShareCluster
             return ToString(Data.Length);
         }
 
-        public bool Equals(Hash other) => CompareArrays(Data, other.Data);
+        public bool Equals(Id other) => CompareArrays(Data, other.Data);
 
         public static bool CompareArrays(byte[] array1, byte[] array2)
         {
@@ -87,9 +89,9 @@ namespace ShareCluster
             return BitConverter.ToString(Data, 0, bytes).Replace("-", string.Empty);
         }
 
-        public static Hash Parse(string valueString)
+        public static Id Parse(string valueString)
         {
-            if(!TryParse(valueString, out Hash result))
+            if(!TryParse(valueString, out Id result))
             {
                 throw new FormatException();
             }
@@ -97,21 +99,21 @@ namespace ShareCluster
             return result;
         }
 
-        public static bool TryParse(string valueString, out Hash hash)
+        public static bool TryParse(string valueString, out Id hash)
         {
             if(valueString == null)
             {
-                hash = default(Hash);
+                hash = default(Id);
                 return false;
             }
 
             if(!TryConvertHexStringToByteArray(valueString, out byte[] bytes))
             {
-                hash = default(Hash);
+                hash = default(Id);
                 return false;
             }
 
-            hash = new Hash(bytes);
+            hash = new Id(bytes);
             return true;
         }
 

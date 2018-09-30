@@ -2,7 +2,7 @@
 {
     public enum CompatibilitySet
     {
-        Network,
+        NetworkProtocol,
         Package
     }
 }

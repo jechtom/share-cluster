@@ -19,7 +19,7 @@ namespace ShareCluster.WebInterface
         public IActionResult Index() => View(model: facade.GetStatusViewModel());
 
         [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult StartDownloadDiscoveredPackage(Hash packageId)
+        public IActionResult StartDownloadDiscoveredPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
             facade.TryStartDownloadDiscovered(packageId);
@@ -27,7 +27,7 @@ namespace ShareCluster.WebInterface
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult StartDownloadPackage(Hash packageId)
+        public IActionResult StartDownloadPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
             facade.TryChangeDownloadPackage(packageId, start: true);
@@ -35,7 +35,7 @@ namespace ShareCluster.WebInterface
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult StopDownloadPackage(Hash packageId)
+        public IActionResult StopDownloadPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
             facade.TryChangeDownloadPackage(packageId, start: false);
@@ -43,14 +43,14 @@ namespace ShareCluster.WebInterface
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult StartVerifyPackage(Hash packageId)
+        public IActionResult StartVerifyPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
             facade.TryVerifyPackage(packageId);
             return RedirectToAction(nameof(Index));
         }
 
-        public IActionResult DeletePackage(Hash packageId)
+        public IActionResult DeletePackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
             PackageOperationViewModel package;
@@ -59,7 +59,7 @@ namespace ShareCluster.WebInterface
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult DeletePackage(Hash packageId, object _)
+        public IActionResult DeletePackage(Id packageId, object _)
         {
             if (!ModelState.IsValid) return BadRequest();
 
@@ -79,7 +79,7 @@ namespace ShareCluster.WebInterface
             return RedirectToAction(nameof(Index));
         }
 
-        public IActionResult ExtractPackage(Hash packageId)
+        public IActionResult ExtractPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
             PackageOperationViewModel package;
@@ -94,7 +94,7 @@ namespace ShareCluster.WebInterface
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult ExtractPackage(Hash packageId, ExtractPackageViewModel viewModel)
+        public IActionResult ExtractPackage(Id packageId, ExtractPackageViewModel viewModel)
         {
             if (!ModelState.IsValid) return View();
 

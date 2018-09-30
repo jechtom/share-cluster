@@ -28,7 +28,7 @@ namespace ShareCluster.Network
         private readonly Timer statusTimer;
         private readonly Stopwatch stopwatch;
 
-        Dictionary<Hash, PackagePeersStatus> packageStates;
+        Dictionary<Id, PackagePeersStatus> packageStates;
         Dictionary<IPEndPoint, PeerOverallStatus> peers;
         private readonly ILoggerFactory loggerFactory;
         private readonly NetworkSettings settings;
@@ -39,7 +39,7 @@ namespace ShareCluster.Network
             this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
             stopwatch = Stopwatch.StartNew();
-            packageStates = new Dictionary<Hash, PackagePeersStatus>();
+            packageStates = new Dictionary<Id, PackagePeersStatus>();
             peers = new Dictionary<IPEndPoint, PeerOverallStatus>();
             statusTimer = new Timer(StatusTimeoutCallback, null, statusTimerInterval, Timeout.InfiniteTimeSpan);
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
