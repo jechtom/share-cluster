@@ -19,7 +19,7 @@ namespace ShareCluster
             internalAlg = algorithmFactory();
             BytesLength = (internalAlg.HashSize + 7) / 8;
 
-            using (var hash = algorithmFactory())
+            using (HashAlgorithm hash = algorithmFactory())
             {
                 EmptyHash = new Id(hash.ComputeHash(new byte[0]));
             }
@@ -39,10 +39,10 @@ namespace ShareCluster
 
         public Id HashFromHashes(IEnumerable<Id> hashes)
         {
-            using(var hashAlg = CreateHashAlgorithm())
+            using(HashAlgorithm hashAlg = CreateHashAlgorithm())
             using (var cryptoStream = new CryptoStream(Stream.Null, hashAlg, CryptoStreamMode.Write))
             {
-                foreach (var hash in hashes)
+                foreach (Id hash in hashes)
                 {
                     cryptoStream.Write(hash.Data, 0, hash.Data.Length);
                 }

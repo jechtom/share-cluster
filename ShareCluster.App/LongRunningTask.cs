@@ -37,7 +37,7 @@ namespace ShareCluster
                 if (t.IsFaulted)
                 {
                     // extract exception if single exception
-                    var flattenExc = t.Exception.Flatten();
+                    AggregateException flattenExc = t.Exception.Flatten();
                     Exception exc = (flattenExc.InnerExceptions.Count == 1 ? flattenExc.InnerExceptions.First(): flattenExc);
                     this.progressFunc = ((_) => $"Error: {exc}");
                     FaultException = exc;

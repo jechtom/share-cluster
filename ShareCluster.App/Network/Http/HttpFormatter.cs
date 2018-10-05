@@ -17,7 +17,7 @@ namespace ShareCluster.Network.Http
     {
         bool IInputFormatter.CanRead(InputFormatterContext context)
         {
-            var serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
+            IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
 
             if (!(context.HttpContext.Request.ContentType ?? "").Equals(serializer.MimeType, StringComparison.OrdinalIgnoreCase))
                 return false;
@@ -41,7 +41,7 @@ namespace ShareCluster.Network.Http
 
         Task<InputFormatterResult> IInputFormatter.ReadAsync(InputFormatterContext context)
         {
-            var serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
+            IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
 
             object result = serializer.Deserialize(context.HttpContext.Request.Body, context.ModelType);
             return InputFormatterResult.SuccessAsync(result);
@@ -49,9 +49,9 @@ namespace ShareCluster.Network.Http
 
         Task IOutputFormatter.WriteAsync(OutputFormatterWriteContext context)
         {
-            var serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
-            var compatibilityChecker = context.HttpContext.RequestServices.GetRequiredService<CompatibilityChecker>();
-            var instanceHash = context.HttpContext.RequestServices.GetRequiredService<InstanceHash>();
+            IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
+            CompatibilityChecker compatibilityChecker = context.HttpContext.RequestServices.GetRequiredService<CompatibilityChecker>();
+            InstanceHash instanceHash = context.HttpContext.RequestServices.GetRequiredService<InstanceHash>();
 
             // add headers
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);

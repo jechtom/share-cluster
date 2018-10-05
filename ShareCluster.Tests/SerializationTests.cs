@@ -23,7 +23,7 @@ namespace ShareCluster.Tests
                 .ToArray();
             Assert.All(r, ri =>
             {
-                var result = serializer.Deserialize<IPEndPoint>(ri);
+                IPEndPoint result = serializer.Deserialize<IPEndPoint>(ri);
                 Assert.Equal(567, result.Port);
                 Assert.Equal(IPAddress.Parse("1.2.3.4"), result.Address);
             });
@@ -35,7 +35,7 @@ namespace ShareCluster.Tests
             IMessageSerializer serializer = new ProtoBufMessageSerializer();
             var endPoint = new IPEndPoint(IPAddress.Parse("1.2.3.4"), 567);
             byte[] bytes = serializer.Serialize(endPoint);
-            var result = serializer.Deserialize<IPEndPoint>(bytes);
+            IPEndPoint result = serializer.Deserialize<IPEndPoint>(bytes);
             Assert.Equal(endPoint.Port, result.Port);
             Assert.Equal(endPoint.Address, result.Address);
         }
@@ -47,7 +47,7 @@ namespace ShareCluster.Tests
             IPAddress adr = IPAddress.Parse("2001:db8::ff00:42:8329");
 
             byte[] bytes = serializer.Serialize(adr);
-            var result = serializer.Deserialize<IPAddress>(bytes);
+            IPAddress result = serializer.Deserialize<IPAddress>(bytes);
             Assert.Equal(adr, result);
         }
 
@@ -58,7 +58,7 @@ namespace ShareCluster.Tests
             IPAddress adr = IPAddress.Parse("8.8.8.8");
 
             byte[] bytes = serializer.Serialize(adr);
-            var result = serializer.Deserialize<IPAddress>(bytes);
+            IPAddress result = serializer.Deserialize<IPAddress>(bytes);
             Assert.Equal(adr, result);
         }
 
@@ -85,7 +85,7 @@ namespace ShareCluster.Tests
             // serialize/deserialize
             IMessageSerializer serializer = new ProtoBufMessageSerializer();
             byte[] bytes = serializer.Serialize((object)message, typeof(StatusUpdateMessage));
-            var des = serializer.Deserialize<StatusUpdateMessage>(bytes);
+            StatusUpdateMessage des = serializer.Deserialize<StatusUpdateMessage>(bytes);
 
             // compare
             Assert.NotNull(des);

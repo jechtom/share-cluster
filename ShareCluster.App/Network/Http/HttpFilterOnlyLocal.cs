@@ -11,7 +11,7 @@ namespace ShareCluster.Network.Http
     {
         public void OnAuthorization(AuthorizationFilterContext context)
         {
-            var connection = context.HttpContext.Connection;
+            Microsoft.AspNetCore.Http.ConnectionInfo connection = context.HttpContext.Connection;
             bool isLocal = connection.RemoteIpAddress != null && IPAddress.IsLoopback(connection.RemoteIpAddress);
 
             if (!isLocal)

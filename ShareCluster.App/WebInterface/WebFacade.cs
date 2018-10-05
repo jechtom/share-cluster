@@ -61,7 +61,7 @@ namespace ShareCluster.WebInterface
 
             // run
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            var extractTask = validator.ValidatePackageAsync(package, measureItem).ContinueWith(t => {
+            Task extractTask = validator.ValidatePackageAsync(package, measureItem).ContinueWith(t => {
                 if (t.IsFaulted && !t.Result.IsValid) throw new Exception(string.Join("; ", t.Result.Errors));
             });
 
@@ -87,7 +87,7 @@ namespace ShareCluster.WebInterface
 
         public void TryStartDownloadDiscovered(Id packageId)
         {
-            var packageDiscovery = packageRegistry.ImmutableDiscoveredPackages.FirstOrDefault(p => p.PackageId.Equals(packageId));
+            DiscoveredPackage packageDiscovery = packageRegistry.ImmutableDiscoveredPackages.FirstOrDefault(p => p.PackageId.Equals(packageId));
             if (packageDiscovery == null) return;
 
             // try start download
@@ -164,7 +164,7 @@ namespace ShareCluster.WebInterface
             if (!packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
 
             // start
-            var deleteTask = packageRegistry.DeletePackageAsync(package);
+            Task deleteTask = packageRegistry.DeletePackageAsync(package);
 
             // create and register task for starting download
             var task = new LongRunningTask(

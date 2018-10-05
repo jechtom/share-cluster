@@ -162,7 +162,7 @@ namespace ShareCluster.Packaging
                 {
                     // validate
                     var validator = new PackageDataValidator(app.LoggerFactory, app.Crypto);
-                    var result = validator.ValidatePackageAsync(packageInfo, measure: null).Result;
+                    PackageDataValidatorResult result = validator.ValidatePackageAsync(packageInfo, measure: null).Result;
                     if (!result.IsValid)
                     {
                         throw new InvalidOperationException($"Cannot validate package {packageInfo}:\n{string.Join("\n", result.Errors)}");
@@ -191,20 +191,20 @@ namespace ShareCluster.Packaging
 
         public PackageHashes ReadPackageHashesFile(PackageReference reference)
         {
-            var dto = ReadPackageFile<PackageHashes>(reference, PackageHashesFileName);
+            PackageHashes dto = ReadPackageFile<PackageHashes>(reference, PackageHashesFileName);
             return dto;
         }
 
         public PackageDownloadInfo ReadPackageDownloadStatus(PackageReference reference, PackageSequenceInfo sequenceInfo)
         {
-            var dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
+            PackageDownload dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
             var result = new PackageDownloadInfo(dto, sequenceInfo);
             return result;
         }
 
         public PackageMeta ReadPackageMetadata(PackageReference reference)
         {
-            var dto = ReadPackageFile<PackageMeta>(reference, PackageMetaFileName);
+            PackageMeta dto = ReadPackageFile<PackageMeta>(reference, PackageMetaFileName);
             return dto;
         }
 
@@ -274,7 +274,7 @@ namespace ShareCluster.Packaging
             Directory.CreateDirectory(packagePath);
 
             // store data
-            var packageSequence = hashes.CreatePackageSequence();
+            PackageSequenceInfo packageSequence = hashes.CreatePackageSequence();
             PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.PackageVersion, hashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);

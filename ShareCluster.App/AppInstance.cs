@@ -68,7 +68,7 @@ namespace ShareCluster
             webHost.Start();
 
             // bootstrap
-            var result = webHost.Services.GetRequiredService<AppInstanceBootstrapper>();
+            AppInstanceBootstrapper result = webHost.Services.GetRequiredService<AppInstanceBootstrapper>();
             result.Start(settings);
             return result;
         }

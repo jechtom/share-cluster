@@ -24,7 +24,7 @@ namespace ShareCluster.Packaging
         public async Task<PackageDataValidatorResult> ValidatePackageAsync(LocalPackageInfo packageInfo, MeasureItem measure)
         {
             logger.LogDebug($"Starting validation of package {packageInfo}.");
-            var result = await ValidatePackageAsyncInternal(packageInfo);
+            PackageDataValidatorResult result = await ValidatePackageAsyncInternal(packageInfo);
             if(result.IsValid)
             {
                 logger.LogInformation($"Package {packageInfo} is valid.");
@@ -66,7 +66,7 @@ namespace ShareCluster.Packaging
             }
 
             // validate package hash calculated from segment hashes
-            var calculatedPackageHash = cryptoProvider.HashFromHashes(packageInfo.Hashes.PackageSegmentsHashes);
+            Id calculatedPackageHash = cryptoProvider.HashFromHashes(packageInfo.Hashes.PackageSegmentsHashes);
             if (!calculatedPackageHash.Equals(packageInfo.Id))
             {
                 return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {packageInfo.Id:s}.");
@@ -84,7 +84,7 @@ namespace ShareCluster.Packaging
                 var sequencer = new PackagePartsSequencer();
 
                 // check if data files exists and if correct size
-                foreach (var dataFile in sequencer.GetDataFilesForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence))
+                foreach (PackageDataStreamPart dataFile in sequencer.GetDataFilesForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence))
                 {
                     try
                     {

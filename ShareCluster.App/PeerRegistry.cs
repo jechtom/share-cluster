@@ -41,7 +41,7 @@ namespace ShareCluster
             lock(peersLock)
             {
                 bool immutableListNeedsRefresh = false;
-                foreach (var newPeer in discoveredPeers)
+                foreach (PeerUpdateInfo newPeer in discoveredPeers)
                 {
                     bool notifyAsAdded = false;
 
@@ -136,7 +136,7 @@ namespace ShareCluster
 
             lock (peersLock)
             {
-                bool result = peers.TryGetValue(endpoint, out var item);
+                bool result = peers.TryGetValue(endpoint, out PeerInfo item);
                 if(!result)
                 {
                     peerInfo = null;

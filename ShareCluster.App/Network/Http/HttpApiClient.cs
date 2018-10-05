@@ -74,7 +74,7 @@ namespace ShareCluster.Network.Http
 
             using (HttpResponseMessage resultMessage = await SendRequestAsync(endpoint, nameof(HttpApiController.Data), message, stream: true))
             {
-                using (var stream = await resultMessage.Content.ReadAsStreamAsync())
+                using (Stream stream = await resultMessage.Content.ReadAsStreamAsync())
                 {
                     // unexpected response (expected stream) == fault 
                     if(resultMessage.Headers.TryGetValues(HttpRequestHeaderValidator.TypeHeaderName, out IEnumerable<string> typeHeaderValues))
@@ -134,9 +134,9 @@ namespace ShareCluster.Network.Http
 
         private async Task<TRes> SendRequestAndGetResponeAsync<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
         {
-            using (var resultMessage = await SendRequestAsync(endpoint, apiName, req))
+            using (HttpResponseMessage resultMessage = await SendRequestAsync(endpoint, apiName, req))
             {
-                using (var stream = await resultMessage.Content.ReadAsStreamAsync())
+                using (Stream stream = await resultMessage.Content.ReadAsStreamAsync())
                 {
                     return serializer.Deserialize<TRes>(stream);
                 }

@@ -39,7 +39,7 @@ namespace ShareCluster.Network
                 var ip = new IPEndPoint(IPAddress.Broadcast, _settings.UdpAnnouncePort);
 
                 Debug.Assert(announceMessageBytes.Length > 0);
-                var lengthSent = await client.SendAsync(announceMessageBytes, announceMessageBytes.Length, ip);
+                int lengthSent = await client.SendAsync(announceMessageBytes, announceMessageBytes.Length, ip);
                 if(lengthSent != announceMessageBytes.Length)
                 {
                     throw new InvalidOperationException("Cannot send discovery datagram.");

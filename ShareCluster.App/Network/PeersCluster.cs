@@ -252,7 +252,7 @@ namespace ShareCluster.Network
             TimeSpan timeFast = time.Subtract(appInfo.NetworkSettings.PeerStatusUpdateStatusFastTimer);
 
             // get clients that should be updated 
-            var allRemotePeers = peerRegistry
+            IEnumerable<PeerInfo> allRemotePeers = peerRegistry
                 .ImmutablePeers
                 .Where(p => 
                     // maximum time to update expired
@@ -365,7 +365,7 @@ namespace ShareCluster.Network
         public void AddManualPeer(IPEndPoint endpoint)
         {
             logger.LogInformation($"Adding manual peer {endpoint}");
-            var status = client.GetStatus(endpoint, CreateStatusUpdateMessage(endpoint));
+            StatusUpdateMessage status = client.GetStatus(endpoint, CreateStatusUpdateMessage(endpoint));
             ProcessStatusUpdateMessage(status, endpoint.Address);
         }
     }

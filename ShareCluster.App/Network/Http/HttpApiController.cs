@@ -47,7 +47,7 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public PackageStatusResponse PackageStatus([FromBody]PackageStatusRequest request)
         {
-            var result = downloadManager.GetPackageStatusResponse(request.PackageIds);
+            PackageStatusResponse result = downloadManager.GetPackageStatusResponse(request.PackageIds);
             return result;
         }
 
@@ -58,9 +58,9 @@ namespace ShareCluster.Network.Http
             {
                 throw new ArgumentNullException(nameof(request));
             }
-            var address = RemoteIpAddress;
+            IPAddress address = RemoteIpAddress;
             peersCluster.ProcessStatusUpdateMessage(request, address);
-            var response = peersCluster.CreateStatusUpdateMessage(new IPEndPoint(address, request.ServicePort));
+            StatusUpdateMessage response = peersCluster.CreateStatusUpdateMessage(new IPEndPoint(address, request.ServicePort));
             return response;
         }
 
@@ -73,7 +73,7 @@ namespace ShareCluster.Network.Http
             }
 
             // create stream
-            var result = peersCluster.CreateUploadStream(package, request.RequestedParts);
+            (System.IO.Stream stream, DataResponseFaul error) result = peersCluster.CreateUploadStream(package, request.RequestedParts);
             if(result.error != null) return new ObjectResult(result.error);
             return new FileStreamResult(result.stream, "application/octet-stream");
         }

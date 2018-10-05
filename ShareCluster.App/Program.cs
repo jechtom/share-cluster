@@ -49,7 +49,7 @@ namespace ShareCluster
 
                 var instance = new AppInstance(appInfo);
                 instances.Add(instance);
-                var bootstrapper = instance.Start(appSettings);
+                AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
             }
 
             //Task.Run(() => { CreateInstance(1); });
@@ -61,7 +61,7 @@ namespace ShareCluster
         private static void Stop()
         {
             Console.WriteLine("Stopping.");
-            foreach (var instance in instances)
+            foreach (AppInstance instance in instances)
             {
                 instance.Dispose();
             }
@@ -84,7 +84,7 @@ namespace ShareCluster
 
             var instance = new AppInstance(appInfo);
             instances.Add(instance);
-            var bootstrapper = instance.Start(appSettings);
+            AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
         }
     }
 }

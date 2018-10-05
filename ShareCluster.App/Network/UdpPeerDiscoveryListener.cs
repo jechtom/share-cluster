@@ -56,12 +56,12 @@ namespace ShareCluster.Network
         {
             while (!_cancel.IsCancellationRequested)
             {
-                var receiveResult = await _client.ReceiveAsync().WithCancellation(_cancel.Token);
+                UdpReceiveResult receiveResult = await _client.ReceiveAsync().WithCancellation(_cancel.Token);
                 Debug.Assert(receiveResult.Buffer.Length > 0);
                 try
                 {
                     DiscoveryAnnounceMessage announceMessage;
-                    using (MemoryStream memStream = new MemoryStream(receiveResult.Buffer, index: 0, count: receiveResult.Buffer.Length, writable: false))
+                    using (var memStream = new MemoryStream(receiveResult.Buffer, index: 0, count: receiveResult.Buffer.Length, writable: false))
                     {
                         // deserialize network protocol version and ignore if incompatible
                         VersionNumber protocolVersion = _settings.MessageSerializer.Deserialize<VersionNumber>(memStream);

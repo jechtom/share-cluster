@@ -47,7 +47,7 @@ namespace ShareCluster
             {
                 PackageRegistry.RemotePackageDiscovered += (package) =>
                 {
-                    if (PackageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(package, out var task))
+                    if (PackageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(package, out System.Threading.Tasks.Task task))
                     {
                         task.Wait();
                     }

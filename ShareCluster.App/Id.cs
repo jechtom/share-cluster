@@ -66,7 +66,7 @@ namespace ShareCluster
         {
             if (format != null)
             {
-                var match = Regex.Match(format, @"^s(?<bytes>\d+)?$");
+                Match match = Regex.Match(format, @"^s(?<bytes>\d+)?$");
 
                 if (match.Success)
                 {

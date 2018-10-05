@@ -41,12 +41,12 @@ namespace ShareCluster.Packaging
 
             // prepare parts
             var sequencer = new PackagePartsSequencer();
-            var parts = sequencer.GetDataFilesForPackage(path, sequence).ToArray();
+            PackageDataStreamPart[] parts = sequencer.GetDataFilesForPackage(path, sequence).ToArray();
 
             if (!overwrite)
             {
                 // check if already exists
-                foreach (var part in parts)
+                foreach (PackageDataStreamPart part in parts)
                 {
                     if (File.Exists(part.Path))
                     {
@@ -56,7 +56,7 @@ namespace ShareCluster.Packaging
             }
 
             // allocate
-            foreach (var part in parts)
+            foreach (PackageDataStreamPart part in parts)
             {
                 using (var fs = new FileStream(part.Path, overwrite ? FileMode.OpenOrCreate : FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {

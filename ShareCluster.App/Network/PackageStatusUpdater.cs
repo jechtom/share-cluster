@@ -19,47 +19,47 @@ namespace ShareCluster.Network
     /// </summary>
     public class PackageStatusUpdater
     {
-        const int ConcurrentStatusUpdates = 5;
+        const int _concurrentStatusUpdates = 5;
 
-        readonly ILogger<PackageStatusUpdater> logger;
-        readonly object syncLock = new object();
-        private readonly TimeSpan statusTimerInterval = TimeSpan.FromSeconds(5);
-        private readonly TimeSpan postponeInterval = TimeSpan.FromSeconds(15);
-        private readonly Timer statusTimer;
-        private readonly Stopwatch stopwatch;
+        readonly ILogger<PackageStatusUpdater> _logger;
+        readonly object _syncLock = new object();
+        private readonly TimeSpan _statusTimerInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _postponeInterval = TimeSpan.FromSeconds(15);
+        private readonly Timer _statusTimer;
+        private readonly Stopwatch _stopwatch;
 
-        Dictionary<Id, PackagePeersStatus> packageStates;
-        Dictionary<IPEndPoint, PeerOverallStatus> peers;
-        private readonly ILoggerFactory loggerFactory;
-        private readonly NetworkSettings settings;
-        private readonly HttpApiClient client;
+        private Dictionary<Id, PackagePeersStatus> _packageStates;
+        Dictionary<IPEndPoint, PeerOverallStatus> _peers;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly NetworkSettings _settings;
+        private readonly HttpApiClient _client;
 
         public PackageStatusUpdater(ILoggerFactory loggerFactory, NetworkSettings settings, HttpApiClient client)
         {
-            this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
-            stopwatch = Stopwatch.StartNew();
-            packageStates = new Dictionary<Id, PackagePeersStatus>();
-            peers = new Dictionary<IPEndPoint, PeerOverallStatus>();
-            statusTimer = new Timer(StatusTimeoutCallback, null, statusTimerInterval, Timeout.InfiniteTimeSpan);
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            this.client = client ?? throw new ArgumentNullException(nameof(client));
+            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
+            _stopwatch = Stopwatch.StartNew();
+            _packageStates = new Dictionary<Id, PackagePeersStatus>();
+            _peers = new Dictionary<IPEndPoint, PeerOverallStatus>();
+            _statusTimer = new Timer(StatusTimeoutCallback, null, _statusTimerInterval, Timeout.InfiniteTimeSpan);
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _client = client ?? throw new ArgumentNullException(nameof(client));
         }
 
         public event Action NewDataAvailable;
         
         public void InterestedInPackage(LocalPackageInfo packageInfo)
         {
-            logger.LogDebug("Started looking for peers having: {0}", packageInfo);
-            lock(syncLock)
+            _logger.LogDebug("Started looking for peers having: {0}", packageInfo);
+            lock(_syncLock)
             {
-                if (packageStates.ContainsKey(packageInfo.Id)) return; // already there
-                var status = new PackagePeersStatus(loggerFactory.CreateLogger<PackagePeersStatus>(), packageInfo);
-                packageStates.Add(packageInfo.Id, status);
+                if (_packageStates.ContainsKey(packageInfo.Id)) return; // already there
+                var status = new PackagePeersStatus(_loggerFactory.CreateLogger<PackagePeersStatus>(), packageInfo);
+                _packageStates.Add(packageInfo.Id, status);
 
                 // add status for each peer that knows package
                 int alreadyFound = 0;
-                foreach (var peer in peers.Values)
+                foreach (PeerOverallStatus peer in _peers.Values)
                 {
                     if (!peer.PeerInfo.KnownPackages.TryGetValue(packageInfo.Id, out PackageStatus ps)) continue;
                     alreadyFound++;
@@ -73,12 +73,12 @@ namespace ShareCluster.Network
 
         public void NotInterestedInPackage(LocalPackageInfo packageInfo)
         {
-            logger.LogDebug("Stopped looking for peers having: {0}", packageInfo);
-            lock (syncLock)
+            _logger.LogDebug("Stopped looking for peers having: {0}", packageInfo);
+            lock (_syncLock)
             {
-                if (!packageStates.ContainsKey(packageInfo.Id)) return; // already there
-                packageStates[packageInfo.Id].RemoveAllPeers(); // unregister peers
-                packageStates.Remove(packageInfo.Id); // remove
+                if (!_packageStates.ContainsKey(packageInfo.Id)) return; // already there
+                _packageStates[packageInfo.Id].RemoveAllPeers(); // unregister peers
+                _packageStates.Remove(packageInfo.Id); // remove
             }
         }
 
@@ -89,24 +89,24 @@ namespace ShareCluster.Network
         {
             bool refreshStatus = false;
 
-            lock(syncLock)
+            lock(_syncLock)
             {
-                foreach (var peerChange in peersChanges)
+                foreach (PeerInfoChange peerChange in peersChanges)
                 {
-                    var peer = peerChange.PeerInfo;
+                    PeerInfo peer = peerChange.PeerInfo;
 
                     if (peerChange.IsRemoved)
                     {
                         // exists in local cache?
-                        if (!peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) continue;
+                        if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) continue;
 
                         // remove peer from package statuses and peers list
-                        foreach (var packageState in packageStates.Values)
+                        foreach (PackagePeersStatus packageState in _packageStates.Values)
                         {
                             packageState.RemovePeer(status);
                         }
 
-                        peers.Remove(peer.ServiceEndPoint);
+                        _peers.Remove(peer.ServiceEndPoint);
 
                         continue;
                     }
@@ -116,13 +116,13 @@ namespace ShareCluster.Network
                         refreshStatus = true;
 
                         // create?
-                        if (!peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status))
+                        if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status))
                         {
-                            peers.Add(peer.ServiceEndPoint, (status = new PeerOverallStatus(peer)));
+                            _peers.Add(peer.ServiceEndPoint, (status = new PeerOverallStatus(peer)));
                         }
 
                         // update and add to peers list
-                        foreach (var packageState in packageStates)
+                        foreach (KeyValuePair<Id, PackagePeersStatus> packageState in _packageStates)
                         {
                             if(peer.KnownPackages.TryGetValue(packageState.Key, out PackageStatus ps))
                             {
@@ -145,7 +145,7 @@ namespace ShareCluster.Network
 
         private void TryRunStatusCallbackNow()
         {
-            statusTimer.Change(TimeSpan.FromMilliseconds(500), Timeout.InfiniteTimeSpan);
+            _statusTimer.Change(TimeSpan.FromMilliseconds(500), Timeout.InfiniteTimeSpan);
         }
 
         private void StatusTimeoutCallback(object dummy)
@@ -156,15 +156,15 @@ namespace ShareCluster.Network
             }
             finally
             {
-                statusTimer.Change(statusTimerInterval, Timeout.InfiniteTimeSpan);
+                _statusTimer.Change(_statusTimerInterval, Timeout.InfiniteTimeSpan);
             }
         }
 
         public void MarkPeerForFastUpdate(PeerInfo peer)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) return;
+                if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) return;
                 status.UseFastUpdate = true;
             }
         }
@@ -173,38 +173,38 @@ namespace ShareCluster.Network
         {
             PackageStatusRequest requestMessage;
             PeerOverallStatus[] peersToUpdate;
-            var elapsed = stopwatch.Elapsed;
-            var elapsedThresholdRegular = elapsed.Subtract(settings.PeerPackageUpdateStatusMaximumTimer);
-            var elapsedThresholdFast = elapsed.Subtract(settings.PeerPackageUpdateStatusFastTimer);
+            TimeSpan elapsed = _stopwatch.Elapsed;
+            TimeSpan elapsedThresholdRegular = elapsed.Subtract(_settings.PeerPackageUpdateStatusMaximumTimer);
+            TimeSpan elapsedThresholdFast = elapsed.Subtract(_settings.PeerPackageUpdateStatusFastTimer);
 
             // prepare list of peers and list of packages we're interested in
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (packageStates.Count == 0) return;
+                if (_packageStates.Count == 0) return;
 
-                peersToUpdate = peers.Values
+                peersToUpdate = _peers.Values
                     .Where(c => c.LastUpdateTry < (c.UseFastUpdate ? elapsedThresholdFast : elapsedThresholdRegular) && c.DoUpdateStatus)
                     .ToArray();
 
                 if (peersToUpdate.Length == 0) return;
 
-                foreach (var item in peersToUpdate)
+                foreach (PeerOverallStatus item in peersToUpdate)
                 {
                     item.UseFastUpdate = false; // reset
                     item.LastUpdateTry = elapsed;
                 }
 
-                requestMessage = new PackageStatusRequest() { PackageIds = packageStates.Keys.ToArray() };
+                requestMessage = new PackageStatusRequest() { PackageIds = _packageStates.Keys.ToArray() };
             }
 
-            logger.LogTrace("Sending update request for {0} package(s) to {1} peer(s).", requestMessage.PackageIds.Length, peersToUpdate.Length);
+            _logger.LogTrace("Sending update request for {0} package(s) to {1} peer(s).", requestMessage.PackageIds.Length, peersToUpdate.Length);
 
             // build blocks to process and link them
             var fetchClientStatusBlock = new TransformBlock<PeerOverallStatus, (PeerOverallStatus peer, PackageStatusResponse result, bool succes)>(
                 p => FetchClientStatusAsync(p, requestMessage),
                 new ExecutionDataflowBlockOptions()
                 {
-                    MaxDegreeOfParallelism = ConcurrentStatusUpdates
+                    MaxDegreeOfParallelism = _concurrentStatusUpdates
                 }
             );
 
@@ -222,7 +222,7 @@ namespace ShareCluster.Network
             });
 
             // send
-            foreach (var peerToUpdate in peersToUpdate) fetchClientStatusBlock.Post(peerToUpdate);
+            foreach (PeerOverallStatus peerToUpdate in peersToUpdate) fetchClientStatusBlock.Post(peerToUpdate);
             fetchClientStatusBlock.Complete();
             applyClientStatusBlock.Completion.Wait();
 
@@ -233,10 +233,10 @@ namespace ShareCluster.Network
 
         private void ApplyClientStatus((PeerOverallStatus peer, PackageStatusResponse result, bool success) input, PackageStatusRequest requestMessage)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
                 // update timing - we have fresh data now
-                input.peer.LastUpdateTry = stopwatch.Elapsed;
+                input.peer.LastUpdateTry = _stopwatch.Elapsed;
 
                 // failed
                 if (!input.success) return;
@@ -244,11 +244,11 @@ namespace ShareCluster.Network
                 // apply changes
                 for (int i = 0; i < requestMessage.PackageIds.Length; i++)
                 {
-                    var packageId = requestMessage.PackageIds[i];
-                    var result = input.result.Packages[i];
+                    Id packageId = requestMessage.PackageIds[i];
+                    PackageStatusDetail result = input.result.Packages[i];
 
                     // download state (are we still interested in packages?)
-                    if (!packageStates.TryGetValue(packageId, out PackagePeersStatus state)) continue;
+                    if (!_packageStates.TryGetValue(packageId, out PackagePeersStatus state)) continue;
 
                     // remove not found packages
                     if (!result.IsFound)
@@ -270,32 +270,32 @@ namespace ShareCluster.Network
             try
             {
                 // send request
-                statusResult = await client.GetPackageStatusAsync(peer.PeerInfo.ServiceEndPoint, requestMessage);
+                statusResult = await _client.GetPackageStatusAsync(peer.PeerInfo.ServiceEndPoint, requestMessage);
                 peer.PeerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null);
                 success = true;
             }
             catch (Exception e)
             {
                 peer.PeerInfo.Status.MarkStatusUpdateFail();
-                logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
+                _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
             }
             return (peer: peer, result: statusResult, success: success);
         }
 
         public List<PeerInfo> GetClientListForPackage(LocalPackageInfo package)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!packageStates.TryGetValue(package.Id, out PackagePeersStatus status)) return new List<PeerInfo>(capacity: 0);
+                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus status)) return new List<PeerInfo>(capacity: 0);
                 return status.GetClientList();
             }
         }
 
         public bool TryGetBitmapOfPeer(LocalPackageInfo package, PeerInfo peer, out byte[] remoteBitmap)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!packageStates.TryGetValue(package.Id, out var packageStatus))
+                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus))
                 {
                     remoteBitmap = null;
                     return false;
@@ -307,62 +307,62 @@ namespace ShareCluster.Network
 
         public void PostponePeersPackage(LocalPackageInfo package, PeerInfo peer)
         {
-            logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.ServiceEndPoint, package);
+            _logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.ServiceEndPoint, package);
 
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!packageStates.TryGetValue(package.Id, out var packageStatus)) return;
-                packageStatus.PostPonePeer(peer, postponeInterval);
+                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
+                packageStatus.PostPonePeer(peer, _postponeInterval);
             }
         }
 
         public void PostponePeer(PeerInfo peer)
         {
-            logger.LogTrace("Peer {0} for all packages has been postponed.", peer.ServiceEndPoint);
+            _logger.LogTrace("Peer {0} for all packages has been postponed.", peer.ServiceEndPoint);
 
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!peers.TryGetValue(peer.ServiceEndPoint, out var peerStatus)) return;
-                peerStatus.PostponeTimer = new PostponeTimer(postponeInterval);
+                if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus peerStatus)) return;
+                peerStatus.PostponeTimer = new PostponeTimer(_postponeInterval);
             }
         }
 
         public void PostponePeerReset(PeerInfo peer, LocalPackageInfo package)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!peers.TryGetValue(peer.ServiceEndPoint, out var peerStatus)) return;
+                if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus peerStatus)) return;
                 peerStatus.PostponeTimer = PostponeTimer.NoPostpone;
-                if (!packageStates.TryGetValue(package.Id, out var packageStatus)) return;
+                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
                 packageStatus.PostPonePeer(peer, TimeSpan.Zero);
             }
         }
 
         public void StatsUpdateSuccessPart(PeerInfo peer, LocalPackageInfo package, long downloadedBytes)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!packageStates.TryGetValue(package.Id, out var packageStatus)) return;
+                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
                 packageStatus.StatsUpdateSuccessPart(peer, downloadedBytes);
             }
         }
 
         class PackagePeersStatus
         {
-            private readonly ILogger<PackagePeersStatus> logger;
-            private readonly LocalPackageInfo packageInfo;
-            private readonly Dictionary<PeerInfo, PackagePeerStatus> peerStatuses;
+            private readonly ILogger<PackagePeersStatus> _logger;
+            private readonly LocalPackageInfo _packageInfo;
+            private readonly Dictionary<PeerInfo, PackagePeerStatus> _peerStatuses;
 
             public PackagePeersStatus(ILogger<PackagePeersStatus> logger, LocalPackageInfo packageInfo)
             {
-                this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-                this.packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
-                peerStatuses = new Dictionary<PeerInfo, PackagePeerStatus>();
+                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+                _packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
+                _peerStatuses = new Dictionary<PeerInfo, PackagePeerStatus>();
             }
 
             public void RemoveAllPeers()
             {
-                foreach (var peer in peerStatuses.Values.Select(v => v.Peer).ToArray())
+                foreach (PeerOverallStatus peer in _peerStatuses.Values.Select(v => v.Peer).ToArray())
                 {
                     RemovePeer(peer);
                 }
@@ -370,27 +370,27 @@ namespace ShareCluster.Network
 
             public void RemovePeer(PeerOverallStatus peer)
             {
-                if(!peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
+                if(!_peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
                 {
                     return;
                 }
 
                 peer.InterestedForPackagesTotalCount--;
                 if (status.IsSeeder) peer.InterestedForPackagesSeederCount--;
-                peerStatuses.Remove(peer.PeerInfo);
+                _peerStatuses.Remove(peer.PeerInfo);
 
                 if(status.DownloadedBytes > 0)
                 {
-                    logger.LogTrace($"Stats: Package {packageInfo.Metadata.Name} {packageInfo.Id:s} from {peer.PeerInfo.ServiceEndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
+                    _logger.LogTrace($"Stats: Package {_packageInfo.Metadata.Name} {_packageInfo.Id:s} from {peer.PeerInfo.ServiceEndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
                 }
             }
 
             public void AddPeer(PeerOverallStatus peer, bool isSeeder)
             {
-                logger.LogTrace("Peer {0} knows package {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);
+                _logger.LogTrace("Peer {0} knows package {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);
 
                 var newStatus = new PackagePeerStatus(peer);
-                if (peerStatuses.TryAdd(peer.PeerInfo, newStatus))
+                if (_peerStatuses.TryAdd(peer.PeerInfo, newStatus))
                 {
                     peer.InterestedForPackagesTotalCount++;
                     peer.PostponeTimer = PostponeTimer.NoPostpone; // reset postpone, new data
@@ -401,7 +401,7 @@ namespace ShareCluster.Network
                         peer.InterestedForPackagesSeederCount++;
                         newStatus.StatusDetail = new PackageStatusDetail()
                         {
-                            BytesDownloaded = packageInfo.Metadata.PackageSize,
+                            BytesDownloaded = _packageInfo.Metadata.PackageSize,
                             IsFound = true,
                             SegmentsBitmap = null
                         };
@@ -412,24 +412,24 @@ namespace ShareCluster.Network
             public void Update(PeerOverallStatus peer, PackageStatusDetail detail)
             {
                 // did peer added known package from update?
-                if(!peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
+                if(!_peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
                 {
                     AddPeer(peer, isSeeder: false);
-                    status = peerStatuses[peer.PeerInfo];
+                    status = _peerStatuses[peer.PeerInfo];
                 }
 
                 // update detail
                 try
                 {
-                    packageInfo.DownloadStatus.ValidateStatusUpdateFromPeer(detail);
+                    _packageInfo.DownloadStatus.ValidateStatusUpdateFromPeer(detail);
                 }
                 catch(Exception e)
                 {
-                    logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.ServiceEndPoint, packageInfo, e.Message);
+                    _logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.ServiceEndPoint, _packageInfo, e.Message);
                     peer.PeerInfo.Status.MarkStatusUpdateFail();
                 }
 
-                logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);
+                _logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);
 
                 // reset postpone (new status data)
                 status.PostponeTimer = PostponeTimer.NoPostpone;
@@ -444,14 +444,14 @@ namespace ShareCluster.Network
 
                 if(wasSeeder != status.IsSeeder)
                 {
-                    logger.LogTrace("Found seeder {0} of {1}.", peer.PeerInfo.ServiceEndPoint, packageInfo);
+                    _logger.LogTrace("Found seeder {0} of {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);
                     peer.InterestedForPackagesSeederCount += status.IsSeeder ? 1 : -1;
                 }
             }
 
             public List<PeerInfo> GetClientList()
             {
-                return peerStatuses.Values
+                return _peerStatuses.Values
                     .Where(pv => pv.CanDownload)
                     .Select(pv => pv.Peer.PeerInfo)
                     .ToList();
@@ -459,13 +459,13 @@ namespace ShareCluster.Network
 
             public void PostPonePeer(PeerInfo peer, TimeSpan postponeInterval)
             {
-                if (!peerStatuses.TryGetValue(peer, out var status)) return;
+                if (!_peerStatuses.TryGetValue(peer, out PackagePeerStatus status)) return;
                 status.PostponeTimer = postponeInterval <= TimeSpan.Zero ? PostponeTimer.NoPostpone : new PostponeTimer(postponeInterval);
             }
 
             public bool TrygetBitmapOfPeer(PeerInfo peer, out byte[] remoteBitmap)
             {
-                if (!peerStatuses.TryGetValue(peer, out var status) || status.StatusDetail == null)
+                if (!_peerStatuses.TryGetValue(peer, out PackagePeerStatus status) || status.StatusDetail == null)
                 {
                     remoteBitmap = null;
                     return false;
@@ -477,7 +477,7 @@ namespace ShareCluster.Network
 
             public void StatsUpdateSuccessPart(PeerInfo peer, long downloadedBytes)
             {
-                if (!peerStatuses.TryGetValue(peer, out var status)) return;
+                if (!_peerStatuses.TryGetValue(peer, out PackagePeerStatus status)) return;
                 status.DownloadedBytes += downloadedBytes;
             }
         }

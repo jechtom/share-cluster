@@ -16,7 +16,7 @@ namespace ShareCluster
 
         public static AppInfo CreateCurrent()
         {
-            var loggerFactory = new LoggerFactory().AddConsole(new ConsoleLoggerSettings()
+            ILoggerFactory loggerFactory = new LoggerFactory().AddConsole(new ConsoleLoggerSettings()
             {
                 Switches = new Dictionary<string, LogLevel>()
                     {
@@ -63,7 +63,7 @@ namespace ShareCluster
 
         public void LogStart()
         {
-            var logger = LoggerFactory.CreateLogger<AppInfo>();
+            ILogger<AppInfo> logger = LoggerFactory.CreateLogger<AppInfo>();
             logger.LogInformation($"Starting app {AppVersion}. Instance {InstanceId.Hash:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
             logger.LogDebug($"Repository path: {DataRootPathPackageRepository}");
             logger.LogInformation($"Start browser http://localhost:{NetworkSettings.TcpServicePort}");

@@ -50,10 +50,10 @@ namespace ShareCluster
         {
             localPackages = new Dictionary<Id, LocalPackageInfo>();
 
-            var packageReferences = localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
+            PackageReference[] packageReferences = localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
 
             var packagesInitData = new List<LocalPackageInfo>();
-            foreach (var pr in packageReferences)
+            foreach (PackageReference pr in packageReferences)
             {
                 PackageHashes hashes;
                 PackageDownloadInfo download;
@@ -96,7 +96,7 @@ namespace ShareCluster
                     if (addToLocal != null)
                     {
                         packageSource = packageSource.Concat(addToLocal);
-                        foreach (var item in addToLocal)
+                        foreach (LocalPackageInfo item in addToLocal)
                         {
                             logger.LogDebug("Added local package: {0} - {1}", item, item.DownloadStatus);
                         }
@@ -104,7 +104,7 @@ namespace ShareCluster
                     if (removeFromLocal != null)
                     {
                         packageSource = packageSource.Except(removeFromLocal);
-                        foreach (var item in removeFromLocal)
+                        foreach (LocalPackageInfo item in removeFromLocal)
                         {
                             logger.LogDebug("Removed local package: {0} - {1}", item, item.DownloadStatus);
                         }
@@ -123,11 +123,11 @@ namespace ShareCluster
                 if(addToDiscovered != null)
                 {
                     // is there anything to add?
-                    foreach(var item in addToDiscovered)
+                    foreach(DiscoveredPackage item in addToDiscovered)
                     {
                         if (localPackages.ContainsKey(item.PackageId)) continue;
 
-                        if(discoveredPackages.TryGetValue(item.PackageId, out var value))
+                        if(discoveredPackages.TryGetValue(item.PackageId, out DiscoveredPackage value))
                         {
                             // update just endpoint (newest peer offering this)
                             continue;
@@ -154,7 +154,7 @@ namespace ShareCluster
                 UpdateLists(addToLocal: null, removeFromLocal: null, addToDiscovered: newDiscoveredPackages);
             }
 
-            foreach (var packageMetaItem in newDiscoveredPackages)
+            foreach (DiscoveredPackage packageMetaItem in newDiscoveredPackages)
             {
                 RemotePackageDiscovered?.Invoke(packageMetaItem);
             }
@@ -175,7 +175,7 @@ namespace ShareCluster
 
         public LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure)
         {
-            var package = localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
+            LocalPackageInfo package = localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
             RegisterPackageInternal(package);
             LocalPackageCreated?.Invoke(package);
             return package;
