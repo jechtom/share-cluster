@@ -22,16 +22,16 @@ namespace ShareCluster.Packaging
         public const string PackageMetaFileName = "package.meta";
         public const string BuildFolderPrefix = "_build-";
 
-        private readonly ILogger<LocalPackageManager> logger;
-        private readonly AppInfo app;
-        private readonly PackageSequenceBaseInfo sequenceForNewPackages;
+        private readonly ILogger<LocalPackageManager> _logger;
+        private readonly AppInfo _app;
+        private readonly PackageSequenceBaseInfo _sequenceForNewPackages;
 
         public LocalPackageManager(AppInfo app)
         {
-            this.app = app ?? throw new ArgumentNullException(nameof(app));
-            logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
+            _app = app ?? throw new ArgumentNullException(nameof(app));
+            _logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
             PackageRepositoryPath = app.DataRootPathPackageRepository;
-            sequenceForNewPackages = PackageSequenceBaseInfo.Default;
+            _sequenceForNewPackages = PackageSequenceBaseInfo.Default;
         }
         
         public string PackageRepositoryPath { get; private set; }
@@ -51,14 +51,14 @@ namespace ShareCluster.Packaging
                     if (deleteUnfinishedBuilds)
                     {
                         // this is build folder (unfinished build from last program run), delete it
-                        logger.LogInformation("Found unfinished build. Deleting. Folder: {0}", name);
+                        _logger.LogInformation("Found unfinished build. Deleting. Folder: {0}", name);
                         try
                         {
                             Directory.Delete(packageDir, recursive: true);
                         }
                         catch
                         {
-                            logger.LogWarning("Can't delete build folder: {0}", name);
+                            _logger.LogWarning("Can't delete build folder: {0}", name);
                         }
                     }
                     continue;
@@ -66,7 +66,7 @@ namespace ShareCluster.Packaging
 
                 if(!Id.TryParse(name, out Id hash))
                 {
-                    logger.LogWarning("Cannot parse hash from folder name \"{0}\". Skipping.", name);
+                    _logger.LogWarning("Cannot parse hash from folder name \"{0}\". Skipping.", name);
                 }
 
                 cnt++;
@@ -74,7 +74,7 @@ namespace ShareCluster.Packaging
             }
         }
 
-        private string CreateBuildPath() => Path.Combine(PackageRepositoryPath, $"{BuildFolderPrefix}{app.Crypto.CreateRandom()}");
+        private string CreateBuildPath() => Path.Combine(PackageRepositoryPath, $"{BuildFolderPrefix}{_app.Crypto.CreateRandom()}");
         private string CreatePackagePath(Id hash) => Path.Combine(PackageRepositoryPath, $"{hash}");
 
         private void EnsurePath()
@@ -92,16 +92,16 @@ namespace ShareCluster.Packaging
             DirectoryInfo buildDirectory = Directory.CreateDirectory(CreateBuildPath());
 
 
-            logger.LogInformation($"Creating package \"{name}\" from folder: {folderToProcess}");
+            _logger.LogInformation($"Creating package \"{name}\" from folder: {folderToProcess}");
 
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (var controller = new CreatePackageDataStreamController(app.PackageVersion, app.LoggerFactory, app.Crypto, sequenceForNewPackages, buildDirectory.FullName))
+            using (var controller = new CreatePackageDataStreamController(_app.PackageVersion, _app.LoggerFactory, _app.Crypto, _sequenceForNewPackages, buildDirectory.FullName))
             {
-                using (var packageStream = new PackageDataStream(app.LoggerFactory, controller) { Measure = writeMeasure })
+                using (var packageStream = new PackageDataStream(_app.LoggerFactory, controller) { Measure = writeMeasure })
                 {
-                    var archive = new PackageArchive(app.CompatibilityChecker, app.MessageSerializer);
+                    var archive = new PackageArchive(_app.CompatibilityChecker, _app.MessageSerializer);
                     archive.WriteFromFolder(folderToProcess, packageStream);
                     entriesCount = archive.EntriesCount;
                 }
@@ -114,7 +114,7 @@ namespace ShareCluster.Packaging
 
             // store download status
             PackageSequenceInfo packageSequence = packageHashes.CreatePackageSequence();
-            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(app.PackageVersion, packageHashes.PackageId, packageSequence);
+            var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageHashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
             // store metadata
@@ -123,7 +123,7 @@ namespace ShareCluster.Packaging
                 Created = DateTimeOffset.Now,
                 Name = name,
                 PackageSize = packageHashes.PackageSize,
-                Version = app.PackageVersion,
+                Version = _app.PackageVersion,
                 PackageId = packageHashes.PackageId
             };
             UpdateMetadata(metadata, directoryPath: buildDirectory.FullName);
@@ -137,7 +137,7 @@ namespace ShareCluster.Packaging
             Directory.Move(buildDirectory.FullName, packagePath);
 
             operationMeasure.Stop();
-            logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
+            _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
             var reference = new PackageReference(packagePath, packageHashes.PackageId);
             var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata, packageSequence);
@@ -161,7 +161,7 @@ namespace ShareCluster.Packaging
                 if (validate)
                 {
                     // validate
-                    var validator = new PackageDataValidator(app.LoggerFactory, app.Crypto);
+                    var validator = new PackageDataValidator(_app.LoggerFactory, _app.Crypto);
                     PackageDataValidatorResult result = validator.ValidatePackageAsync(packageInfo, measure: null).Result;
                     if (!result.IsValid)
                     {
@@ -169,19 +169,19 @@ namespace ShareCluster.Packaging
                     }
                 }
 
-                logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
+                _logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
 
                 // read all and extract
                 var sequencer = new PackagePartsSequencer();
                 IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
-                using (var readController = new ReadPackageDataStreamController(app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
-                using (var readStream = new PackageDataStream(app.LoggerFactory, readController))
+                using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
+                using (var readStream = new PackageDataStream(_app.LoggerFactory, readController))
                 {
-                    var archive = new PackageArchive(app.CompatibilityChecker, app.MessageSerializer);
+                    var archive = new PackageArchive(_app.CompatibilityChecker, _app.MessageSerializer);
                     archive.ReadToFolder(readStream, targetFolder);
                 }
 
-                logger.LogInformation($"Package {packageInfo} has been extracted.");
+                _logger.LogInformation($"Package {packageInfo} has been extracted.");
             }
             finally
             {
@@ -224,22 +224,22 @@ namespace ShareCluster.Packaging
             {
                 using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    data = app.MessageSerializer.Deserialize<T>(fileStream) ?? throw new InvalidOperationException("Deserialized object is null.");
+                    data = _app.MessageSerializer.Deserialize<T>(fileStream) ?? throw new InvalidOperationException("Deserialized object is null.");
                 }
             }
             catch
             {
-                logger.LogError($"Cannot deserialize file: {filePath}");
+                _logger.LogError($"Cannot deserialize file: {filePath}");
                 throw;
             }
 
             if (!reference.Id.Equals(data.PackageId))
             {
-                logger.LogError($"Package at {reference.FolderPath} has mismatch hash. Expected {reference.Id:s}, actual {data.PackageId:s}.");
+                _logger.LogError($"Package at {reference.FolderPath} has mismatch hash. Expected {reference.Id:s}, actual {data.PackageId:s}.");
                 throw new InvalidOperationException("Local package hash mismatch.");
             }
 
-            app.CompatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, $"{filePath}", data.Version);
+            _app.CompatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, $"{filePath}", data.Version);
 
             return data;
         }
@@ -251,9 +251,9 @@ namespace ShareCluster.Packaging
                 throw new ArgumentNullException(nameof(packageInfo));
             }
 
-            logger.LogInformation($"Deleting folder {packageInfo.Reference.FolderPath}.");
+            _logger.LogInformation($"Deleting folder {packageInfo.Reference.FolderPath}.");
             Directory.Delete(packageInfo.Reference.FolderPath, recursive: true);
-            logger.LogInformation($"Folder deleted {packageInfo.Reference.FolderPath}.");
+            _logger.LogInformation($"Folder deleted {packageInfo.Reference.FolderPath}.");
         }
 
         public LocalPackageInfo RegisterPackage(PackageHashes hashes, PackageMeta metadata)
@@ -268,24 +268,24 @@ namespace ShareCluster.Packaging
             string packagePath = CreatePackagePath(hashes.PackageId);
             if(Directory.Exists(packagePath))
             {
-                logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", hashes.PackageId);
+                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", hashes.PackageId);
                 throw new InvalidOperationException("Package already exists in local repository.");
             }
             Directory.CreateDirectory(packagePath);
 
             // store data
             PackageSequenceInfo packageSequence = hashes.CreatePackageSequence();
-            PackageDownloadInfo downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(app.PackageVersion, hashes.PackageId, packageSequence);
+            var downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(_app.PackageVersion, hashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);
             UpdateMetadata(metadata);
 
             // allocate
-            var allocator = new PackageDataAllocator(app.LoggerFactory);
+            var allocator = new PackageDataAllocator(_app.LoggerFactory);
             allocator.Allocate(packagePath, hashes.CreatePackageSequence(), overwrite: false);
 
             // log and build result
-            logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
+            _logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
 
             var reference = new PackageReference(packagePath, hashes.PackageId);
             var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata, packageSequence);
@@ -295,19 +295,19 @@ namespace ShareCluster.Packaging
         public void UpdateDownloadStatus(PackageDownloadInfo status, string directoryPath = null)
         {
             string path = Path.Combine(directoryPath ?? CreatePackagePath(status.PackageId), PackageDownloadFileName);
-            File.WriteAllBytes(path, app.MessageSerializer.Serialize(status.Data));
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(status.Data));
         }
 
         public void UpdateMetadata(Dto.PackageMeta metadata, string directoryPath = null)
         {
             string path = Path.Combine(directoryPath ?? CreatePackagePath(metadata.PackageId), PackageMetaFileName);
-            File.WriteAllBytes(path, app.MessageSerializer.Serialize(metadata));
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(metadata));
         }
 
         private void UpdateHashes(Dto.PackageHashes hashes, string directoryPath = null)
         {
             string path = Path.Combine(directoryPath ?? CreatePackagePath(hashes.PackageId), PackageHashesFileName);
-            File.WriteAllBytes(path, app.MessageSerializer.Serialize(hashes));
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(hashes));
         }
     }
 }

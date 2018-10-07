@@ -6,35 +6,35 @@ namespace ShareCluster
 {
     public static class SizeFormatter
     {
-        static string[] sizesLabels = new string[] { "B", "kB", "MB", "GB", "TB", "PB", "EB" };
-        static long[] sizeLimits;
+        static string[] _sizesLabels = new string[] { "B", "kB", "MB", "GB", "TB", "PB", "EB" };
+        static readonly long[] _sizeLimits;
 
         static SizeFormatter()
         {
-            sizeLimits = new long[sizesLabels.Length];
+            _sizeLimits = new long[_sizesLabels.Length];
             long step = 1024;
-            sizeLimits[0] = step;
-            for (int i = 1; i < sizesLabels.Length; i++)
+            _sizeLimits[0] = step;
+            for (int i = 1; i < _sizesLabels.Length; i++)
             {
-                sizeLimits[i] = sizeLimits[i - 1] * 1024;
+                _sizeLimits[i] = _sizeLimits[i - 1] * 1024;
             }
         }
 
         public static string ToString(long bytes)
         {
             int baseIndex;
-            for (baseIndex = 0; baseIndex < sizesLabels.Length; baseIndex++)
+            for (baseIndex = 0; baseIndex < _sizesLabels.Length; baseIndex++)
             {
-                if(bytes < sizeLimits[baseIndex])
+                if(bytes < _sizeLimits[baseIndex])
                 {
                     break;
                 }
             }
 
             double convertedValue = bytes;
-            if (baseIndex > 0) convertedValue /= sizeLimits[baseIndex - 1];
+            if (baseIndex > 0) convertedValue /= _sizeLimits[baseIndex - 1];
 
-            return $"{convertedValue:0.0} {sizesLabels[baseIndex]}";
+            return $"{convertedValue:0.0} {_sizesLabels[baseIndex]}";
         }
     }
 }

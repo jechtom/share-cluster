@@ -6,37 +6,37 @@ namespace ShareCluster
 {
     public static class ThreadSafeRandom
     {
-        static Random seedGenerator;
-        static object seedGeneratorLock;
+        static Random _seedGenerator;
+        static readonly object _seedGeneratorLock;
 
         [ThreadStatic]
-        static Random threadStaticRandom;
+        static Random _threadStaticRandom;
 
         static ThreadSafeRandom()
         {
-            seedGenerator = new Random();
-            seedGeneratorLock = new object();
+            _seedGenerator = new Random();
+            _seedGeneratorLock = new object();
         }
 
         private static Random GetRandomInstance()
         {
-            if (threadStaticRandom == null)
+            if (_threadStaticRandom == null)
             {
                 // random object for current thread is not created yet
                 int seed;
 
                 // generate random seed
-                lock (seedGeneratorLock)
+                lock (_seedGeneratorLock)
                 {
                     // seed should be only non-negative numbers
-                    seed = seedGenerator.Next(0, int.MaxValue);
+                    seed = _seedGenerator.Next(0, int.MaxValue);
                 }
 
                 // create instance
-                threadStaticRandom = new Random(seed);
+                _threadStaticRandom = new Random(seed);
             }
 
-            return threadStaticRandom;
+            return _threadStaticRandom;
         }
 
 

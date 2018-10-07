@@ -14,10 +14,10 @@ namespace ShareCluster.Packaging
     /// </summary>
     public class ReadPackageDataStreamController : IPackageDataStreamController
     {
-        private readonly ILogger<ReadPackageDataStreamController> logger;
-        private readonly PackageDataStreamPart[] parts;
-        private CurrentPart currentPart;
-        private bool isDisposed;
+        private readonly ILogger<ReadPackageDataStreamController> _logger;
+        private readonly PackageDataStreamPart[] _parts;
+        private CurrentPart _currentPart;
+        private bool _isDisposed;
 
         public ReadPackageDataStreamController(ILoggerFactory loggerFactory, PackageReference package, PackageSequenceInfo packageSequence, IEnumerable<PackageDataStreamPart> requestedParts)
         {
@@ -26,9 +26,9 @@ namespace ShareCluster.Packaging
                 throw new ArgumentNullException(nameof(package));
             }
             
-            logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ReadPackageDataStreamController>();
-            parts = requestedParts.ToArray();
-            Length = parts.Sum(p => p.PartLength);
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ReadPackageDataStreamController>();
+            _parts = requestedParts.ToArray();
+            Length = _parts.Sum(p => p.PartLength);
         }
 
         public bool CanWrite => false;
@@ -37,7 +37,7 @@ namespace ShareCluster.Packaging
 
         public long? Length { get; }
 
-        public IEnumerable<PackageDataStreamPart> EnumerateParts() => parts;
+        public IEnumerable<PackageDataStreamPart> EnumerateParts() => _parts;
 
         public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)
         {
@@ -49,7 +49,7 @@ namespace ShareCluster.Packaging
             {
                 // move stream to new part
                 newPart.Stream = oldPart.Stream;
-                currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
+                _currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
             }
             else
             { 
@@ -59,11 +59,13 @@ namespace ShareCluster.Packaging
                 // open new part
                 if (newPart != null)
                 {
-                    currentPart = new CurrentPart();
-                    currentPart.Part = newPart;
-                    currentPart.FileStream = new FileStream(newPart.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
-                    currentPart.Part.Stream = currentPart.FileStream;
+#pragma warning disable IDE0017 // Simplify object initialization
+                    _currentPart = new CurrentPart();
+                    _currentPart.Part = newPart;
+                    _currentPart.FileStream = new FileStream(newPart.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    _currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
+                    _currentPart.Part.Stream = _currentPart.FileStream;
+#pragma warning restore IDE0017 // Simplify object initialization
                 }
             }
         }
@@ -75,20 +77,20 @@ namespace ShareCluster.Packaging
 
         private void DisposeCurrentPart()
         {
-            if (currentPart == null) return;
-            currentPart.FileStream.Dispose();
-            currentPart = null;
+            if (_currentPart == null) return;
+            _currentPart.FileStream.Dispose();
+            _currentPart = null;
         }
 
         public void Dispose()
         {
             DisposeCurrentPart();
-            isDisposed = true;
+            _isDisposed = true;
         }
 
         private void EnsureNotDisposed()
         {
-            if (isDisposed) throw new InvalidOperationException("Already disposed.");
+            if (_isDisposed) throw new InvalidOperationException("Already disposed.");
         }
 
         private class CurrentPart

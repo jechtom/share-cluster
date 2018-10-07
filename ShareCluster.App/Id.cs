@@ -5,26 +5,40 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Primitives;
+using System.Collections.Immutable;
+using System.Linq;
 
 namespace ShareCluster
 {
+    /// <summary>
+    /// Represents binary identification.
+    /// </summary>
     [ProtoContract]
     [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.IdModelBinder))]
     public struct Id : IEquatable<Id>, IFormattable
     {
         [ProtoMember(1)]
-        public byte[] Data;
+        public ImmutableArray<byte> Bytes;
 
-        public bool IsNullOrEmpty => Data == null || Data.Length == 0;
+        public bool IsNullOrEmpty => Bytes == null || Bytes.Length == 0;
 
         public Id(byte[] data)
         {
-            Data = data ?? throw new ArgumentNullException(nameof(data));
+            Bytes = data?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(data));
         }
 
         public override int GetHashCode()
         {
-            return BitConverter.ToInt32(Data, 0);
+            // get value of first max 4 bytes
+            int l = Math.Min(4, Bytes.Length);
+            int result = 0;
+            for (int i = 0; i < l; i++)
+            {
+                var offset = i * 8;
+                result |= Bytes[i] << offset;
+            }
+
+            return result;
         }
 
         public override bool Equals(object obj)
@@ -37,30 +51,9 @@ namespace ShareCluster
             return ToString(format, CultureInfo.InvariantCulture);
         }
 
-        public override string ToString()
-        {
-            return ToString(Data.Length);
-        }
+        public override string ToString() => ToString(Bytes.Length);
 
-        public bool Equals(Id other) => CompareArrays(Data, other.Data);
-
-        public static bool CompareArrays(byte[] array1, byte[] array2)
-        {
-            if (array1.Length != array2.Length)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < array1.Length; i++)
-            {
-                if (array1[i] != array2[i])
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
+        public bool Equals(Id other) => Bytes.SequenceEqual(other.Bytes);
 
         public string ToString(string format, IFormatProvider formatProvider)
         {
@@ -72,7 +65,7 @@ namespace ShareCluster
                 {
                     if (int.TryParse(match.Groups["bytes"]?.Value, out int bytes))
                     {
-                        if (bytes >= 1 && bytes <= Data.Length)
+                        if (bytes >= 0 && bytes <= Bytes.Length)
                         {
                             return ToString(bytes);
                         }
@@ -84,10 +77,7 @@ namespace ShareCluster
             return ToString();
         }
 
-        public string ToString(int bytes)
-        {
-            return BitConverter.ToString(Data, 0, bytes).Replace("-", string.Empty);
-        }
+        public string ToString(int bytes) => Bytes.ToStringAsHex(0, bytes > Bytes.Length ? Bytes.Length : bytes);
 
         public static Id Parse(string valueString)
         {
@@ -103,13 +93,13 @@ namespace ShareCluster
         {
             if(valueString == null)
             {
-                hash = default(Id);
+                hash = default;
                 return false;
             }
 
-            if(!TryConvertHexStringToByteArray(valueString, out byte[] bytes))
+            if(!valueString.TryConvertHexStringToByteArray(out byte[] bytes))
             {
-                hash = default(Id);
+                hash = default;
                 return false;
             }
 
@@ -117,27 +107,7 @@ namespace ShareCluster
             return true;
         }
 
-        public static bool TryConvertHexStringToByteArray(string hexString, out byte[] result)
-        {
-            if (hexString.Length % 2 != 0)
-            {
-                result = null;
-                return false;
-            }
-
-            result = new byte[hexString.Length / 2];
-            for (int index = 0; index < result.Length; index++)
-            {
-                string byteValue = hexString.Substring(index * 2, 2);
-                if(!byte.TryParse(byteValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out byte b))
-                {
-                    result = null;
-                    return false;
-                }
-                result[index] = b;
-            }
-
-            return true;
-        }
+        public static bool operator ==(Id left, Id right) => left.Equals(right);
+        public static bool operator != (Id left, Id right) => !left.Equals(right);
     }
 }

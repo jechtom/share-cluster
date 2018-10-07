@@ -16,7 +16,7 @@ namespace ShareCluster.Network
         private readonly NetworkSettings _networkSettings;
         private readonly ILogger<NetworkChangeNotifier> _logger;
         private HashSet<IPAddress> _addresses;
-        private bool _addressesKnown;
+        private readonly bool _addressesKnown;
         private readonly object _syncLock = new object();
 
         public NetworkChangeNotifier(NetworkSettings networkSettings, ILogger<NetworkChangeNotifier> logger)

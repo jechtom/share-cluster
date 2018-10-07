@@ -14,21 +14,21 @@ namespace ShareCluster.Network.Http
     [ServiceFilter(typeof(HttpRequestHeaderValidator))]
     public class HttpApiController : IHttpApiController
     {
-        private readonly PeersCluster peersCluster;
-        private readonly IPackageRegistry packageRegistry;
-        private readonly PackageDownloadManager downloadManager;
+        private readonly PeersCluster _peersCluster;
+        private readonly IPackageRegistry _packageRegistry;
+        private readonly PackageDownloadManager _downloadManager;
 
         public HttpApiController(PeersCluster peersCluster, IPackageRegistry packageRegistry, PackageDownloadManager downloadManager)
         {
-            this.peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
-            this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
-            this.downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
+            _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
+            _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            _downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
         }
 
         [HttpPost]
         public PackageResponse Package([FromBody]PackageRequest request)
         {
-            if (!packageRegistry.TryGetPackage(request.PackageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete)
+            if (!_packageRegistry.TryGetPackage(request.PackageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete)
             {
                 return new PackageResponse()
                 {
@@ -47,7 +47,7 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public PackageStatusResponse PackageStatus([FromBody]PackageStatusRequest request)
         {
-            PackageStatusResponse result = downloadManager.GetPackageStatusResponse(request.PackageIds);
+            PackageStatusResponse result = _downloadManager.GetPackageStatusResponse(request.PackageIds);
             return result;
         }
 
@@ -59,23 +59,23 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(request));
             }
             IPAddress address = RemoteIpAddress;
-            peersCluster.ProcessStatusUpdateMessage(request, address);
-            StatusUpdateMessage response = peersCluster.CreateStatusUpdateMessage(new IPEndPoint(address, request.ServicePort));
+            _peersCluster.ProcessStatusUpdateMessage(request, address);
+            StatusUpdateMessage response = _peersCluster.CreateStatusUpdateMessage(new IPEndPoint(address, request.ServicePort));
             return response;
         }
 
         [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
-            if (!packageRegistry.TryGetPackage(request.PackageHash, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete)
+            if (!_packageRegistry.TryGetPackage(request.PackageHash, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete)
             {
                 return new ObjectResult(DataResponseFaul.CreateDataPackageNotFoundMessage());
             }
 
             // create stream
-            (System.IO.Stream stream, DataResponseFaul error) result = peersCluster.CreateUploadStream(package, request.RequestedParts);
-            if(result.error != null) return new ObjectResult(result.error);
-            return new FileStreamResult(result.stream, "application/octet-stream");
+            (System.IO.Stream stream, DataResponseFaul error) = _peersCluster.CreateUploadStream(package, request.RequestedParts);
+            if(error != null) return new ObjectResult(error);
+            return new FileStreamResult(stream, "application/octet-stream");
         }
 
         public IPAddress RemoteIpAddress { get; set; }

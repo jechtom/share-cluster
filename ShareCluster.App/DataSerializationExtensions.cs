@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 
 namespace ShareCluster
 {
-    public static class StreamExtensions
+    public static class DataSerializationExtensions
     {
         public static void CopyStream(this Stream input, Stream output, int bufferSize, long bytes)
         {
@@ -54,6 +55,24 @@ namespace ShareCluster
             using (var memStream = new MemoryStream(data))
             {
                 return serializer.Deserialize<T>(memStream);
+            }
+        }
+
+        public static void Write(this Stream stream, Id id)
+        {
+            // rent byte array
+            int len = id.Bytes.Length;
+            byte[] array = ArrayPool<byte>.Shared.Rent(len);
+            try
+            {
+                // copy to byte array and write to target stream
+                id.Bytes.CopyTo(array);
+                stream.Write(array, 0, len);
+            }
+            finally
+            {
+                // return stream
+                ArrayPool<byte>.Shared.Return(array);
             }
         }
     }

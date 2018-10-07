@@ -279,7 +279,7 @@ namespace ShareCluster.Network
                 peer.PeerInfo.Status.MarkStatusUpdateFail();
                 _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
             }
-            return (peer: peer, result: statusResult, success: success);
+            return (peer, result: statusResult, success);
         }
 
         public List<PeerInfo> GetClientListForPackage(LocalPackageInfo package)

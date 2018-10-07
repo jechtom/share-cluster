@@ -50,7 +50,7 @@ namespace ShareCluster
         {
             if(valueString == null || !valueString.StartsWith("v") || !int.TryParse(valueString.Substring(1), out int versionInt))
             {
-                version = default(VersionNumber);
+                version = default;
                 return false;
             }
 

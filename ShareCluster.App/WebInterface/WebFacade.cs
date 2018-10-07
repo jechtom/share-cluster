@@ -11,57 +11,57 @@ namespace ShareCluster.WebInterface
 {
     public class WebFacade
     {
-        private readonly AppInfo appInfo;
-        private readonly PackageDownloadManager packageDownloadManager;
-        private readonly PackageDataValidator validator;
-        private readonly LocalPackageManager localPackageManager;
-        private readonly IPeerRegistry peerRegistry;
-        private readonly IPackageRegistry packageRegistry;
-        private readonly InstanceHash instanceHash;
-        private readonly LongRunningTasksManager tasks;
-        private readonly PeersCluster peersCluster;
-        private readonly object syncLock = new object();
-        private readonly HashSet<Id> packagesInVerify = new HashSet<Id>();
+        private readonly AppInfo _appInfo;
+        private readonly PackageDownloadManager _packageDownloadManager;
+        private readonly PackageDataValidator _validator;
+        private readonly LocalPackageManager _localPackageManager;
+        private readonly IPeerRegistry _peerRegistry;
+        private readonly IPackageRegistry _packageRegistry;
+        private readonly InstanceHash _instanceHash;
+        private readonly LongRunningTasksManager _tasks;
+        private readonly PeersCluster _peersCluster;
+        private readonly object _syncLock = new object();
+        private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
         public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageDataValidator validator, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
-            this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
-            this.packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
-            this.validator = validator ?? throw new ArgumentNullException(nameof(validator));
-            this.localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
-            this.peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            this.packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
-            this.instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
-            this.tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
-            this.peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
+            _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
+            _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
+            _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
+            _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
+            _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
         }
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {
-            if (!packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
             if (start)
             {
-                packageDownloadManager.StartDownloadPackage(package);
+                _packageDownloadManager.StartDownloadPackage(package);
             }
             else
             {
-                packageDownloadManager.StopDownloadPackage(package);
+                _packageDownloadManager.StopDownloadPackage(package);
             }
         }
 
         public void TryVerifyPackage(Id packageId)
         {
-            if (!packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
 
             // create lock
-            lock(syncLock)
+            lock(_syncLock)
             {
-                if (!packagesInVerify.Add(packageId)) return;
+                if (!_packagesInVerify.Add(packageId)) return;
             }
 
             // run
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            Task extractTask = validator.ValidatePackageAsync(package, measureItem).ContinueWith(t => {
+            Task extractTask = _validator.ValidatePackageAsync(package, measureItem).ContinueWith(t => {
                 if (t.IsFaulted && !t.Result.IsValid) throw new Exception(string.Join("; ", t.Result.Errors));
             });
 
@@ -69,7 +69,7 @@ namespace ShareCluster.WebInterface
             extractTask.ContinueWith(t =>
                 {
                     // release lock
-                    lock(syncLock) { packagesInVerify.Remove(packageId); }
+                    lock(_syncLock) { _packagesInVerify.Remove(packageId); }
                     if (t.IsFaulted) throw t.Exception;
                 });
 
@@ -82,16 +82,16 @@ namespace ShareCluster.WebInterface
                 );
 
             // register
-            tasks.AddTaskToQueue(task);
+            _tasks.AddTaskToQueue(task);
         }
 
         public void TryStartDownloadDiscovered(Id packageId)
         {
-            DiscoveredPackage packageDiscovery = packageRegistry.ImmutableDiscoveredPackages.FirstOrDefault(p => p.PackageId.Equals(packageId));
+            DiscoveredPackage packageDiscovery = _packageRegistry.ImmutableDiscoveredPackages.FirstOrDefault(p => p.PackageId.Equals(packageId));
             if (packageDiscovery == null) return;
 
             // try start download
-            if (!packageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(packageDiscovery, out Task startDownloadTask))
+            if (!_packageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(packageDiscovery, out Task startDownloadTask))
             {
                 return;
             }
@@ -104,7 +104,7 @@ namespace ShareCluster.WebInterface
                 );
 
             // register
-            tasks.AddTaskToQueue(task);
+            _tasks.AddTaskToQueue(task);
         }
 
         public void CreateNewPackage(string folder, string name)
@@ -113,7 +113,7 @@ namespace ShareCluster.WebInterface
 
             // start
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            Task taskCreate = Task.Run(new Action(() => packageRegistry.CreatePackageFromFolder(folder, name, measureItem)));
+            var taskCreate = Task.Run(new Action(() => _packageRegistry.CreatePackageFromFolder(folder, name, measureItem)));
 
             // create and register task for starting download
             var task = new LongRunningTask(
@@ -124,28 +124,30 @@ namespace ShareCluster.WebInterface
                 );
 
             // register
-            tasks.AddTaskToQueue(task);
+            _tasks.AddTaskToQueue(task);
         }
 
         public StatusViewModel GetStatusViewModel()
         {
-            var result = new StatusViewModel();
-            result.Packages = packageRegistry.ImmutablePackages;
-            result.Peers = peerRegistry.ImmutablePeers;
-            result.PackagesAvailableToDownload = packageRegistry.ImmutableDiscoveredPackages;
-            result.Instance = instanceHash;
-            result.Tasks = tasks.Tasks.Concat(tasks.CompletedTasks);
-            result.UploadSlotsAvailable = peersCluster.UploadSlotsAvailable;
-            result.DownloadSlotsAvailable = packageDownloadManager.DownloadStotsAvailable;
+            var result = new StatusViewModel
+            {
+                Packages = _packageRegistry.ImmutablePackages,
+                Peers = _peerRegistry.ImmutablePeers,
+                PackagesAvailableToDownload = _packageRegistry.ImmutableDiscoveredPackages,
+                Instance = _instanceHash,
+                Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
+                UploadSlotsAvailable = _peersCluster.UploadSlotsAvailable,
+                DownloadSlotsAvailable = _packageDownloadManager.DownloadStotsAvailable
+            };
             return result;
         }
 
         public void ExtractPackage(Id packageId, string folder, bool validate)
         {
-            if (!packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
 
             // run
-            var extractTask = Task.Run(new Action(() => localPackageManager.ExtractPackage(package, folder, validate: validate)));
+            var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(package, folder, validate: validate)));
 
             // create and register task for starting download
             var task = new LongRunningTask(
@@ -156,15 +158,15 @@ namespace ShareCluster.WebInterface
                 );
 
             // register
-            tasks.AddTaskToQueue(task);
+            _tasks.AddTaskToQueue(task);
         }
 
         public void DeletePackage(Id packageId)
         {
-            if (!packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
 
             // start
-            Task deleteTask = packageRegistry.DeletePackageAsync(package);
+            Task deleteTask = _packageRegistry.DeletePackageAsync(package);
 
             // create and register task for starting download
             var task = new LongRunningTask(
@@ -174,17 +176,17 @@ namespace ShareCluster.WebInterface
                 );
 
             // register
-            tasks.AddTaskToQueue(task);
+            _tasks.AddTaskToQueue(task);
         }
 
         public string RecommendFolderForExtraction()
         {
-            return appInfo.DataRootPathExtractDefault;
+            return _appInfo.DataRootPathExtractDefault;
         }
 
         public PackageOperationViewModel GetPackageOrNull(Id packageId)
         {
-            if (!packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return null;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return null;
             return new PackageOperationViewModel()
             {
                 Id = package.Id,
@@ -195,7 +197,7 @@ namespace ShareCluster.WebInterface
 
         public void CleanTasksHistory()
         {
-            tasks.CleanCompletedTasks();
+            _tasks.CleanCompletedTasks();
         }
     }
 }
