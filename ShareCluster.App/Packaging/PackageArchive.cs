@@ -40,16 +40,16 @@ namespace ShareCluster.Packaging
     /// </remarks>
     public class PackageArchive
     {
-        private const int DefaultBufferSize = 81920;
-        private readonly CompatibilityChecker compatibilityChecker;
-        private readonly IMessageSerializer serializer;
+        private const int _defaultBufferSize = 81920;
+        private readonly CompatibilityChecker _compatibilityChecker;
+        private readonly IMessageSerializer _serializer;
 
         public int EntriesCount { get; private set; }
 
         public PackageArchive(CompatibilityChecker compatibilityChecker, IMessageSerializer serializer)
         {
-            this.compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
-            this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            _compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
+            _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         }
 
         public void WriteFromFolder(string sourceDirectoryName, Stream stream)
@@ -70,11 +70,11 @@ namespace ShareCluster.Packaging
             sourceDirectoryName = RemoveTrailingSlashIfPresent(sourceDirectoryName);
 
             // make sure it exists
-            DirectoryInfo rootPath = new DirectoryInfo(sourceDirectoryName);
+            var rootPath = new DirectoryInfo(sourceDirectoryName);
             if (!rootPath.Exists) throw new InvalidOperationException($"Folder not found: { sourceDirectoryName }");
 
             // write version
-            serializer.Serialize(compatibilityChecker.PackageVersion, stream);
+            _serializer.Serialize(_compatibilityChecker.PackageVersion, stream);
 
             var foldersToProcessStack = new Stack<DirectoryInfo>(); // use stack (instead of queue) to process sub-folders first
             var foldersTreeStack = new Stack<DirectoryInfo>();
@@ -96,7 +96,7 @@ namespace ShareCluster.Packaging
                 foldersTreeStack.Push(folder);
 
                 // write folder info
-                serializer.Serialize(new PackageEntry()
+                _serializer.Serialize(new PackageEntry()
                 {
                     Attributes = folder.Attributes,
                     Name = folder.Name,
@@ -114,7 +114,7 @@ namespace ShareCluster.Packaging
                     if (entry is FileInfo file)
                     {
                         // write file info
-                        serializer.Serialize(new PackageEntry()
+                        _serializer.Serialize(new PackageEntry()
                         {
                             Attributes = file.Attributes,
                             Name = file.Name,
@@ -149,16 +149,16 @@ namespace ShareCluster.Packaging
             }
 
             // write file end (empty entry)
-            serializer.Serialize(new PackageEntry() { PopDirectories = foldersTreeStack.Count }, stream);
+            _serializer.Serialize(new PackageEntry() { PopDirectories = foldersTreeStack.Count }, stream);
         }
 
         private static string RemoveTrailingSlashIfPresent(string path)
         {
             // removes trailing slash ("c:\test\" > "c:\test"). some code blocks expects format without slash
             while (
-                            path.EndsWith(Path.AltDirectorySeparatorChar)
-                            || path.EndsWith(Path.DirectorySeparatorChar)
-                            )
+                path.EndsWith(Path.AltDirectorySeparatorChar)
+                || path.EndsWith(Path.DirectorySeparatorChar)
+                )
             {
                 path = path.Substring(0, path.Length - 1);
             }
@@ -184,15 +184,15 @@ namespace ShareCluster.Packaging
             var rootDirectoryInfo = new DirectoryInfo(rootDirectory);
             rootDirectoryInfo.Create();
 
-            VersionNumber version = serializer.Deserialize<VersionNumber>(readStream);
-            compatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, "Package", version);
+            VersionNumber version = _serializer.Deserialize<VersionNumber>(readStream);
+            _compatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, "Package", version);
 
             var foldersStack = new Stack<string>();
 
             while(true)
             {
                 // read entry
-                PackageEntry entry = serializer.Deserialize<PackageEntry>(readStream);
+                PackageEntry entry = _serializer.Deserialize<PackageEntry>(readStream);
 
                 if(entry == null)
                 {
@@ -244,13 +244,13 @@ namespace ShareCluster.Packaging
 
                 // or is it file?
                 if (entry.FileSize == null) throw new InvalidOperationException("File size is null.");
-                using (var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, DefaultBufferSize))
+                using (var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, _defaultBufferSize))
                 {
                     fileStream.SetLength(entry.FileSize.Value);
                     if(entry.FileSize.Value > 0)
                     {
                         // write content
-                        readStream.CopyStream(fileStream, DefaultBufferSize, entry.FileSize.Value);
+                        readStream.CopyStream(fileStream, _defaultBufferSize, entry.FileSize.Value);
                     }
                 }
                 var fileInfo = new FileInfo(path);

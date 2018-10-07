@@ -7,9 +7,9 @@ namespace ShareCluster.Packaging
     /// </summary>
     public class PackageSequenceBaseInfo
     {
-        private const long DefaultSegmentLength = 1024 * 1024;
-        private const int DefaultSegmentsPerDataFile = 100;
-        private const long DefaultDataFileLength = DefaultSegmentLength * DefaultSegmentsPerDataFile;
+        private const long _defaultSegmentLength = 1024 * 1024;
+        private const int _defaultSegmentsPerDataFile = 100;
+        private const long _defaultDataFileLength = _defaultSegmentLength * _defaultSegmentsPerDataFile;
 
         public PackageSequenceBaseInfo(long dataFileLength, long segmentLength)
         {
@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging
         /// <summary>
         /// Gets default <see cref="PackageSequenceBaseInfo"/>. Currently only default values are supported and expected.
         /// </summary>
-        public static PackageSequenceBaseInfo Default { get; } = new PackageSequenceBaseInfo(dataFileLength: DefaultDataFileLength, segmentLength: DefaultSegmentLength);
+        public static PackageSequenceBaseInfo Default { get; } = new PackageSequenceBaseInfo(dataFileLength: _defaultDataFileLength, segmentLength: _defaultSegmentLength);
 
         /// <summary>
         /// Gets or sets size of data file. Last data file size is <see cref="DataFileLastLength"/>.

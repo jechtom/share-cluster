@@ -1,4 +1,4 @@
-using ShareCluster.Network.Messages;
+﻿using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
 using System;
@@ -44,7 +44,7 @@ namespace ShareCluster.Tests
         public void IPv6AddressTest()
         {
             IMessageSerializer serializer = new ProtoBufMessageSerializer();
-            IPAddress adr = IPAddress.Parse("2001:db8::ff00:42:8329");
+            var adr = IPAddress.Parse("2001:db8::ff00:42:8329");
 
             byte[] bytes = serializer.Serialize(adr);
             IPAddress result = serializer.Deserialize<IPAddress>(bytes);
@@ -55,7 +55,7 @@ namespace ShareCluster.Tests
         public void IPv4AddressTest()
         {
             IMessageSerializer serializer = new ProtoBufMessageSerializer();
-            IPAddress adr = IPAddress.Parse("8.8.8.8");
+            var adr = IPAddress.Parse("8.8.8.8");
 
             byte[] bytes = serializer.Serialize(adr);
             IPAddress result = serializer.Deserialize<IPAddress>(bytes);

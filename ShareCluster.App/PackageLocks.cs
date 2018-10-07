@@ -11,33 +11,33 @@ namespace ShareCluster
     /// </summary>
     public class PackageLocks
     {
-        private readonly object syncLock = new object();
+        private readonly object _syncLock = new object();
 
-        private TaskCompletionSource<object> deletedFinished;
-        private readonly HashSet<object> tokens = new HashSet<object>();
+        private TaskCompletionSource<object> _deletedFinished;
+        private readonly HashSet<object> _tokens = new HashSet<object>();
 
         public bool IsMarkedToDelete { get; private set; }
         
         public Task MarkForDelete()
         {
-            lock(syncLock)
+            lock(_syncLock)
             {
                 if (!IsMarkedToDelete)
                 {
                     IsMarkedToDelete = true;
-                    deletedFinished = new TaskCompletionSource<object>();
-                    if (tokens.Count == 0)
+                    _deletedFinished = new TaskCompletionSource<object>();
+                    if (_tokens.Count == 0)
                     {
-                        deletedFinished.SetResult(null);
+                        _deletedFinished.SetResult(null);
                     }
                 }
             }
-            return deletedFinished.Task;
+            return _deletedFinished.Task;
         }
 
         public bool TryLock(out object token)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
                 if(IsMarkedToDelete)
                 {
@@ -45,7 +45,7 @@ namespace ShareCluster
                     return false;
                 }
 
-                tokens.Add(token = new object());
+                _tokens.Add(token = new object());
                 return true;
             }
         }
@@ -61,12 +61,12 @@ namespace ShareCluster
 
         public void Unlock(object token)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (!tokens.Remove(token)) throw new InvalidOperationException("This lock has been already released.");
-                if(tokens.Count == 0 && IsMarkedToDelete)
+                if (!_tokens.Remove(token)) throw new InvalidOperationException("This lock has been already released.");
+                if(_tokens.Count == 0 && IsMarkedToDelete)
                 {
-                    deletedFinished.SetResult(null);
+                    _deletedFinished.SetResult(null);
                 }
             }
         }

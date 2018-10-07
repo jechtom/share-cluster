@@ -18,23 +18,23 @@ namespace ShareCluster.Packaging
     /// </remarks>
     public class PackageDataStream : Stream
     {
-        ILogger<PackageDataStream> logger;
+        ILogger<PackageDataStream> _logger;
 
-        private long? length;
-        private long position;
-        private bool isDisposed;
+        private long? _length;
+        private long _position;
+        private bool _isDisposed;
 
-        private PackageDataStreamPart currentPart;
-        private long nextPartPosition;
-        private IEnumerator<PackageDataStreamPart> partsSource;
-        private IPackageDataStreamController controller;
+        private PackageDataStreamPart _currentPart;
+        private long _nextPartPosition;
+        private IEnumerator<PackageDataStreamPart> _partsSource;
+        private IPackageDataStreamController _controller;
 
         public PackageDataStream(ILoggerFactory loggerFactory, IPackageDataStreamController controller)
         {
-            logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataStream>();
-            this.controller = controller ?? throw new ArgumentNullException(nameof(controller));
-            length = controller.Length;
-            partsSource = controller.EnumerateParts().GetEnumerator();
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataStream>();
+            _controller = controller ?? throw new ArgumentNullException(nameof(controller));
+            _length = controller.Length;
+            _partsSource = controller.EnumerateParts().GetEnumerator();
         }
         
         /// <summary>
@@ -42,31 +42,31 @@ namespace ShareCluster.Packaging
         /// </summary>
         public MeasureItem Measure { get; set; }
 
-        public override bool CanRead => controller.CanRead;
+        public override bool CanRead => _controller.CanRead;
 
         public override bool CanSeek => false;
 
-        public override bool CanWrite => controller.CanWrite;
+        public override bool CanWrite => _controller.CanWrite;
 
-        public override long Length => length ?? Position;
+        public override long Length => _length ?? Position;
 
-        public override long Position { get => position; set => throw new NotSupportedException(); }
+        public override long Position { get => _position; set => throw new NotSupportedException(); }
 
         public event Action Disposing;
 
         public override void Flush()
         {
-            if (currentPart?.Stream != null)
+            if (_currentPart?.Stream != null)
             {
-                currentPart.Stream.Flush();
+                _currentPart.Stream.Flush();
             }
         }
 
         public override async Task FlushAsync(CancellationToken cancellationToken)
         {
-            if (currentPart?.Stream != null)
+            if (_currentPart?.Stream != null)
             {
-                await currentPart?.Stream.FlushAsync(cancellationToken);
+                await _currentPart?.Stream.FlushAsync(cancellationToken);
             }
         }
 
@@ -119,24 +119,24 @@ namespace ShareCluster.Packaging
                 if (!ResolveCurrentItemAndEnsureStream()) break;
                 
                 // how much we should read until reaching end of sequence item or requested bytes count
-                int bytesToEndOfCurrentItem = (int)(nextPartPosition - position);
+                int bytesToEndOfCurrentItem = (int)(_nextPartPosition - _position);
                 int tryProcessBytes = Math.Min(count, bytesToEndOfCurrentItem);
 
                 // write.read
                 int bytesProcessed;
                 if (write)
                 {
-                    await currentPart.Stream.WriteAsync(buffer, offset, tryProcessBytes, cancellationToken);
+                    await _currentPart.Stream.WriteAsync(buffer, offset, tryProcessBytes, cancellationToken);
                     bytesProcessed = tryProcessBytes;
                 }
                 else
                 {
-                    bytesProcessed = await currentPart.Stream.ReadAsync(buffer, offset, tryProcessBytes, cancellationToken);
+                    bytesProcessed = await _currentPart.Stream.ReadAsync(buffer, offset, tryProcessBytes, cancellationToken);
                 }
 
                 // advance counters
                 bytesProcessedTotal += bytesProcessed;
-                position += bytesProcessed;
+                _position += bytesProcessed;
                 Measure?.Put(bytesProcessed);
 
                 // remove range from current range
@@ -157,24 +157,24 @@ namespace ShareCluster.Packaging
                 if (!ResolveCurrentItemAndEnsureStream()) break;
 
                 // how much we should read until reaching end of sequence item or requested bytes count
-                int bytesToEndOfCurrentItem = (int)(nextPartPosition - position);
+                int bytesToEndOfCurrentItem = (int)(_nextPartPosition - _position);
                 int tryProcessBytes = Math.Min(count, bytesToEndOfCurrentItem);
 
                 // write.read
                 int bytesProcessed;
                 if (write)
                 {
-                    currentPart.Stream.Write(buffer, offset, tryProcessBytes);
+                    _currentPart.Stream.Write(buffer, offset, tryProcessBytes);
                     bytesProcessed = tryProcessBytes;
                 }
                 else
                 {
-                    bytesProcessed = currentPart.Stream.Read(buffer, offset, tryProcessBytes);
+                    bytesProcessed = _currentPart.Stream.Read(buffer, offset, tryProcessBytes);
                 }
 
                 // advance counters
                 bytesProcessedTotal += bytesProcessed;
-                position += bytesProcessed;
+                _position += bytesProcessed;
                 Measure?.Put(bytesProcessed);
 
                 // remove range from current range
@@ -197,42 +197,42 @@ namespace ShareCluster.Packaging
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && !isDisposed)
+            if (disposing && !_isDisposed)
             {
                 Disposing?.Invoke();
-                controller.Dispose();
-                isDisposed = true;
+                _controller.Dispose();
+                _isDisposed = true;
             }
             base.Dispose(disposing);
 
             long diff = Length - Position;
             if (diff != 0)
             {
-                logger.LogWarning($"Stream disposed before processing all data. Position {Position}B of {Length}B.");
+                _logger.LogWarning($"Stream disposed before processing all data. Position {Position}B of {Length}B.");
             }
         }
 
         public override void Close()
         {
             ResolveCurrentItemAndEnsureStream(); // this will close current stream if no more files
-            controller.OnStreamClosed();
+            _controller.OnStreamClosed();
             Dispose(true);
         }
 
         private bool ResolveCurrentItemAndEnsureStream()
         {
             // not reach end of part yet?
-            if (nextPartPosition != position)
+            if (_nextPartPosition != _position)
             {
                 return true;
             }
 
             // next item
-            if (!partsSource.MoveNext())
+            if (!_partsSource.MoveNext())
             {
                 // nothing more to read
-                controller.OnStreamPartChange(currentPart, null);
-                currentPart = null;
+                _controller.OnStreamPartChange(_currentPart, null);
+                _currentPart = null;
 
                 if (Length != Position)
                 {
@@ -243,11 +243,11 @@ namespace ShareCluster.Packaging
             }
 
             // new part
-            controller.OnStreamPartChange(currentPart, partsSource.Current);
-            currentPart = partsSource.Current;
-            if (currentPart.PartLength == 0) throw new InvalidOperationException("Zero length part is invalid.");
-            if (currentPart.Stream == null) throw new InvalidOperationException("Stream is not set up for new part.");
-            nextPartPosition += currentPart.PartLength;
+            _controller.OnStreamPartChange(_currentPart, _partsSource.Current);
+            _currentPart = _partsSource.Current;
+            if (_currentPart.PartLength == 0) throw new InvalidOperationException("Zero length part is invalid.");
+            if (_currentPart.Stream == null) throw new InvalidOperationException("Stream is not set up for new part.");
+            _nextPartPosition += _currentPart.PartLength;
             return true;
         }
     }
