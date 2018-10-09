@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.FileSystem
 {
     /// <summary>
     /// Provides creating archive from file system and extract files and folder from archive.

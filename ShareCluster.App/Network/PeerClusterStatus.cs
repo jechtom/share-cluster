@@ -9,15 +9,15 @@ namespace ShareCluster.Network
     /// </summary>
     public class PeerClusterStatus
     {
-        private readonly IClock clock;
-        private readonly NetworkSettings settings;
-        private readonly object syncLock = new object();
-        private TimeSpan disabledSince;
+        private readonly IClock _clock;
+        private readonly NetworkSettings _settings;
+        private readonly object _syncLock = new object();
+        private TimeSpan _disabledSince;
 
         public PeerClusterStatus(IClock clock, NetworkSettings settings)
         {
-            this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
         /// <summary>
@@ -45,11 +45,11 @@ namespace ShareCluster.Network
         /// </summary>
         public TimeSpan DisabledSince
         {
-            get => disabledSince;
+            get => _disabledSince;
             private set {
-                if (disabledSince == value) return;
-                bool isEnabledChanged = (value == TimeSpan.Zero || disabledSince == TimeSpan.Zero);
-                disabledSince = value;
+                if (_disabledSince == value) return;
+                bool isEnabledChanged = (value == TimeSpan.Zero || _disabledSince == TimeSpan.Zero);
+                _disabledSince = value;
                 IsEnabledChanged?.Invoke();
             }
         }
@@ -71,9 +71,9 @@ namespace ShareCluster.Network
 
         public void MarkStatusUpdateSuccess(int? statusVersion)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
-                TimeSpan time = clock.Time;
+                TimeSpan time = _clock.Time;
                 LastKnownStateUpdateAttemptTime = time;
                 if(statusVersion != null) LastKnownStateUdpateVersion = statusVersion.Value;
                 LastSuccessCommunication = time;
@@ -84,9 +84,9 @@ namespace ShareCluster.Network
 
         public void MarkStatusUpdateFail()
         {
-            lock(syncLock)
+            lock(_syncLock)
             {
-                TimeSpan time = clock.Time;
+                TimeSpan time = _clock.Time;
                 LastKnownStateUpdateAttemptTime = time;
                 LastFailedCommunication = time;
                 int fails = FailsSinceLastSuccess++;
@@ -97,8 +97,8 @@ namespace ShareCluster.Network
 
                 if (
                     DisabledSince == TimeSpan.Zero
-                    && FailsSinceLastSuccess >= settings.DisablePeerAfterFails
-                    && FirstFailedCommunicationTime.Add(settings.DisablePeerAfterTime) <= time
+                    && FailsSinceLastSuccess >= _settings.DisablePeerAfterFails
+                    && FirstFailedCommunicationTime.Add(_settings.DisablePeerAfterTime) <= time
                 )
                 {
                     // disable peer
@@ -109,7 +109,7 @@ namespace ShareCluster.Network
 
         public void Reenable()
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
                 FailsSinceLastSuccess = 0;
                 DisabledSince = TimeSpan.Zero;

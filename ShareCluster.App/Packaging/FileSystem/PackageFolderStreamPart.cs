@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.FileSystem
 {
-    public class PackageDataStreamPart
+    public class PackageFolderStreamPart
     {
         public string Path { get; set; }
         public Stream Stream { get; set; }

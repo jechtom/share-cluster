@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.FileSystem
 {
     /// <summary>
     /// Provides description how package should be splitted to data files and how data file should be splitted to segments.

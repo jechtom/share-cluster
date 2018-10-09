@@ -1,10 +1,10 @@
-using ShareCluster.Network.Messages;
+﻿using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using System;
 using System.Linq;
 using Xunit;
 
-namespace ShareCluster.Tests
+namespace ShareCluster.Tests.Packaging
 {
     public class PackageStatusValidationTests
     {

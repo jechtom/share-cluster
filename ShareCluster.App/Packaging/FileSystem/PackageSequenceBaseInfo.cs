@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.FileSystem
 {
     /// <summary>
     /// Definition of file and segment size for new and existing packages.

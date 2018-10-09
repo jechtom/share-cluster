@@ -1,4 +1,4 @@
-using ShareCluster.Packaging;
+﻿using ShareCluster.Packaging;
 using System;
 using System.Linq;
 using Xunit;

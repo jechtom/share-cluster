@@ -3,25 +3,25 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.FileSystem
 {
     /// <summary>
-    /// Provides methods to generate sequences of <see cref="PackageDataStreamPart"/> for newly created packages, allocation of files and read/write operations of package data files.
+    /// Provides methods to generate sequences of <see cref="PackageFolderStreamPart"/> for newly created packages, allocation of files and read/write operations of package data files.
     /// </summary>
-    public class PackagePartsSequencer
+    public class PackageFolderPartsSequencer
     {
         public const string PackageDataFileNameFormat = "package-{0:000000}.data";
 
         protected string GetBlockFilePath(string packagePath, int i) => Path.Combine(packagePath, string.Format(PackageDataFileNameFormat, i));
 
-        public IEnumerable<PackageDataStreamPart> GetDataFilesForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
+        public IEnumerable<PackageFolderStreamPart> GetDataFilesForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
         {
             for (int currentDataFileIndex = 0; currentDataFileIndex < sequenceInfo.DataFilesCount; currentDataFileIndex++)
             {
                 long dataFileSize = (currentDataFileIndex == sequenceInfo.DataFilesCount - 1) ? sequenceInfo.DataFileLastLength : sequenceInfo.DataFileLength;
                 string path = GetBlockFilePath(packageRootPath, currentDataFileIndex);
 
-                yield return new PackageDataStreamPart()
+                yield return new PackageFolderStreamPart()
                 {
                     Path = path,
                     PartLength = dataFileSize,
@@ -32,17 +32,17 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public IEnumerable<PackageDataStreamPart> GetPartsInfinite(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo)
+        public IEnumerable<PackageFolderStreamPart> GetPartsInfinite(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo)
         {
             return GetPartsInternal(packageRootPath, sequenceBaseInfo, length: null, requestedSegments: null);
         }
 
-        public IEnumerable<PackageDataStreamPart> GetPartsForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
+        public IEnumerable<PackageFolderStreamPart> GetPartsForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
         {
             return GetPartsInternal(packageRootPath, sequenceInfo, length: sequenceInfo.PackageSize, requestedSegments: null);
         }
 
-        public IEnumerable<PackageDataStreamPart> GetPartsForSpecificSegments(string packageRootPath, PackageSequenceInfo sequenceInfo, int[] requestedSegments)
+        public IEnumerable<PackageFolderStreamPart> GetPartsForSpecificSegments(string packageRootPath, PackageSequenceInfo sequenceInfo, int[] requestedSegments)
         {
             if (sequenceInfo == null)
             {
@@ -57,7 +57,7 @@ namespace ShareCluster.Packaging
             return GetPartsInternal(packageRootPath, sequenceInfo, length: sequenceInfo.PackageSize, requestedSegments: requestedSegments);
         }
 
-        private IEnumerable<PackageDataStreamPart> GetPartsInternal(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, long? length, int[] requestedSegments)
+        private IEnumerable<PackageFolderStreamPart> GetPartsInternal(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, long? length, int[] requestedSegments)
         {
             PackageSequenceInfo sequenceInfo = null;
 
@@ -83,7 +83,7 @@ namespace ShareCluster.Packaging
                 int segmentIndexInDataFile = (segmentIndex % sequenceBaseInfo.SegmentsPerDataFile);
                 int dataFileIndex = (segmentIndex / sequenceBaseInfo.SegmentsPerDataFile);
 
-                yield return new PackageDataStreamPart()
+                yield return new PackageFolderStreamPart()
                 {
                     DataFileIndex = dataFileIndex,
                     SegmentIndex = segmentIndex,

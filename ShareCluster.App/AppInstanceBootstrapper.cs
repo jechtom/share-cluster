@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
 using ShareCluster.Packaging;
+using ShareCluster.Packaging.FileSystem;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -20,7 +21,7 @@ namespace ShareCluster
             NetworkChangeNotifier networkChangeNotifier,
             IPeerRegistry peerRegistry,
             IPackageRegistry packageRegistry,
-            LocalPackageManager localPackageManager,
+            PackageFolderManager localPackageManager,
             PeersCluster peersCluster
         )
         {
@@ -38,7 +39,7 @@ namespace ShareCluster
         public NetworkChangeNotifier NetworkChangeNotifier { get; }
         public IPeerRegistry PeerRegistry { get; }
         public IPackageRegistry PackageRegistry { get; }
-        public LocalPackageManager LocalPackageManager { get; }
+        public PackageFolderManager LocalPackageManager { get; }
         public PeersCluster PeersCluster { get; }
 
         public void Start(AppInstanceSettings settings)

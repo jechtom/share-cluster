@@ -10,33 +10,32 @@ using ShareCluster.Packaging.Dto;
 using System.IO.Compression;
 using System.Linq;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.FileSystem
 {
     /// <summary>
     /// Provides access to local package storage.
     /// </summary>
-    public class LocalPackageManager
+    public class PackageFolderManager
     {
         public const string PackageHashesFileName = "package.hash";
         public const string PackageDownloadFileName = "package.download";
         public const string PackageMetaFileName = "package.meta";
         public const string BuildFolderPrefix = "_build-";
 
-        private readonly ILogger<LocalPackageManager> _logger;
+        private readonly ILogger<PackageFolderManager> _logger;
         private readonly AppInfo _app;
         private readonly PackageSequenceBaseInfo _sequenceForNewPackages;
 
-        public LocalPackageManager(AppInfo app)
+        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSequenceBaseInfo sequenceForNewPackages, string packageRepositoryPath)
         {
-            _app = app ?? throw new ArgumentNullException(nameof(app));
-            _logger = app.LoggerFactory.CreateLogger<LocalPackageManager>();
-            PackageRepositoryPath = app.DataRootPathPackageRepository;
-            _sequenceForNewPackages = PackageSequenceBaseInfo.Default;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sequenceForNewPackages = sequenceForNewPackages ?? throw new ArgumentNullException(nameof(sequenceForNewPackages));
+            PackageRepositoryPath = packageRepositoryPath ?? throw new ArgumentNullException(nameof(packageRepositoryPath));
         }
-        
-        public string PackageRepositoryPath { get; private set; }
 
-        public IEnumerable<PackageReference> ListPackages(bool deleteUnfinishedBuilds)
+        public string PackageRepositoryPath { get; }
+
+        public IEnumerable<PackageFolderReference> ListPackages(bool deleteUnfinishedBuilds)
         {
             EnsurePath();
 
@@ -64,13 +63,13 @@ namespace ShareCluster.Packaging
                     continue;
                 }
 
-                if(!Id.TryParse(name, out Id hash))
+                if(!Id.TryParse(name, out Id packageId))
                 {
                     _logger.LogWarning("Cannot parse hash from folder name \"{0}\". Skipping.", name);
                 }
 
                 cnt++;
-                yield return new PackageReference(packageDir, hash);
+                yield return new PackageFolderReference(packageId, packageDir);
             }
         }
 
@@ -90,7 +89,6 @@ namespace ShareCluster.Packaging
             EnsurePath();
             name = string.IsNullOrWhiteSpace(name) ? FileHelper.GetFileOrDirectoryName(folderToProcess) : name;
             DirectoryInfo buildDirectory = Directory.CreateDirectory(CreateBuildPath());
-
 
             _logger.LogInformation($"Creating package \"{name}\" from folder: {folderToProcess}");
 
@@ -139,76 +137,77 @@ namespace ShareCluster.Packaging
             operationMeasure.Stop();
             _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
-            var reference = new PackageReference(packagePath, packageHashes.PackageId);
+            var reference = new PackageFolderReference(packageHashes.PackageId, packagePath);
             var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata, packageSequence);
             return result;
         }
 
-        public void ExtractPackage(LocalPackageInfo packageInfo, string targetFolder, bool validate)
+        public void ExtractPackage(PackageFolder folderPackage, string targetFolder, bool validate)
         {
-            if (packageInfo == null)
+            if (folderPackage == null)
             {
-                throw new ArgumentNullException(nameof(packageInfo));
+                throw new ArgumentNullException(nameof(folderPackage));
             }
 
             // rent package lock
-            if (!packageInfo.LockProvider.TryLock(out object lockToken))
+            if (!folderPackage.Locks.TryLock(out object lockToken))
             {
                 throw new InvalidOperationException("Package is marked to delete, can't extract it.");
             }
+
             try
             {
                 if (validate)
                 {
                     // validate
-                    var validator = new PackageDataValidator(_app.LoggerFactory, _app.Crypto);
-                    PackageDataValidatorResult result = validator.ValidatePackageAsync(packageInfo, measure: null).Result;
+                    var validator = new PackageFolderDataValidator(_app.LoggerFactory, _app.Crypto);
+                    PackageDataValidatorResult result = validator.ValidatePackageAsync(folderPackage, measure: null).Result;
                     if (!result.IsValid)
                     {
-                        throw new InvalidOperationException($"Cannot validate package {packageInfo}:\n{string.Join("\n", result.Errors)}");
+                        throw new InvalidOperationException($"Cannot validate package {folderPackage}:\n{string.Join("\n", result.Errors)}");
                     }
                 }
 
-                _logger.LogInformation($"Extracting package {packageInfo} to folder: {targetFolder}");
+                _logger.LogInformation($"Extracting package {folderPackage} to folder: {targetFolder}");
 
                 // read all and extract
-                var sequencer = new PackagePartsSequencer();
-                IEnumerable<PackageDataStreamPart> allParts = sequencer.GetPartsForPackage(packageInfo.Reference.FolderPath, packageInfo.Sequence);
-                using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, packageInfo.Reference, packageInfo.Sequence, allParts))
+                var sequencer = new PackageFolderPartsSequencer();
+                IEnumerable<PackageFolderStreamPart> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SequenceInfo);
+                using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, folderPackage, allParts))
                 using (var readStream = new PackageDataStream(_app.LoggerFactory, readController))
                 {
                     var archive = new PackageArchive(_app.CompatibilityChecker, _app.MessageSerializer);
                     archive.ReadToFolder(readStream, targetFolder);
                 }
 
-                _logger.LogInformation($"Package {packageInfo} has been extracted.");
+                _logger.LogInformation($"Package {folderPackage} has been extracted.");
             }
             finally
             {
-                packageInfo.LockProvider.Unlock(lockToken);
+                folderPackage.Locks.Unlock(lockToken);
             }
         }
 
-        public PackageHashes ReadPackageHashesFile(PackageReference reference)
+        public PackageHashes ReadPackageHashesFile(PackageFolderReference reference)
         {
             PackageHashes dto = ReadPackageFile<PackageHashes>(reference, PackageHashesFileName);
             return dto;
         }
 
-        public PackageDownloadInfo ReadPackageDownloadStatus(PackageReference reference, PackageSequenceInfo sequenceInfo)
+        public PackageDownloadInfo ReadPackageDownloadStatus(PackageFolderReference reference, PackageSequenceInfo sequenceInfo)
         {
             PackageDownload dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
             var result = new PackageDownloadInfo(dto, sequenceInfo);
             return result;
         }
 
-        public PackageMeta ReadPackageMetadata(PackageReference reference)
+        public PackageMeta ReadPackageMetadata(PackageFolderReference reference)
         {
             PackageMeta dto = ReadPackageFile<PackageMeta>(reference, PackageMetaFileName);
             return dto;
         }
 
-        public T ReadPackageFile<T>(PackageReference reference, string fileName) where T : class, IPackageInfoDto
+        public T ReadPackageFile<T>(PackageFolderReference reference, string fileName) where T : class, IPackageInfoDto
         {
             if (reference == null)
             {
@@ -244,16 +243,16 @@ namespace ShareCluster.Packaging
             return data;
         }
 
-        public void DeletePackage(LocalPackageInfo packageInfo)
+        public void DeletePackage(IPackageFolderReference packageReference)
         {
-            if (packageInfo == null)
+            if (packageReference == null)
             {
-                throw new ArgumentNullException(nameof(packageInfo));
+                throw new ArgumentNullException(nameof(packageReference));
             }
 
-            _logger.LogInformation($"Deleting folder {packageInfo.Reference.FolderPath}.");
-            Directory.Delete(packageInfo.Reference.FolderPath, recursive: true);
-            _logger.LogInformation($"Folder deleted {packageInfo.Reference.FolderPath}.");
+            _logger.LogInformation($"Deleting folder {packageReference.FolderPath}.");
+            Directory.Delete(packageReference.FolderPath, recursive: true);
+            _logger.LogInformation($"Folder deleted {packageReference.FolderPath}.");
         }
 
         public LocalPackageInfo RegisterPackage(PackageHashes hashes, PackageMeta metadata)
@@ -287,7 +286,7 @@ namespace ShareCluster.Packaging
             // log and build result
             _logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
 
-            var reference = new PackageReference(packagePath, hashes.PackageId);
+            var reference = new PackageFolderReference(hashes.PackageId, packagePath);
             var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata, packageSequence);
             return result;
         }
@@ -298,13 +297,13 @@ namespace ShareCluster.Packaging
             File.WriteAllBytes(path, _app.MessageSerializer.Serialize(status.Data));
         }
 
-        public void UpdateMetadata(Dto.PackageMeta metadata, string directoryPath = null)
+        public void UpdateMetadata(PackageMeta metadata, string directoryPath = null)
         {
             string path = Path.Combine(directoryPath ?? CreatePackagePath(metadata.PackageId), PackageMetaFileName);
             File.WriteAllBytes(path, _app.MessageSerializer.Serialize(metadata));
         }
 
-        private void UpdateHashes(Dto.PackageHashes hashes, string directoryPath = null)
+        private void UpdateHashes(PackageHashes hashes, string directoryPath = null)
         {
             string path = Path.Combine(directoryPath ?? CreatePackagePath(hashes.PackageId), PackageHashesFileName);
             File.WriteAllBytes(path, _app.MessageSerializer.Serialize(hashes));

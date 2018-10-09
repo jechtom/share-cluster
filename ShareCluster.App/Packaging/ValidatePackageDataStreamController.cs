@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Packaging.FileSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -47,6 +48,8 @@ namespace ShareCluster.Packaging
         public bool CanRead => true; // required, not know why
 
         public long? Length { get; }
+
+        public PackageSequenceBaseInfo SequenceBaseInfo => _sequenceBaseInfo;
 
         public IEnumerable<PackageDataStreamPart> EnumerateParts() => _parts;
 

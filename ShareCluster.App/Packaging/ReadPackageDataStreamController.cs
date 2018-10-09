@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Packaging.FileSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,15 +16,15 @@ namespace ShareCluster.Packaging
     public class ReadPackageDataStreamController : IPackageDataStreamController
     {
         private readonly ILogger<ReadPackageDataStreamController> _logger;
-        private readonly PackageDataStreamPart[] _parts;
+        private readonly PackageFolderStreamPart[] _parts;
         private CurrentPart _currentPart;
         private bool _isDisposed;
 
-        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, PackageReference package, PackageSequenceInfo packageSequence, IEnumerable<PackageDataStreamPart> requestedParts)
+        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, IPackageFolderReference packageReference, IEnumerable<PackageFolderStreamPart> requestedParts)
         {
-            if (package == null)
+            if (packageReference == null)
             {
-                throw new ArgumentNullException(nameof(package));
+                throw new ArgumentNullException(nameof(packageReference));
             }
             
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ReadPackageDataStreamController>();
@@ -37,9 +38,9 @@ namespace ShareCluster.Packaging
 
         public long? Length { get; }
 
-        public IEnumerable<PackageDataStreamPart> EnumerateParts() => _parts;
+        public IEnumerable<PackageFolderStreamPart> EnumerateParts() => _parts;
 
-        public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)
+        public void OnStreamPartChange(PackageFolderStreamPart oldPart, PackageFolderStreamPart newPart)
         {
             EnsureNotDisposed();
 
@@ -95,7 +96,7 @@ namespace ShareCluster.Packaging
 
         private class CurrentPart
         {
-            public PackageDataStreamPart Part { get; set; }
+            public PackageFolderStreamPart Part { get; set; }
             public FileStream FileStream { get; set; }
         }
     }

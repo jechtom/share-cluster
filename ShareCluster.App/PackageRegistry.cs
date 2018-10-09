@@ -9,6 +9,7 @@ using ShareCluster.Network;
 using ShareCluster.Packaging;
 using System.Threading.Tasks;
 using System.Collections.Immutable;
+using ShareCluster.Packaging.FileSystem;
 
 namespace ShareCluster
 {
@@ -18,7 +19,7 @@ namespace ShareCluster
     public class PackageRegistry : IPackageRegistry
     {
         private readonly ILogger<PackageRegistry> _logger;
-        private readonly LocalPackageManager _localPackageManager;
+        private readonly PackageFolderManager _localPackageManager;
         private Dictionary<Id, LocalPackageInfo> _localPackages;
         private Dictionary<Id, DiscoveredPackage> _discoveredPackages;
         private readonly object _packagesLock = new object();
@@ -33,7 +34,7 @@ namespace ShareCluster
         public event Action<LocalPackageInfo> LocalPackageDeleting;
         public event Action<LocalPackageInfo> LocalPackageDeleted;
 
-        public PackageRegistry(ILoggerFactory loggerFactory, LocalPackageManager localPackageManager)
+        public PackageRegistry(ILoggerFactory loggerFactory, PackageFolderManager localPackageManager)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageRegistry>();
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
@@ -50,10 +51,10 @@ namespace ShareCluster
         {
             _localPackages = new Dictionary<Id, LocalPackageInfo>();
 
-            PackageReference[] packageReferences = _localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
+            PackageFolderReference[] packageReferences = _localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
 
             var packagesInitData = new List<LocalPackageInfo>();
-            foreach (PackageReference pr in packageReferences)
+            foreach (PackageFolderReference pr in packageReferences)
             {
                 PackageHashes hashes;
                 PackageDownloadInfo download;
@@ -227,35 +228,35 @@ namespace ShareCluster
             }
         }
 
-        public async Task DeletePackageAsync(LocalPackageInfo packageInfo)
+        public async Task DeletePackageAsync(PackageFolder packageFolder)
         {
-            if (packageInfo == null)
+            if (packageFolder == null)
             {
-                throw new ArgumentNullException(nameof(packageInfo));
+                throw new ArgumentNullException(nameof(packageFolder));
             }
 
             // first mark for deletion
             Task waitForReleaseLocksTask;
             lock (_packagesLock)
             {
-                if (packageInfo.LockProvider.IsMarkedToDelete) return;
-                waitForReleaseLocksTask = packageInfo.LockProvider.MarkForDelete();
+                if (packageFolder.Locks.IsMarkedToDelete) return;
+                waitForReleaseLocksTask = packageFolder.Locks.MarkForDelete();
             }
 
             // notify we are deleting package (stop download)
-            LocalPackageDeleting?.Invoke(packageInfo);
+            LocalPackageDeleting?.Invoke(packageFolder);
             
             // wait for all resources all unlocked
             await waitForReleaseLocksTask;
 
             // delete content
-            _localPackageManager.DeletePackage(packageInfo);
+            _localPackageManager.DeletePackage(packageFolder);
 
             // update collections
-            UpdateLists(addToLocal: null, removeFromLocal: new[] { packageInfo }, addToDiscovered: null);
+            UpdateLists(addToLocal: null, removeFromLocal: new[] { packageFolder }, addToDiscovered: null);
 
             // notify we have deleted package (stop download)
-            LocalPackageDeleted?.Invoke(packageInfo);
+            LocalPackageDeleted?.Invoke(packageFolder);
         }
     }
 }

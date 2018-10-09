@@ -10,19 +10,19 @@ namespace ShareCluster.Network.Messages
     [ProtoContract]
     public class PackageStatus
     {
-        private readonly LocalPackageInfo packageInfo;
-        private readonly bool useDataFromPackage;
+        private readonly LocalPackageInfo _packageInfo;
+        private readonly bool _useDataFromPackage;
 
-        private PackageMeta meta;
-        private bool isSeeder;
+        private PackageMeta _meta;
+        private bool _isSeeder;
 
         /// <summary>
         /// For serialization.
         /// </summary>
         public PackageStatus(LocalPackageInfo packageInfo)
         {
-            this.packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
-            useDataFromPackage = true;
+            _packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
+            _useDataFromPackage = true;
         }
 
         /// <summary>
@@ -30,29 +30,29 @@ namespace ShareCluster.Network.Messages
         /// </summary>
         public PackageStatus()
         {
-            packageInfo = null;
-            useDataFromPackage = false;
+            _packageInfo = null;
+            _useDataFromPackage = false;
         }
 
         [ProtoMember(1)]
         public virtual PackageMeta Meta
         {
-            get => useDataFromPackage ? packageInfo.Metadata : meta;
+            get => _useDataFromPackage ? _packageInfo.Metadata : _meta;
             set
             {
-                if (useDataFromPackage) throw new NotSupportedException();
-                meta = value;
+                if (_useDataFromPackage) throw new NotSupportedException();
+                _meta = value;
             }
         }
 
         [ProtoMember(2)]
         public virtual bool IsSeeder
         {
-            get => useDataFromPackage ? packageInfo.DownloadStatus.IsDownloaded : isSeeder;
+            get => _useDataFromPackage ? _packageInfo.DownloadStatus.IsDownloaded : _isSeeder;
             set
             {
-                if (useDataFromPackage) throw new NotSupportedException();
-                isSeeder = value;
+                if (_useDataFromPackage) throw new NotSupportedException();
+                _isSeeder = value;
             }
         }
     }

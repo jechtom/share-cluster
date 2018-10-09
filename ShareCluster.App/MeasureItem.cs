@@ -8,17 +8,17 @@ namespace ShareCluster
 {
     public class MeasureItem
     {
-        private int internalValue;
-        private int internalCounter;
-        private double lastResult;
-        private readonly Stopwatch stopwatch;
-        private readonly TimeSpan measureLimit;
-        private readonly object syncLock = new object();
+        private int _internalValue;
+        private int _internalCounter;
+        private double _lastResult;
+        private readonly Stopwatch _stopwatch;
+        private readonly TimeSpan _measureLimit;
+        private readonly object _syncLock = new object();
 
         public MeasureItem(MeasureType measureType)
         {
-            measureLimit = TimeSpan.FromSeconds(5);
-            stopwatch = Stopwatch.StartNew();
+            _measureLimit = TimeSpan.FromSeconds(5);
+            _stopwatch = Stopwatch.StartNew();
             MeasureType = measureType;
         }
 
@@ -30,8 +30,8 @@ namespace ShareCluster
 
             // data can be collected between these two commands, but thats OK
             // - it can only affect statistics a little
-            Interlocked.Increment(ref internalCounter);
-            Interlocked.Add(ref internalValue, value);
+            Interlocked.Increment(ref _internalCounter);
+            Interlocked.Add(ref _internalValue, value);
         }
         
         public string ValueFormatted
@@ -42,36 +42,36 @@ namespace ShareCluster
 
                 if (MeasureType == MeasureType.Throughput)
                 {
-                    return $"{SizeFormatter.ToString((long)lastResult)}/s";
+                    return $"{SizeFormatter.ToString((long)_lastResult)}/s";
                 }
                 
                 if(MeasureType == MeasureType.CounterAverage)
                 {
-                    return $"{lastResult:0.0}/s";
+                    return $"{_lastResult:0.0}/s";
                 }
 
-                return lastResult.ToString("0.0");
+                return _lastResult.ToString("0.0");
             }
         }
 
         private void RecalculateIfNeeded()
         {
-            if (stopwatch.Elapsed < measureLimit) return;
-            lock (syncLock)
+            if (_stopwatch.Elapsed < _measureLimit) return;
+            lock (_syncLock)
             {
-                if (stopwatch.Elapsed > measureLimit)
+                if (_stopwatch.Elapsed > _measureLimit)
                 {
                     // timing
-                    TimeSpan elapsed = stopwatch.Elapsed;
-                    stopwatch.Restart();
+                    TimeSpan elapsed = _stopwatch.Elapsed;
+                    _stopwatch.Restart();
 
                     // collect
-                    int internalCounterCollected = Interlocked.Exchange(ref internalCounter, 0);
-                    double internalValueCollected = Interlocked.Exchange(ref internalValue, 0);
+                    int internalCounterCollected = Interlocked.Exchange(ref _internalCounter, 0);
+                    double internalValueCollected = Interlocked.Exchange(ref _internalValue, 0);
 
                     // calculate result
                     double newValue = ResolveValue(internalCounterCollected, internalValueCollected, elapsed, MeasureType);
-                    Interlocked.Exchange(ref lastResult, newValue);
+                    Interlocked.Exchange(ref _lastResult, newValue);
                 }
             }
         }

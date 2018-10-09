@@ -1,5 +1,6 @@
 ﻿using ShareCluster.Network;
 using ShareCluster.Packaging;
+using ShareCluster.Packaging.FileSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,8 +14,8 @@ namespace ShareCluster.WebInterface
     {
         private readonly AppInfo _appInfo;
         private readonly PackageDownloadManager _packageDownloadManager;
-        private readonly PackageDataValidator _validator;
-        private readonly LocalPackageManager _localPackageManager;
+        private readonly PackageFolderDataValidator _validator;
+        private readonly PackageFolderManager _localPackageManager;
         private readonly IPeerRegistry _peerRegistry;
         private readonly IPackageRegistry _packageRegistry;
         private readonly InstanceHash _instanceHash;
@@ -23,7 +24,7 @@ namespace ShareCluster.WebInterface
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageDataValidator validator, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageFolderDataValidator validator, PackageFolderManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));

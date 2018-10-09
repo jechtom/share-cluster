@@ -1,10 +1,10 @@
-using ShareCluster.Packaging;
+﻿using ShareCluster.Packaging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace ShareCluster.Tests
+namespace ShareCluster.Tests.Packaging
 {
     public class PackageLocksTests
     {

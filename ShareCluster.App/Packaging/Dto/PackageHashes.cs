@@ -1,6 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
@@ -27,7 +28,7 @@ namespace ShareCluster.Packaging.Dto
             }
 
             Version = version;
-            PackageSegmentsHashes = segmentHashes.ToArray();
+            PackageSegmentsHashes = segmentHashes.ToImmutableArray();
             PackageId = cryptoProvider.HashFromHashes(PackageSegmentsHashes);
             PackageSize = packageSequence.PackageSize;
             SegmentLength = packageSequence.SegmentLength;
@@ -51,7 +52,7 @@ namespace ShareCluster.Packaging.Dto
         public virtual long PackageSize { get; }
 
         [ProtoMember(4)]
-        public virtual Id[] PackageSegmentsHashes { get; }
+        public virtual ImmutableArray<Id> PackageSegmentsHashes { get; }
 
         [ProtoMember(5)]
         public virtual long SegmentLength { get; }
