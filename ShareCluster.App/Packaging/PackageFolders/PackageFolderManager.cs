@@ -10,7 +10,7 @@ using ShareCluster.Packaging.Dto;
 using System.IO.Compression;
 using System.Linq;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
     /// Provides access to local package storage.
@@ -99,8 +99,8 @@ namespace ShareCluster.Packaging.FileSystem
             {
                 using (var packageStream = new PackageDataStream(_app.LoggerFactory, controller) { Measure = writeMeasure })
                 {
-                    var archive = new PackageArchive(_app.CompatibilityChecker, _app.MessageSerializer);
-                    archive.WriteFromFolder(folderToProcess, packageStream);
+                    var archive = new FolderStreamSerializer(_app.CompatibilityChecker, _app.MessageSerializer);
+                    archive.SerializeFolderToStream(folderToProcess, packageStream);
                     entriesCount = archive.EntriesCount;
                 }
                 packageHashes = controller.PackageId;
@@ -111,7 +111,7 @@ namespace ShareCluster.Packaging.FileSystem
             UpdateHashes(packageHashes, directoryPath: buildDirectory.FullName);
 
             // store download status
-            PackageSequenceInfo packageSequence = packageHashes.CreatePackageSequence();
+            PackageSplitInfo packageSequence = packageHashes.CreatePackageSplitInfo();
             var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageHashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
@@ -172,12 +172,12 @@ namespace ShareCluster.Packaging.FileSystem
 
                 // read all and extract
                 var sequencer = new PackageFolderPartsSequencer();
-                IEnumerable<PackageFolderStreamPart> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SequenceInfo);
+                IEnumerable<PackageSequenceStreamPart> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SequenceInfo);
                 using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, folderPackage, allParts))
                 using (var readStream = new PackageDataStream(_app.LoggerFactory, readController))
                 {
-                    var archive = new PackageArchive(_app.CompatibilityChecker, _app.MessageSerializer);
-                    archive.ReadToFolder(readStream, targetFolder);
+                    var archive = new FolderStreamSerializer(_app.CompatibilityChecker, _app.MessageSerializer);
+                    archive.DeserializeStreamToFolder(readStream, targetFolder);
                 }
 
                 _logger.LogInformation($"Package {folderPackage} has been extracted.");
@@ -194,7 +194,7 @@ namespace ShareCluster.Packaging.FileSystem
             return dto;
         }
 
-        public PackageDownloadInfo ReadPackageDownloadStatus(PackageFolderReference reference, PackageSequenceInfo sequenceInfo)
+        public PackageDownloadInfo ReadPackageDownloadStatus(PackageFolderReference reference, PackageSplitInfo sequenceInfo)
         {
             PackageDownload dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
             var result = new PackageDownloadInfo(dto, sequenceInfo);
@@ -273,7 +273,7 @@ namespace ShareCluster.Packaging.FileSystem
             Directory.CreateDirectory(packagePath);
 
             // store data
-            PackageSequenceInfo packageSequence = hashes.CreatePackageSequence();
+            PackageSplitInfo packageSequence = hashes.CreatePackageSplitInfo();
             var downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(_app.PackageVersion, hashes.PackageId, packageSequence);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);
@@ -281,7 +281,7 @@ namespace ShareCluster.Packaging.FileSystem
 
             // allocate
             var allocator = new PackageDataAllocator(_app.LoggerFactory);
-            allocator.Allocate(packagePath, hashes.CreatePackageSequence(), overwrite: false);
+            allocator.Allocate(packagePath, hashes.CreatePackageSplitInfo(), overwrite: false);
 
             // log and build result
             _logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");

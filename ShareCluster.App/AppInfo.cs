@@ -37,7 +37,6 @@ namespace ShareCluster
                 DataRootPath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "data"),
                 Crypto = CreateDefaultCryptoProvider(),
                 MessageSerializer = serializer,
-                PackageVersion = new VersionNumber(1),
                 NetworkVersion = new VersionNumber(2),
                 AppVersion = new VersionNumber(3),
                 NetworkSettings = new Network.NetworkSettings()
@@ -49,7 +48,6 @@ namespace ShareCluster
             };
 
             result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(),
-                requiredPackageVersion: result.PackageVersion,
                 requiredNetworkVersion: result.NetworkVersion);
             result.InstanceId = new InstanceHash(result.Crypto);
 

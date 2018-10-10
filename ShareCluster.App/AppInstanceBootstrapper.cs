@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
 using ShareCluster.Packaging;
-using ShareCluster.Packaging.FileSystem;
+using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
 using System.Text;

@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
-    /// Provides methods to generate sequences of <see cref="PackageFolderStreamPart"/> for newly created packages, allocation of files and read/write operations of package data files.
+    /// Provides methods to generate sequences of <see cref="PackageSequenceStreamPart"/> for newly created packages, allocation of files and read/write operations of package data files.
     /// </summary>
     public class PackageFolderPartsSequencer
     {
@@ -14,14 +14,14 @@ namespace ShareCluster.Packaging.FileSystem
 
         protected string GetBlockFilePath(string packagePath, int i) => Path.Combine(packagePath, string.Format(PackageDataFileNameFormat, i));
 
-        public IEnumerable<PackageFolderStreamPart> GetDataFilesForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
+        public IEnumerable<PackageSequenceStreamPart> GetDataFilesForPackage(string packageRootPath, PackageSplitInfo sequenceInfo)
         {
             for (int currentDataFileIndex = 0; currentDataFileIndex < sequenceInfo.DataFilesCount; currentDataFileIndex++)
             {
                 long dataFileSize = (currentDataFileIndex == sequenceInfo.DataFilesCount - 1) ? sequenceInfo.DataFileLastLength : sequenceInfo.DataFileLength;
                 string path = GetBlockFilePath(packageRootPath, currentDataFileIndex);
 
-                yield return new PackageFolderStreamPart()
+                yield return new PackageSequenceStreamPart()
                 {
                     Path = path,
                     PartLength = dataFileSize,
@@ -32,17 +32,17 @@ namespace ShareCluster.Packaging.FileSystem
             }
         }
 
-        public IEnumerable<PackageFolderStreamPart> GetPartsInfinite(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo)
+        public IEnumerable<PackageSequenceStreamPart> GetPartsInfinite(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo)
         {
             return GetPartsInternal(packageRootPath, sequenceBaseInfo, length: null, requestedSegments: null);
         }
 
-        public IEnumerable<PackageFolderStreamPart> GetPartsForPackage(string packageRootPath, PackageSequenceInfo sequenceInfo)
+        public IEnumerable<PackageSequenceStreamPart> GetPartsForPackage(string packageRootPath, PackageSplitInfo sequenceInfo)
         {
             return GetPartsInternal(packageRootPath, sequenceInfo, length: sequenceInfo.PackageSize, requestedSegments: null);
         }
 
-        public IEnumerable<PackageFolderStreamPart> GetPartsForSpecificSegments(string packageRootPath, PackageSequenceInfo sequenceInfo, int[] requestedSegments)
+        public IEnumerable<PackageSequenceStreamPart> GetPartsForSpecificSegments(string packageRootPath, PackageSplitInfo sequenceInfo, int[] requestedSegments)
         {
             if (sequenceInfo == null)
             {
@@ -57,12 +57,12 @@ namespace ShareCluster.Packaging.FileSystem
             return GetPartsInternal(packageRootPath, sequenceInfo, length: sequenceInfo.PackageSize, requestedSegments: requestedSegments);
         }
 
-        private IEnumerable<PackageFolderStreamPart> GetPartsInternal(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, long? length, int[] requestedSegments)
+        private IEnumerable<PackageSequenceStreamPart> GetPartsInternal(string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, long? length, int[] requestedSegments)
         {
-            PackageSequenceInfo sequenceInfo = null;
+            PackageSplitInfo sequenceInfo = null;
 
             bool isInfinite = length == null;
-            if (!isInfinite) sequenceInfo = new PackageSequenceInfo(sequenceBaseInfo, length.Value);
+            if (!isInfinite) sequenceInfo = new PackageSplitInfo(sequenceBaseInfo, length.Value);
             
             IEnumerable<int> segmentIndexEnumerable;
 
@@ -83,7 +83,7 @@ namespace ShareCluster.Packaging.FileSystem
                 int segmentIndexInDataFile = (segmentIndex % sequenceBaseInfo.SegmentsPerDataFile);
                 int dataFileIndex = (segmentIndex / sequenceBaseInfo.SegmentsPerDataFile);
 
-                yield return new PackageFolderStreamPart()
+                yield return new PackageSequenceStreamPart()
                 {
                     DataFileIndex = dataFileIndex,
                     SegmentIndex = segmentIndex,
@@ -95,7 +95,7 @@ namespace ShareCluster.Packaging.FileSystem
             }
         }
 
-        public long GetSizeOfParts(PackageSequenceInfo sequence, int[] parts)
+        public long GetSizeOfParts(PackageSplitInfo sequence, int[] parts)
         {
             long result = 0;
             for (int i = 0; i < parts.Length; i++)

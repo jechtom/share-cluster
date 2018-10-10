@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging.PackageFolders
 {
     public class PackageFolderDataValidator
     {
@@ -84,7 +84,7 @@ namespace ShareCluster.Packaging.FileSystem
                 var sequencer = new PackageFolderPartsSequencer();
 
                 // check if data files exists and if correct size
-                foreach (PackageFolderStreamPart dataFile in sequencer.GetDataFilesForPackage(packageFolder.FolderPath, packageFolder.SequenceInfo))
+                foreach (PackageSequenceStreamPart dataFile in sequencer.GetDataFilesForPackage(packageFolder.FolderPath, packageFolder.SequenceInfo))
                 {
                     try
                     {
@@ -111,7 +111,7 @@ namespace ShareCluster.Packaging.FileSystem
                 if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
 
                 // do file hashes check
-                IEnumerable<PackageFolderStreamPart> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SequenceInfo);
+                IEnumerable<PackageSequenceStreamPart> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SequenceInfo);
                 try
                 {
                     using (var readPackageController = new ReadPackageDataStreamController(loggerFactory, packageFolder, allParts))

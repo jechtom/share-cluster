@@ -15,31 +15,29 @@ namespace ShareCluster.Packaging.Dto
     {
         public PackageHashes() { }
 
-        public PackageHashes(VersionNumber version, IEnumerable<Id> segmentHashes, CryptoProvider cryptoProvider, PackageSequenceInfo packageSequence)
+        public PackageHashes(VersionNumber version, IEnumerable<Id> segmentHashes, CryptoProvider cryptoProvider, PackageSplitInfo packageSplitInfo)
         {
+            if (segmentHashes == null)
+            {
+                throw new ArgumentNullException(nameof(segmentHashes));
+            }
+
             if (cryptoProvider == null)
             {
                 throw new ArgumentNullException(nameof(cryptoProvider));
             }
 
-            if (packageSequence == null)
-            {
-                throw new ArgumentNullException(nameof(packageSequence));
-            }
-
             Version = version;
             PackageSegmentsHashes = segmentHashes.ToImmutableArray();
             PackageId = cryptoProvider.HashFromHashes(PackageSegmentsHashes);
-            PackageSize = packageSequence.PackageSize;
-            SegmentLength = packageSequence.SegmentLength;
-            DataFileLength = packageSequence.DataFileLength;
+            PackageSplitInfo = packageSplitInfo ?? throw new ArgumentNullException(nameof(packageSplitInfo));
         }
 
-        public PackageSequenceInfo CreatePackageSequence()
+        private PackageSplitInfo CreatePackageSplitInfo()
         {
-            var baseSequence = new PackageSequenceBaseInfo(dataFileLength: DataFileLength, segmentLength: SegmentLength);
-            var sequence = new PackageSequenceInfo(baseSequence, packageSize: PackageSize);
-            return sequence;
+            var splitBase = new PackageSplitBaseInfo(dataFileLength: DataFileLength, segmentLength: SegmentLength);
+            var split = new PackageSplitInfo(splitBase, packageSize: PackageSize);
+            return split;
         }
 
         [ProtoMember(1)]
@@ -49,15 +47,18 @@ namespace ShareCluster.Packaging.Dto
         public virtual Id PackageId { get; }
 
         [ProtoMember(3)]
-        public virtual long PackageSize { get; }
+        public virtual long PackageSize => PackageSplitInfo.PackageSize;
 
         [ProtoMember(4)]
         public virtual ImmutableArray<Id> PackageSegmentsHashes { get; }
 
         [ProtoMember(5)]
-        public virtual long SegmentLength { get; }
+        public virtual long SegmentLength => PackageSplitInfo.SegmentLength;
 
         [ProtoMember(6)]
-        public virtual long DataFileLength { get; }
+        public virtual long DataFileLength => PackageSplitInfo.DataFileLength;
+
+        [ProtoIgnore]
+        public PackageSplitInfo PackageSplitInfo { get; }
     }
 }

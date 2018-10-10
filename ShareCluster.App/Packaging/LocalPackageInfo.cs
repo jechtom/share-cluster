@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Network;
-using ShareCluster.Packaging.FileSystem;
+using ShareCluster.Packaging.PackageFolders;
 
 namespace ShareCluster.Packaging
 {
     public class LocalPackageInfo
     {
-        public LocalPackageInfo(PackageFolderReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata, PackageSequenceInfo sequence)
+        public LocalPackageInfo(PackageFolderReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata, PackageSplitInfo sequence)
         {
             LockProvider = new PackageLocks();
             DownloadMeasure = new MeasureItem(MeasureType.Throughput);
@@ -29,7 +29,7 @@ namespace ShareCluster.Packaging
         public PackageDownloadInfo DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }
         public Dto.PackageMeta Metadata { get; }
-        public PackageSequenceInfo Sequence { get; }
+        public PackageSplitInfo Sequence { get; }
         public PackageLocks LockProvider { get; }
         public MeasureItem DownloadMeasure { get; }
         public MeasureItem UploadMeasure { get; }

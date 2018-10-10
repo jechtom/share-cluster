@@ -9,7 +9,7 @@ using ShareCluster.Network;
 using ShareCluster.Packaging;
 using System.Threading.Tasks;
 using System.Collections.Immutable;
-using ShareCluster.Packaging.FileSystem;
+using ShareCluster.Packaging.PackageFolders;
 
 namespace ShareCluster
 {
@@ -59,11 +59,11 @@ namespace ShareCluster
                 PackageHashes hashes;
                 PackageDownloadInfo download;
                 PackageMeta meta;
-                PackageSequenceInfo packageSequence;
+                PackageSplitInfo packageSequence;
                 try
                 {
                     hashes = _localPackageManager.ReadPackageHashesFile(pr);
-                    packageSequence = hashes.CreatePackageSequence();
+                    packageSequence = hashes.CreatePackageSplitInfo();
                     download = _localPackageManager.ReadPackageDownloadStatus(pr, packageSequence);
                     meta = _localPackageManager.ReadPackageMetadata(pr);
 

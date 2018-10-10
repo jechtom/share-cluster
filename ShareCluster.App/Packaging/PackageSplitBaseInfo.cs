@@ -1,17 +1,17 @@
 ﻿using System;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging
 {
     /// <summary>
     /// Definition of file and segment size for new and existing packages.
     /// </summary>
-    public class PackageSequenceBaseInfo
+    public class PackageSplitBaseInfo
     {
         private const long _defaultSegmentLength = 1024 * 1024;
         private const int _defaultSegmentsPerDataFile = 100;
         private const long _defaultDataFileLength = _defaultSegmentLength * _defaultSegmentsPerDataFile;
 
-        public PackageSequenceBaseInfo(long dataFileLength, long segmentLength)
+        public PackageSplitBaseInfo(long dataFileLength, long segmentLength)
         {
             if (dataFileLength % segmentLength != 0) throw new ArgumentException(nameof(segmentLength), "Given segment size cannot fit evenly to data file.");
 
@@ -20,7 +20,7 @@ namespace ShareCluster.Packaging.FileSystem
             SegmentsPerDataFile = (int)(dataFileLength / segmentLength);
         }
 
-        public PackageSequenceBaseInfo(PackageSequenceBaseInfo copyFrom) : this(
+        public PackageSplitBaseInfo(PackageSplitBaseInfo copyFrom) : this(
                   dataFileLength: copyFrom.DataFileLength, 
                   segmentLength: copyFrom.SegmentLength
         ) {}
@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging.FileSystem
         /// <summary>
         /// Gets default <see cref="PackageSequenceBaseInfo"/>. Currently only default values are supported and expected.
         /// </summary>
-        public static PackageSequenceBaseInfo Default { get; } = new PackageSequenceBaseInfo(dataFileLength: _defaultDataFileLength, segmentLength: _defaultSegmentLength);
+        public static PackageSplitBaseInfo Default { get; } = new PackageSplitBaseInfo(dataFileLength: _defaultDataFileLength, segmentLength: _defaultSegmentLength);
 
         /// <summary>
         /// Gets or sets size of data file. Last data file size is <see cref="DataFileLastLength"/>.

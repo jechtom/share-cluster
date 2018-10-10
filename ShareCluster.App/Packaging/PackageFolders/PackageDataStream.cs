@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
     /// Provides customizable stream build up from different parts.

@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using ShareCluster.Packaging.FileSystem;
+using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,7 +19,7 @@ namespace ShareCluster.Packaging
         private readonly CryptoProvider _cryptoProvider;
         private readonly PackageSequenceBaseInfo _sequenceBaseInfo;
         private readonly Dto.PackageHashes _hashes;
-        private readonly PackageDataStreamPart[] _parts;
+        private readonly PackageSequenceStreamPart[] _parts;
         private CurrentPart _currentPart;
         private readonly MemoryStream _memStream;
         private bool _isDisposed;
@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging
         private Stream _nestedStream;
 
         /// <param name="nestedStream">Can be null if you just want to validate hashes.</param>
-        public ValidatePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageDataStreamPart> partsToValidate, Stream nestedStream)
+        public ValidatePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageSequenceStreamPart> partsToValidate, Stream nestedStream)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
@@ -51,9 +51,9 @@ namespace ShareCluster.Packaging
 
         public PackageSequenceBaseInfo SequenceBaseInfo => _sequenceBaseInfo;
 
-        public IEnumerable<PackageDataStreamPart> EnumerateParts() => _parts;
+        public IEnumerable<PackageSequenceStreamPart> EnumerateParts() => _parts;
 
-        public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)
+        public void OnStreamPartChange(PackageSequenceStreamPart oldPart, PackageSequenceStreamPart newPart)
         {
             EnsureNotDisposed();
 
@@ -162,7 +162,7 @@ namespace ShareCluster.Packaging
             
         private class CurrentPart
         {
-            public PackageDataStreamPart Part { get; set; }
+            public PackageSequenceStreamPart Part { get; set; }
             public HashAlgorithm HashAlgorithm { get; set; }
             public CryptoStream HashStream { get; set; }
         }

@@ -11,20 +11,17 @@ namespace ShareCluster
     {
         private readonly ILogger<CompatibilityChecker> _logger;
         private readonly VersionNumber _requiredNetworkVersion;
-        private readonly VersionNumber _requiredPackageVersion;
-        private readonly HashSet<string> notifiedSites;
+        private readonly HashSet<string> _notifiedSites;
         private readonly LogLevel _notificationsLevel = LogLevel.Debug;
         private readonly object _notificationsLock = new object();
 
         public VersionNumber NetworkProtocolVersion => _requiredNetworkVersion;
-        public VersionNumber PackageVersion => _requiredPackageVersion;
 
-        public CompatibilityChecker(ILogger<CompatibilityChecker> logger, VersionNumber requiredPackageVersion, VersionNumber requiredNetworkVersion)
+        public CompatibilityChecker(ILogger<CompatibilityChecker> logger, VersionNumber requiredNetworkVersion)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _requiredPackageVersion = requiredPackageVersion;
             _requiredNetworkVersion = requiredNetworkVersion;
-            notifiedSites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _notifiedSites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool IsNetworkProtocolCompatibleWith(IPEndPoint endpoint, VersionNumber version) => IsCompatibleWith(CompatibilitySet.NetworkProtocol, endpoint.ToString(), version);
@@ -41,7 +38,7 @@ namespace ShareCluster
             {
                 lock (_notificationsLock)
                 {
-                    if(notifiedSites.Add(site))
+                    if(_notifiedSites.Add(site))
                     {
                         var log = new FormattedLogValues("Incompatibility with {0} \"{1}\". Site version: {2}, required version: {3}", set, site, version, reqVer);
                         _logger.Log(_notificationsLevel, 0, log, null, (t,e) =>t.ToString());
@@ -57,8 +54,6 @@ namespace ShareCluster
             {
                 case CompatibilitySet.NetworkProtocol:
                     return _requiredNetworkVersion;
-                case CompatibilitySet.Package:
-                    return _requiredPackageVersion;
                 default:
                     throw new InvalidOperationException("Unknown enum value: " + set.ToString());
             }

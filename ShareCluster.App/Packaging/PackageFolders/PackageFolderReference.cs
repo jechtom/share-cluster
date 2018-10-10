@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Packaging.Dto;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging.PackageFolders
 {
     public class PackageFolderReference : IPackageFolderReference
     {

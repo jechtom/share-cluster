@@ -1,4 +1,4 @@
-﻿namespace ShareCluster.Packaging.FileSystem
+﻿namespace ShareCluster.Packaging.PackageFolders
 {
     public interface IPackageFolderReference
     {

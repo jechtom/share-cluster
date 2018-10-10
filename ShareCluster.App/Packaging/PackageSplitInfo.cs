@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging
 {
     /// <summary>
     /// Provides description how package should be splitted to data files and how data file should be splitted to segments.
     /// </summary>
-    public class PackageSequenceInfo : PackageSequenceBaseInfo
+    public class PackageSplitInfo : PackageSplitBaseInfo
     {
-        public PackageSequenceInfo(PackageSequenceBaseInfo baseInfo, long packageSize) : base(baseInfo)
+        public PackageSplitInfo(PackageSplitBaseInfo baseInfo, long packageSize) : base(baseInfo)
         {
             PackageSize = packageSize;
 

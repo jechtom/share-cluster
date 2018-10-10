@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using ShareCluster.Packaging.FileSystem;
+using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,11 +16,11 @@ namespace ShareCluster.Packaging
     public class ReadPackageDataStreamController : IPackageDataStreamController
     {
         private readonly ILogger<ReadPackageDataStreamController> _logger;
-        private readonly PackageFolderStreamPart[] _parts;
+        private readonly PackageSequenceStreamPart[] _parts;
         private CurrentPart _currentPart;
         private bool _isDisposed;
 
-        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, IPackageFolderReference packageReference, IEnumerable<PackageFolderStreamPart> requestedParts)
+        public ReadPackageDataStreamController(ILoggerFactory loggerFactory, IPackageFolderReference packageReference, IEnumerable<PackageSequenceStreamPart> requestedParts)
         {
             if (packageReference == null)
             {
@@ -38,9 +38,9 @@ namespace ShareCluster.Packaging
 
         public long? Length { get; }
 
-        public IEnumerable<PackageFolderStreamPart> EnumerateParts() => _parts;
+        public IEnumerable<PackageSequenceStreamPart> EnumerateParts() => _parts;
 
-        public void OnStreamPartChange(PackageFolderStreamPart oldPart, PackageFolderStreamPart newPart)
+        public void OnStreamPartChange(PackageSequenceStreamPart oldPart, PackageSequenceStreamPart newPart)
         {
             EnsureNotDisposed();
 
@@ -96,7 +96,7 @@ namespace ShareCluster.Packaging
 
         private class CurrentPart
         {
-            public PackageFolderStreamPart Part { get; set; }
+            public PackageSequenceStreamPart Part { get; set; }
             public FileStream FileStream { get; set; }
         }
     }

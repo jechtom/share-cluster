@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
     /// Controls how data files are read or written.
@@ -13,8 +13,8 @@ namespace ShareCluster.Packaging
         void OnStreamClosed();
         bool CanWrite { get; }
         bool CanRead { get; }
-        IEnumerable<PackageDataStreamPart> EnumerateParts();
+        IEnumerable<PackageSequenceStreamPart> EnumerateParts();
         long? Length { get; }
-        void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart);
+        void OnStreamPartChange(PackageSequenceStreamPart oldPart, PackageSequenceStreamPart newPart);
     }
 }

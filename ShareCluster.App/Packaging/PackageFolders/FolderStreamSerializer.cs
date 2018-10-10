@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
     /// Provides creating archive from file system and extract files and folder from archive.
@@ -38,21 +38,24 @@ namespace ShareCluster.Packaging.FileSystem
     /// Files:
     /// - Each file entry is followed by file content binary data in length defined by file entry.
     /// </remarks>
-    public class PackageArchive
+    public class FolderStreamSerializer
     {
         private const int _defaultBufferSize = 81920;
-        private readonly CompatibilityChecker _compatibilityChecker;
         private readonly IMessageSerializer _serializer;
 
         public int EntriesCount { get; private set; }
 
-        public PackageArchive(CompatibilityChecker compatibilityChecker, IMessageSerializer serializer)
+        /// <summary>
+        /// Gets current version of serializer. This is mechanism to prevent version mismatch if newer version of serializer will be released.
+        /// </summary>
+        public VersionNumber StreamSerializerVersion { get; } = new VersionNumber(1);
+
+        public FolderStreamSerializer(IMessageSerializer serializer)
         {
-            _compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         }
 
-        public void WriteFromFolder(string sourceDirectoryName, Stream stream)
+        public void SerializeFolderToStream(string sourceDirectoryName, Stream stream)
         {
             if (sourceDirectoryName == null)
             {
@@ -74,7 +77,7 @@ namespace ShareCluster.Packaging.FileSystem
             if (!rootPath.Exists) throw new InvalidOperationException($"Folder not found: { sourceDirectoryName }");
 
             // write version
-            _serializer.Serialize(_compatibilityChecker.PackageVersion, stream);
+            _serializer.Serialize(StreamSerializerVersion, stream);
 
             var foldersToProcessStack = new Stack<DirectoryInfo>(); // use stack (instead of queue) to process sub-folders first
             var foldersTreeStack = new Stack<DirectoryInfo>();
@@ -152,21 +155,7 @@ namespace ShareCluster.Packaging.FileSystem
             _serializer.Serialize(new PackageEntry() { PopDirectories = foldersTreeStack.Count }, stream);
         }
 
-        private static string RemoveTrailingSlashIfPresent(string path)
-        {
-            // removes trailing slash ("c:\test\" > "c:\test"). some code blocks expects format without slash
-            while (
-                path.EndsWith(Path.AltDirectorySeparatorChar)
-                || path.EndsWith(Path.DirectorySeparatorChar)
-                )
-            {
-                path = path.Substring(0, path.Length - 1);
-            }
-
-            return path;
-        }
-
-        public void ReadToFolder(PackageDataStream readStream, string rootDirectory)
+        public void DeserializeStreamToFolder(Stream readStream, string rootDirectory)
         {
             if (readStream == null)
             {
@@ -185,7 +174,7 @@ namespace ShareCluster.Packaging.FileSystem
             rootDirectoryInfo.Create();
 
             VersionNumber version = _serializer.Deserialize<VersionNumber>(readStream);
-            _compatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, "Package", version);
+            ThrowIfVersionNotEqual(expectedVersion: StreamSerializerVersion, foundVersion: version);
 
             var foldersStack = new Stack<string>();
 
@@ -258,11 +247,36 @@ namespace ShareCluster.Packaging.FileSystem
             }
         }
 
+        private static void ThrowIfVersionNotEqual(VersionNumber expectedVersion, VersionNumber foundVersion)
+        {
+            if (expectedVersion.Equals(foundVersion)) return;
+
+            throw new PackageVersionMismatchException(
+                expectedVersion,
+                foundVersion,
+                $"Version mismatch in given stream. Expected {expectedVersion} but found was {foundVersion}."
+                );
+        }
+
         private void ApplyAttributes(FileSystemInfo fileSystemInfo, PackageEntry entry)
         {
             fileSystemInfo.LastWriteTimeUtc = entry.LastWriteTimeUtc;
             fileSystemInfo.CreationTimeUtc = entry.CreationTimeUtc;
             fileSystemInfo.Attributes = entry.Attributes; // apply attributes last (if it will set readonly)
+        }
+
+        private static string RemoveTrailingSlashIfPresent(string path)
+        {
+            // removes trailing slash ("c:\test\" > "c:\test"). some code blocks expects format without slash
+            while (
+                path.EndsWith(Path.AltDirectorySeparatorChar)
+                || path.EndsWith(Path.DirectorySeparatorChar)
+                )
+            {
+                path = path.Substring(0, path.Length - 1);
+            }
+
+            return path;
         }
     }
 }

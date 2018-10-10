@@ -21,18 +21,18 @@ namespace ShareCluster
     /// </summary>
     public class AppInstance : IDisposable
     {
-        private readonly AppInfo appInfo;
-        private bool isStarted;
-        private IWebHost webHost;
+        private readonly AppInfo _appInfo;
+        private bool _isStarted;
+        private IWebHost _webHost;
 
         public AppInstance(AppInfo appInfo)
         {
-            this.appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
+            _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
         }
 
         public void Dispose()
         {
-            if (webHost != null) webHost.Dispose();
+            if (_webHost != null) _webHost.Dispose();
         }
 
         public AppInstanceBootstrapper Start(AppInstanceSettings settings)
@@ -42,16 +42,16 @@ namespace ShareCluster
                 throw new ArgumentNullException(nameof(settings));
             }
 
-            if (isStarted) throw new InvalidOperationException("Already started.");
-            isStarted = true;
+            if (_isStarted) throw new InvalidOperationException("Already started.");
+            _isStarted = true;
 
-            appInfo.LogStart();
-            appInfo.Validate();
+            _appInfo.LogStart();
+            _appInfo.Validate();
 
             // configure services
-            string urls = $"http://*:{appInfo.NetworkSettings.TcpServicePort}";
+            string urls = $"http://*:{_appInfo.NetworkSettings.TcpServicePort}";
             string exeFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            webHost = new WebHostBuilder()
+            _webHost = new WebHostBuilder()
                 .UseKestrel(c =>
                 {
                     // extend grace period so server don't kick peer waiting for opening file etc.
@@ -65,24 +65,24 @@ namespace ShareCluster
                 .Build();
 
             // start
-            webHost.Start();
+            _webHost.Start();
 
             // bootstrap
-            AppInstanceBootstrapper result = webHost.Services.GetRequiredService<AppInstanceBootstrapper>();
+            AppInstanceBootstrapper result = _webHost.Services.GetRequiredService<AppInstanceBootstrapper>();
             result.Start(settings);
             return result;
         }
         
         private void ConfigureService(IServiceCollection services)
         {
-            services.AddSingleton(appInfo);
-            services.AddSingleton(appInfo.LoggerFactory);
-            services.AddSingleton(appInfo.Crypto);
-            services.AddSingleton(appInfo.CompatibilityChecker);
-            services.AddSingleton(appInfo.NetworkSettings);
-            services.AddSingleton(appInfo.MessageSerializer);
-            services.AddSingleton(appInfo.InstanceId);
-            services.AddSingleton<IClock>(appInfo.Clock);
+            services.AddSingleton(_appInfo);
+            services.AddSingleton(_appInfo.LoggerFactory);
+            services.AddSingleton(_appInfo.Crypto);
+            services.AddSingleton(_appInfo.CompatibilityChecker);
+            services.AddSingleton(_appInfo.NetworkSettings);
+            services.AddSingleton(_appInfo.MessageSerializer);
+            services.AddSingleton(_appInfo.InstanceId);
+            services.AddSingleton<IClock>(_appInfo.Clock);
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<UdpPeerDiscovery>();
             services.AddSingleton<NetworkChangeNotifier>();

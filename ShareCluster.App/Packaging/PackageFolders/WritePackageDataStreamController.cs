@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
     /// Controller to use with <see cref="PackageDataStream"/> when writing incoming data stream to pre-allocated data files when downloading package. To verify hashes use <see cref="ValidatePackageDataStreamController"/> before this.
@@ -15,21 +15,21 @@ namespace ShareCluster.Packaging
     public class WritePackageDataStreamController : IPackageDataStreamController
     {
         private readonly ILogger<WritePackageDataStreamController> logger;
-        private readonly CryptoProvider cryptoProvider;
-        private readonly string packageRootPath;
-        private readonly PackageSequenceBaseInfo sequenceBaseInfo;
-        private readonly PackageDataStreamPart[] parts;
-        private CurrentPart currentPart;
-        private bool isDisposed;
+        private readonly CryptoProvider _cryptoProvider;
+        private readonly string _packageRootPath;
+        private readonly PackageSequenceBaseInfo _sequenceBaseInfo;
+        private readonly PackageSequenceStreamPart[] _parts;
+        private CurrentPart _currentPart;
+        private bool _isDisposed;
 
-        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, IEnumerable<PackageDataStreamPart> partsToWrite)
+        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, IEnumerable<PackageSequenceStreamPart> partsToWrite)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
-            this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            this.packageRootPath = packageRootPath;
-            this.sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
-            parts = (partsToWrite ?? throw new ArgumentNullException(nameof(partsToWrite))).ToArray();
-            Length = parts.Sum(p => p.PartLength);
+            _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
+            _packageRootPath = packageRootPath;
+            _sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
+            _parts = (partsToWrite ?? throw new ArgumentNullException(nameof(partsToWrite))).ToArray();
+            Length = _parts.Sum(p => p.PartLength);
         }
 
         public bool CanWrite => true;
@@ -38,9 +38,9 @@ namespace ShareCluster.Packaging
 
         public long? Length { get; }
 
-        public IEnumerable<PackageDataStreamPart> EnumerateParts() => parts;
+        public IEnumerable<PackageSequenceStreamPart> EnumerateParts() => _parts;
 
-        public void OnStreamPartChange(PackageDataStreamPart oldPart, PackageDataStreamPart newPart)
+        public void OnStreamPartChange(PackageSequenceStreamPart oldPart, PackageSequenceStreamPart newPart)
         {
             EnsureNotDisposed();
 
@@ -59,7 +59,7 @@ namespace ShareCluster.Packaging
                 {
                     logger.LogTrace($"Opening data file {Path.GetFileName(newPart.Path)} for writing.");
 
-                    currentPart = new CurrentPart
+                    _currentPart = new CurrentPart
                     {
                         Part = newPart,
                         FileStream = new FileStream(newPart.Path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite)
@@ -70,24 +70,24 @@ namespace ShareCluster.Packaging
             // update current part
             if(newPart != null)
             {
-                currentPart.Part = newPart;
-                currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
-                currentPart.Part.Stream = currentPart.FileStream;
+                _currentPart.Part = newPart;
+                _currentPart.FileStream.Seek(newPart.SegmentOffsetInDataFile, SeekOrigin.Begin);
+                _currentPart.Part.Stream = _currentPart.FileStream;
             }
         }
 
         private void DisposeCurrentPart()
         {
-            if (currentPart == null) return;
+            if (_currentPart == null) return;
 
-            currentPart.FileStream.Dispose();
-            currentPart = null;
+            _currentPart.FileStream.Dispose();
+            _currentPart = null;
         }
 
         private void FlushCurrentPart()
         {
-            if (currentPart == null) return;
-            currentPart.FileStream.Flush();
+            if (_currentPart == null) return;
+            _currentPart.FileStream.Flush();
         }
 
         public void OnStreamClosed()
@@ -98,17 +98,17 @@ namespace ShareCluster.Packaging
         public void Dispose()
         {
             DisposeCurrentPart();
-            isDisposed = true;
+            _isDisposed = true;
         }
 
         private void EnsureNotDisposed()
         {
-            if (isDisposed) throw new InvalidOperationException("Already disposed.");
+            if (_isDisposed) throw new InvalidOperationException("Already disposed.");
         }
             
         private class CurrentPart
         {
-            public PackageDataStreamPart Part { get; set; }
+            public PackageSequenceStreamPart Part { get; set; }
             public FileStream FileStream { get; set; }
         }
     }

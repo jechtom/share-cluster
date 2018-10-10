@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Linq;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.PackageFolders
 {
     public class PackageDataAllocator
     {
@@ -16,7 +16,7 @@ namespace ShareCluster.Packaging
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataAllocator>();
         }
 
-        public void Allocate(string path, PackageSequenceInfo sequence, bool overwrite)
+        public void Allocate(string path, PackageSplitInfo sequence, bool overwrite)
         {
             if (path == null)
             {
@@ -40,13 +40,13 @@ namespace ShareCluster.Packaging
             }
 
             // prepare parts
-            var sequencer = new PackagePartsSequencer();
-            PackageDataStreamPart[] parts = sequencer.GetDataFilesForPackage(path, sequence).ToArray();
+            var sequencer = new PackageFolderPartsSequencer();
+            PackageSequenceStreamPart[] parts = sequencer.GetDataFilesForPackage(path, sequence).ToArray();
 
             if (!overwrite)
             {
                 // check if already exists
-                foreach (PackageDataStreamPart part in parts)
+                foreach (PackageSequenceStreamPart part in parts)
                 {
                     if (File.Exists(part.Path))
                     {
@@ -56,7 +56,7 @@ namespace ShareCluster.Packaging
             }
 
             // allocate
-            foreach (PackageDataStreamPart part in parts)
+            foreach (PackageSequenceStreamPart part in parts)
             {
                 using (var fs = new FileStream(part.Path, overwrite ? FileMode.OpenOrCreate : FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {

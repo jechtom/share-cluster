@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Network.Messages;
+using ShareCluster.Packaging.PackageFolders;
 
 namespace ShareCluster
 {
@@ -10,12 +11,12 @@ namespace ShareCluster
     {
         private readonly PackageDownload _dto;
         private readonly object _syncLock = new object();
-        private readonly Packaging.PackageSequenceInfo _sequenceInfo;
+        private readonly PackageSplitInfo _sequenceInfo;
         private readonly byte _lastByteMask;
         private readonly HashSet<int> _partsInProgress;
         private long _progressBytesReserved;
 
-        public PackageDownloadInfo(PackageDownload dto, Packaging.PackageSequenceInfo sequenceInfo)
+        public PackageDownloadInfo(PackageDownload dto, PackageSplitInfo sequenceInfo)
         {
             _dto = dto ?? throw new ArgumentNullException(nameof(dto));
             _sequenceInfo = sequenceInfo ?? throw new ArgumentNullException(nameof(sequenceInfo));
@@ -25,7 +26,7 @@ namespace ShareCluster
             _lastByteMask = (byte)((1 << (lastSegmentBits == 0 ? 8 : lastSegmentBits)) - 1);
         }
 
-        public static PackageDownloadInfo CreateForCreatedPackage(VersionNumber version, Id packageId, Packaging.PackageSequenceInfo sequenceInfo)
+        public static PackageDownloadInfo CreateForCreatedPackage(VersionNumber version, Id packageId, PackageSplitInfo sequenceInfo)
         {
             if (sequenceInfo == null)
             {
@@ -43,7 +44,7 @@ namespace ShareCluster
             return new PackageDownloadInfo(data, sequenceInfo);
         }
 
-        public static PackageDownloadInfo CreateForReadyForDownloadPackage(VersionNumber version, Id packageId, Packaging.PackageSequenceInfo sequenceInfo)
+        public static PackageDownloadInfo CreateForReadyForDownloadPackage(VersionNumber version, Id packageId, PackageSplitInfo sequenceInfo)
         {
             if (sequenceInfo == null)
             {

@@ -57,5 +57,8 @@ namespace ShareCluster
             version = new VersionNumber(versionInt);
             return true;
         }
+
+        public static bool operator ==(VersionNumber left, VersionNumber right) => left.Equals(right);
+        public static bool operator !=(VersionNumber left, VersionNumber right) => !left.Equals(right);
     }
 }

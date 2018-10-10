@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace ShareCluster.Packaging
+namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
     /// Describes validation result of <see cref="PackageDataValidator"/>

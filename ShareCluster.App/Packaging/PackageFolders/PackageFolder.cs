@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Packaging.FileSystem
+namespace ShareCluster.Packaging.PackageFolders
 {
     public class PackageFolder : IPackageFolderReference
     {
-        public PackageFolder(Id packageId, string directoryPath, PackageSequenceInfo sequenceInfo)
+        public PackageFolder(Id packageId, string directoryPath, PackageSplitInfo sequenceInfo)
         {
             Id = packageId;
             FolderPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
@@ -15,7 +15,7 @@ namespace ShareCluster.Packaging.FileSystem
         }
 
         public Id Id { get; }
-        public PackageSequenceInfo SequenceInfo { get; }
+        public PackageSplitInfo SequenceInfo { get; }
         public string FolderPath { get; }
         public PackageLocks Locks { get; }
         public PackageDownloadInfo DownloadStatus { get; }
