@@ -7,6 +7,7 @@ using System.Text;
 using ShareCluster.Packaging;
 using System.IO;
 using System.Reflection;
+using ShareCluster.Packaging.IO;
 
 namespace ShareCluster
 {
@@ -44,7 +45,9 @@ namespace ShareCluster
                     MessageSerializer = serializer
                 },
                 LoggerFactory = loggerFactory,
-                Clock = new Clock()
+                Clock = new Clock(),
+                PackageSplitBaseInfo = PackageSplitBaseInfo.Default,
+                PackageHashesSerializer = new PackageHashesSerializer(serializer)
             };
 
             result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(),
@@ -67,17 +70,17 @@ namespace ShareCluster
             logger.LogInformation($"Start browser http://localhost:{NetworkSettings.TcpServicePort}");
         }
 
-        private string dataRootPath;
+        private string _dataRootPath;
 
         /// <summary>
         /// Gets or sets data root folder for data storage.
         /// </summary>
         public string DataRootPath
         {
-            get => dataRootPath;
+            get => _dataRootPath;
             set
             {
-                dataRootPath = value;
+                _dataRootPath = value;
                 DataRootPathPackageRepository = Path.Combine(value, "packages");
                 DataRootPathExtractDefault = Path.Combine(value, "extracted");
             }
@@ -103,5 +106,7 @@ namespace ShareCluster
         public ILoggerFactory LoggerFactory { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
         public InstanceHash InstanceId { get; private set; }
+        public PackageHashesSerializer PackageHashesSerializer { get; private set; }
+        public PackageSplitBaseInfo PackageSplitBaseInfo { get; private set; }
     }
 }

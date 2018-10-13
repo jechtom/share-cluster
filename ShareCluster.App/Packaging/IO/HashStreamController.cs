@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.IO
 {
     /// <summary>
-    /// Controller to use with <see cref="PackageDataStream"/> to validate hashes of incoming data stream and sending it to next stream or to null stream.
+    /// Controller that computes hash of segments to use with <see cref="PackageDataStream"/> and sending it to next stream or to null stream.
     /// </summary>
-    public class ValidateHashStreamController : IStreamSplitterController
+    public class HashStreamController : IStreamSplitterController
     {
         private readonly ILogger<PackageFolderDataStreamController> _logger;
         private readonly CryptoProvider _cryptoProvider;
@@ -27,7 +27,7 @@ namespace ShareCluster.Packaging.IO
         private Stream _nestedStream;
 
         /// <param name="nestedStream">Can be null if you just want to validate hashes.</param>
-        public ValidateHashStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, Dto.PackageHashes hashes, IEnumerable<FilePackagePartReference> partsToValidate, Stream nestedStream)
+        public HashStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, Dto.PackageHashes hashes, IEnumerable<FilePackagePartReference> partsToValidate, Stream nestedStream)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageFolderDataStreamController>();
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));

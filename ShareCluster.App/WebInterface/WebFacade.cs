@@ -14,7 +14,6 @@ namespace ShareCluster.WebInterface
     {
         private readonly AppInfo _appInfo;
         private readonly PackageDownloadManager _packageDownloadManager;
-        private readonly PackageFolderDataValidator _validator;
         private readonly PackageFolderManager _localPackageManager;
         private readonly IPeerRegistry _peerRegistry;
         private readonly IPackageRegistry _packageRegistry;
@@ -24,11 +23,10 @@ namespace ShareCluster.WebInterface
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageFolderDataValidator validator, PackageFolderManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageFolderManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
-            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
@@ -62,7 +60,7 @@ namespace ShareCluster.WebInterface
 
             // run
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            Task extractTask = _validator.ValidatePackageAsync(package, measureItem).ContinueWith(t => {
+            Task extractTask = package.PackageDataAccessor.ValidatePackageDataAsync(measureItem).ContinueWith(t => {
                 if (t.IsFaulted && !t.Result.IsValid) throw new Exception(string.Join("; ", t.Result.Errors));
             });
 

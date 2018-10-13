@@ -250,8 +250,8 @@ namespace ShareCluster
             await waitForReleaseLocksTask;
 
             // delete content
-            _localPackageManager.DeletePackage(packageFolder);
-
+            packageFolder.PackageDataAccessor.DeletePackage();
+            
             // update collections
             UpdateLists(addToLocal: null, removeFromLocal: new[] { packageFolder }, addToDiscovered: null);
 

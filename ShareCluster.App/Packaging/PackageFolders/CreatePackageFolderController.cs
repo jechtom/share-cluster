@@ -16,7 +16,7 @@ namespace ShareCluster.Packaging.PackageFolders
     public class CreatePackageFolderController : IStreamSplitterController       
     {
         private readonly ILogger<CreatePackageFolderController> _logger;
-        private readonly VersionNumber _version;
+        private readonly PackageHashesSerializer _packageHashesSerializer;
         private readonly CryptoProvider _cryptoProvider;
         private readonly PackageSplitBaseInfo _sequenceBaseInfo;
         private readonly string _packageRootPath;
@@ -27,10 +27,10 @@ namespace ShareCluster.Packaging.PackageFolders
         private bool _isDisposed;
         private bool _isClosed;
 
-        public CreatePackageFolderController(VersionNumber version, ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSplitBaseInfo sequenceBaseInfo, string packageRootPath)
+        public CreatePackageFolderController(ILoggerFactory loggerFactory, PackageHashesSerializer packageHashesSerializer, CryptoProvider cryptoProvider, PackageSplitBaseInfo sequenceBaseInfo, string packageRootPath)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<CreatePackageFolderController>();
-            _version = version;
+            _packageHashesSerializer = packageHashesSerializer ?? throw new ArgumentNullException(nameof(packageHashesSerializer));
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
             _sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
             _packageRootPath = packageRootPath ?? throw new ArgumentNullException(nameof(packageRootPath));
@@ -81,7 +81,7 @@ namespace ShareCluster.Packaging.PackageFolders
 
             // build result
             var sequenceInfo = new PackageSplitInfo(_sequenceBaseInfo, _totalSize);
-            _packageId = new Dto.PackageHashes(_version, _segmentHashes, _cryptoProvider, sequenceInfo);
+            _packageId = new Dto.PackageHashes(_packageHashesSerializer.SerializerVersion, _segmentHashes, _cryptoProvider, sequenceInfo);
             _logger.LogDebug($"Closed package data files. Written {SizeFormatter.ToString(_totalSize)}. Hash is {_packageId.PackageId:s}.");
             _isClosed = true;
         }

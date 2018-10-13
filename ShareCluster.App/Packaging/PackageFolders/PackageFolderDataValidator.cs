@@ -11,28 +11,28 @@ namespace ShareCluster.Packaging.PackageFolders
 {
     public class PackageFolderDataValidator
     {
-        private readonly ILoggerFactory loggerFactory;
-        private readonly CryptoProvider cryptoProvider;
-        private readonly ILogger<PackageFolderDataValidator> logger;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly CryptoProvider _cryptoProvider;
+        private readonly ILogger<PackageFolderDataValidator> _logger;
 
         public PackageFolderDataValidator(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider)
         {
-            this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            this.cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            logger = loggerFactory.CreateLogger<PackageFolderDataValidator>();
+            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
+            _logger = loggerFactory.CreateLogger<PackageFolderDataValidator>();
         }
 
         public async Task<PackageDataValidatorResult> ValidatePackageAsync(PackageFolder packageInfo, MeasureItem measure)
         {
-            logger.LogDebug($"Starting validation of package {packageInfo}.");
+            _logger.LogDebug($"Starting validation of package {packageInfo}.");
             PackageDataValidatorResult result = await ValidatePackageAsyncInternal(packageInfo);
             if(result.IsValid)
             {
-                logger.LogInformation($"Package {packageInfo} is valid.");
+                _logger.LogInformation($"Package {packageInfo} is valid.");
             }
             else
             {
-                logger.LogWarning($"Package {packageInfo} validation FAILED:\n{string.Join("\n", result.Errors)}");
+                _logger.LogWarning($"Package {packageInfo} validation FAILED:\n{string.Join("\n", result.Errors)}");
             }
             return result;
         }
@@ -67,7 +67,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // validate package hash calculated from segment hashes
-            Id calculatedPackageHash = cryptoProvider.HashFromHashes(packageFolder.Hashes.PackageSegmentsHashes);
+            Id calculatedPackageHash = _cryptoProvider.HashFromHashes(packageFolder.Hashes.PackageSegmentsHashes);
             if (!calculatedPackageHash.Equals(packageFolder.Id))
             {
                 return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {packageFolder.Id:s}.");
@@ -115,10 +115,10 @@ namespace ShareCluster.Packaging.PackageFolders
                 IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SplitInfo);
                 try
                 {
-                    using (var readPackageController = new PackageFolderDataStreamController(loggerFactory, allParts))
-                    using (var readPackageStream = new StreamSplitter(loggerFactory, readPackageController))
-                    using (var validatePackageController = new ValidateHashStreamController(loggerFactory, cryptoProvider, packageFolder.Hashes, allParts, nestedStream: null))
-                    using (var validatePackageStream = new StreamSplitter(loggerFactory, validatePackageController))
+                    using (var readPackageController = new PackageFolderDataStreamController(_loggerFactory, allParts, ReadWriteMode.Read))
+                    using (var readPackageStream = new StreamSplitter(_loggerFactory, readPackageController))
+                    using (var validatePackageController = new HashStreamController(_loggerFactory, _cryptoProvider, packageFolder.Hashes, allParts, nestedStream: null))
+                    using (var validatePackageStream = new StreamSplitter(_loggerFactory, validatePackageController))
                     {
                         await readPackageStream.CopyToAsync(validatePackageStream);
                     }

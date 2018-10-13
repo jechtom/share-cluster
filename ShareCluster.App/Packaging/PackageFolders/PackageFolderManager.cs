@@ -25,12 +25,12 @@ namespace ShareCluster.Packaging.PackageFolders
 
         private readonly ILogger<PackageFolderManager> _logger;
         private readonly AppInfo _app;
-        private readonly PackageSplitBaseInfo _sequenceForNewPackages;
+        private readonly PackageSplitBaseInfo _defaultSplitInfo;
 
-        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSplitBaseInfo sequenceForNewPackages, string packageRepositoryPath)
+        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSplitBaseInfo defaultSplitInfo, string packageRepositoryPath)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _sequenceForNewPackages = sequenceForNewPackages ?? throw new ArgumentNullException(nameof(sequenceForNewPackages));
+            _defaultSplitInfo = defaultSplitInfo ?? throw new ArgumentNullException(nameof(defaultSplitInfo));
             PackageRepositoryPath = packageRepositoryPath ?? throw new ArgumentNullException(nameof(packageRepositoryPath));
         }
 
@@ -96,7 +96,7 @@ namespace ShareCluster.Packaging.PackageFolders
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (ICreatePackageDataStreamController controller = new CreatePackageFolderController(_app.PackageVersion, _app.LoggerFactory, _app.Crypto, _sequenceForNewPackages, buildDirectory.FullName))
+            using (var controller = new CreatePackageFolderController(_app.LoggerFactory, _app.PackageHashesSerializer, _app.Crypto, _defaultSplitInfo, buildDirectory.FullName))
             {
                 using (var packageStream = new StreamSplitter(_app.LoggerFactory, controller) { Measure = writeMeasure })
                 {
@@ -106,7 +106,6 @@ namespace ShareCluster.Packaging.PackageFolders
                 }
                 packageHashes = controller.CreatedPackageHashes;
             }
-
 
             // store package hashes
             UpdateHashes(packageHashes, directoryPath: buildDirectory.FullName);
@@ -173,7 +172,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 // read all and extract
                 var sequencer = new PackageFolderPartsSequencer();
                 IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SplitInfo);
-                using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, folderPackage, allParts))
+                using (var readController = new PackageFolderDataStreamController(_app.LoggerFactory, allParts, ReadWriteMode.Read))
                 using (var readStream = new StreamSplitter(_app.LoggerFactory, readController))
                 {
                     var archive = new FolderStreamSerializer(_app.MessageSerializer);

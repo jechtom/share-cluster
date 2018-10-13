@@ -17,9 +17,9 @@ namespace ShareCluster.Packaging.PackageFolders
     {
         private readonly ILogger<PackageFolderDataStreamController> _logger;
         private readonly CurrentPart[] _parts;
+        private readonly ReadWriteMode _mode;
         private CurrentPart _currentPart;
         private bool _isDisposed;
-        private ReadWriteMode _mode;
         
         public PackageFolderDataStreamController(ILoggerFactory loggerFactory, IEnumerable<FilePackagePartReference> partsToWrite, ReadWriteMode mode)
         {

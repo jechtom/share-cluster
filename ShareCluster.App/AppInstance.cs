@@ -14,6 +14,7 @@ using ShareCluster.WebInterface;
 using System.Reflection;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using ShareCluster.Packaging.IO;
+using ShareCluster.Packaging.PackageFolders;
 
 namespace ShareCluster
 {
@@ -83,20 +84,21 @@ namespace ShareCluster
             services.AddSingleton(_appInfo.NetworkSettings);
             services.AddSingleton(_appInfo.MessageSerializer);
             services.AddSingleton(_appInfo.InstanceId);
+            services.AddSingleton(_appInfo.PackageSplitBaseInfo);
             services.AddSingleton<IClock>(_appInfo.Clock);
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<UdpPeerDiscovery>();
             services.AddSingleton<PackageHashesSerializer>();
             services.AddSingleton<NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
-            services.AddSingleton<LocalPackageManager>();
-            services.AddSingleton<IPackageRegistry, PackageRegistry>();
+            services.AddSingleton<PackageFolderManager>();
+            services.AddSingleton<PackageRegistry>();
             services.AddSingleton<PackageDownloadManager>();
             services.AddSingleton<PeersCluster>();
             services.AddSingleton<AppInstanceBootstrapper>();
             services.AddSingleton<WebFacade>();
             services.AddSingleton<LongRunningTasksManager>();
-            services.AddSingleton<PackageDataValidator>();
+            services.AddSingleton<PackageFolderDataValidator>();
         }
     }
 }

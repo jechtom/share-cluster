@@ -2,6 +2,7 @@
 using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Packaging.IO;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -144,75 +145,19 @@ namespace ShareCluster.Network
             }
 
             // create reader stream
-            var sequencer = new PackageFolderPartsSequencer();
             _logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
-            IEnumerable<PackageSequenceStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.SplitInfo, requestedSegments);
-            var controller = new ReadPackageDataStreamController(_appInfo.LoggerFactory, package.Reference, package.SplitInfo, partsSource);
-            var stream = new PackageDataStream(_appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
+            IStreamSplitterController readPartsController = package.PackageDataAccessor.CreateReadSpecificPackageData(requestedSegments);
+            var stream = new StreamSplitter(_appInfo.LoggerFactory, readPartsController)
+            {
+                Measure = package.UploadMeasure
+            };
             stream.Disposing += () => {
                 int currentSlots = Interlocked.Increment(ref _uploadSlots);
                 package.Locks.Unlock(lockToken);
             };
             return (stream, null);
         }
-
-
-        public (Stream stream, DataResponseFaul error) CreateUploadStream2(LocalPackageInfo package, int[] requestedSegments)
-        {
-            if (package != null)
-            {
-                if (requestedSegments != null)
-                {
-                    if (package.DownloadStatus.ValidateRequestedParts(requestedSegments))
-                    {
-                        // allocate slot
-                        int newUploadSlotsCount = Interlocked.Decrement(ref _uploadSlots);
-                        if (newUploadSlotsCount <= 0)
-                        {
-                            // not enough slots
-                            Interlocked.Increment(ref _uploadSlots);
-                            _logger.LogTrace($"Peer choked when requested {package} segments: {requestedSegments.Format()}");
-                            return (null, DataResponseFaul.CreateChokeMessage());
-                        }
-
-                        // obtain lock
-                        if (package.Locks.TryLock(out object lockToken))
-                        {
-                            // create reader stream
-                            var sequencer = new PackageFolderPartsSequencer();
-                            _logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
-                            IEnumerable<PackageSequenceStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.SplitInfo, requestedSegments);
-                            var controller = new ReadPackageDataStreamController(_appInfo.LoggerFactory, package.Reference, package.SplitInfo, partsSource);
-                            var stream = new PackageDataStream(_appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
-                            stream.Disposing += () =>
-                            {
-                                int currentSlots = Interlocked.Increment(ref _uploadSlots);
-                                package.Locks.Unlock(lockToken);
-                            };
-                            return (stream, null);
-                        }
-                        else
-                        {
-                            return (null, DataResponseFaul.CreateDataPackageNotFoundMessage());
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogTrace($"Requested segments not valid for {package}: {requestedSegments.Format()}");
-                        return (null, DataResponseFaul.CreateDataPackageSegmentsNotFoundMessage());
-                    }
-                }
-                else
-                {
-                    throw new ArgumentNullException(nameof(requestedSegments));
-                }
-            }
-            else
-            {
-                throw new ArgumentNullException(nameof(package));
-            }
-        }
-
+        
         private void StatusUpdateTimerCallback(object state)
         {
             lock(_clusterNodeLock)

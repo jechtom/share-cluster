@@ -517,19 +517,19 @@ namespace ShareCluster.Network
 
                 Stream streamWrite = null;
 
-                ValidateHashStreamController controllerValidate = null;
+                HashStreamController controllerValidate = null;
                 Stream streamValidate = null;
-
-                dataac
 
                 Stream createStream()
                 {
                     var sequencer = new PackageFolderPartsSequencer();
-                    streamWrite = new PackageDataStream(_parent._appInfo.LoggerFactory, controllerWriter)
-                    { Measure = package.DownloadMeasure };
+                    streamWrite = new StreamSplitter(_parent._appInfo.LoggerFactory, controllerWriter)
+                    {
+                        Measure = package.DownloadMeasure
+                    };
 
-                    controllerValidate = new ValidateHashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.SplitInfo, package.Hashes, partsSource, streamWrite);
-                    streamValidate = new PackageDataStream(_parent._appInfo.LoggerFactory, controllerValidate);
+                    controllerValidate = new HashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.Hashes, partsSource, streamWrite);
+                    streamValidate = new StreamSplitter(_parent._appInfo.LoggerFactory, controllerValidate);
 
                     return streamValidate;
                 }

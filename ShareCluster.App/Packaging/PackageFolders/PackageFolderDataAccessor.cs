@@ -1,19 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Packaging.IO;
 
 namespace ShareCluster.Packaging.PackageFolders
 {
-    public class PackageFolderDataAccessor : IPackageWithStorageDataAccessor
+    public class PackageFolderDataAccessor : IPackageDataAccessor
     {
         private readonly ILoggerFactory _loggerFactory;
+        private readonly PackageFolderManager _packageFolderManager;
+        private readonly PackageFolderDataValidator _packageFolderDataValidator;
 
-        public PackageFolderDataAccessor(ILoggerFactory loggerFactory, PackageFolder packageFolder)
+        public PackageFolderDataAccessor(ILoggerFactory loggerFactory, PackageFolderManager packageFolderManager, PackageFolder packageFolder, PackageFolderDataValidator packageFolderDataValidator)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _packageFolderManager = packageFolderManager ?? throw new ArgumentNullException(nameof(packageFolderManager));
             PackageFolder = packageFolder ?? throw new ArgumentNullException(nameof(packageFolder));
+            _packageFolderDataValidator = packageFolderDataValidator ?? throw new ArgumentNullException(nameof(packageFolderDataValidator));
         }
 
         public PackageFolder PackageFolder { get; }
@@ -36,10 +41,8 @@ namespace ShareCluster.Packaging.PackageFolders
 
         public IStoreNewPackageAccessor CreateStoreNewPackageAccessor()
         {
-            throw new NotImplementedException();
             var sequencer = new PackageFolderPartsSequencer();
-            IEnumerable<FilePackagePartReference> partsSource = sequencer.GetPartsForSpecificSegments(PackageFolder.FolderPath, PackageFolder.SplitInfo, parts);
-            var result = new CreatePackageFolderController(_loggerFactory, partsSource, ReadWriteMode.Read);
+            var result = new CreatePackageFolderController(_loggerFactory, ReadWriteMode.Read);
             return result;
         }
 
@@ -50,5 +53,13 @@ namespace ShareCluster.Packaging.PackageFolders
             var result = new PackageFolderDataStreamController(_loggerFactory, partsSource, ReadWriteMode.Write);
             return result;
         }
+
+        public void DeletePackage()
+        {
+            _packageFolderManager.DeletePackage(PackageFolder);
+        }
+
+        public Task<PackageDataValidatorResult> ValidatePackageDataAsync(MeasureItem measureItem)
+            => _packageFolderDataValidator.ValidatePackageAsync(PackageFolder, measureItem);
     }
 }
