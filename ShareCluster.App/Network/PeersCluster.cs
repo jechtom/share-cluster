@@ -144,10 +144,10 @@ namespace ShareCluster.Network
             }
 
             // create reader stream
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             _logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
-            IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, requestedSegments);
-            var controller = new ReadPackageDataStreamController(_appInfo.LoggerFactory, package.Reference, package.Sequence, partsSource);
+            IEnumerable<PackageSequenceStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.SplitInfo, requestedSegments);
+            var controller = new ReadPackageDataStreamController(_appInfo.LoggerFactory, package.Reference, package.SplitInfo, partsSource);
             var stream = new PackageDataStream(_appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
             stream.Disposing += () => {
                 int currentSlots = Interlocked.Increment(ref _uploadSlots);
@@ -179,10 +179,10 @@ namespace ShareCluster.Network
                         if (package.LockProvider.TryLock(out object lockToken))
                         {
                             // create reader stream
-                            var sequencer = new PackagePartsSequencer();
+                            var sequencer = new PackageFolderPartsSequencer();
                             _logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
-                            IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, requestedSegments);
-                            var controller = new ReadPackageDataStreamController(_appInfo.LoggerFactory, package.Reference, package.Sequence, partsSource);
+                            IEnumerable<PackageSequenceStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.SplitInfo, requestedSegments);
+                            var controller = new ReadPackageDataStreamController(_appInfo.LoggerFactory, package.Reference, package.SplitInfo, partsSource);
                             var stream = new PackageDataStream(_appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
                             stream.Disposing += () =>
                             {

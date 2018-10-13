@@ -9,6 +9,7 @@ using System.Threading.Tasks.Dataflow;
 using ShareCluster.Packaging.Dto;
 using System.IO.Compression;
 using System.Linq;
+using ShareCluster.Packaging.IO;
 
 namespace ShareCluster.Packaging.PackageFolders
 {
@@ -24,9 +25,9 @@ namespace ShareCluster.Packaging.PackageFolders
 
         private readonly ILogger<PackageFolderManager> _logger;
         private readonly AppInfo _app;
-        private readonly PackageSequenceBaseInfo _sequenceForNewPackages;
+        private readonly PackageSplitBaseInfo _sequenceForNewPackages;
 
-        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSequenceBaseInfo sequenceForNewPackages, string packageRepositoryPath)
+        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSplitBaseInfo sequenceForNewPackages, string packageRepositoryPath)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sequenceForNewPackages = sequenceForNewPackages ?? throw new ArgumentNullException(nameof(sequenceForNewPackages));
@@ -95,15 +96,15 @@ namespace ShareCluster.Packaging.PackageFolders
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (var controller = new CreatePackageDataStreamController(_app.PackageVersion, _app.LoggerFactory, _app.Crypto, _sequenceForNewPackages, buildDirectory.FullName))
+            using (ICreatePackageDataStreamController controller = new CreatePackageFolderDataStreamController(_app.PackageVersion, _app.LoggerFactory, _app.Crypto, _sequenceForNewPackages, buildDirectory.FullName))
             {
                 using (var packageStream = new PackageDataStream(_app.LoggerFactory, controller) { Measure = writeMeasure })
                 {
-                    var archive = new FolderStreamSerializer(_app.CompatibilityChecker, _app.MessageSerializer);
+                    var archive = new FolderStreamSerializer(_app.MessageSerializer);
                     archive.SerializeFolderToStream(folderToProcess, packageStream);
                     entriesCount = archive.EntriesCount;
                 }
-                packageHashes = controller.PackageId;
+                packageHashes = controller.CreatedPackageHashes;
             }
 
 
@@ -111,8 +112,7 @@ namespace ShareCluster.Packaging.PackageFolders
             UpdateHashes(packageHashes, directoryPath: buildDirectory.FullName);
 
             // store download status
-            PackageSplitInfo packageSequence = packageHashes.CreatePackageSplitInfo();
-            var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageHashes.PackageId, packageSequence);
+            var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageHashes.PackageId, packageHashes.PackageSplitInfo);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
             // store metadata
@@ -138,7 +138,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
             var reference = new PackageFolderReference(packageHashes.PackageId, packagePath);
-            var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata, packageSequence);
+            var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata);
             return result;
         }
 
@@ -176,7 +176,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, folderPackage, allParts))
                 using (var readStream = new PackageDataStream(_app.LoggerFactory, readController))
                 {
-                    var archive = new FolderStreamSerializer(_app.CompatibilityChecker, _app.MessageSerializer);
+                    var archive = new FolderStreamSerializer(_app.MessageSerializer);
                     archive.DeserializeStreamToFolder(readStream, targetFolder);
                 }
 
@@ -273,21 +273,20 @@ namespace ShareCluster.Packaging.PackageFolders
             Directory.CreateDirectory(packagePath);
 
             // store data
-            PackageSplitInfo packageSequence = hashes.CreatePackageSplitInfo();
-            var downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(_app.PackageVersion, hashes.PackageId, packageSequence);
+            var downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(_app.PackageVersion, hashes.PackageId, hashes.PackageSplitInfo);
             UpdateDownloadStatus(downloadStatus);
             UpdateHashes(hashes);
             UpdateMetadata(metadata);
 
             // allocate
             var allocator = new PackageDataAllocator(_app.LoggerFactory);
-            allocator.Allocate(packagePath, hashes.CreatePackageSplitInfo(), overwrite: false);
+            allocator.Allocate(packagePath, hashes.PackageSplitInfo, overwrite: false);
 
             // log and build result
             _logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
 
             var reference = new PackageFolderReference(hashes.PackageId, packagePath);
-            var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata, packageSequence);
+            var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata);
             return result;
         }
 

@@ -1,23 +1,24 @@
 ﻿using ShareCluster.Packaging;
+using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Linq;
 using Xunit;
 
 namespace ShareCluster.Tests.Packaging
 {
-    public class PackageSequencerTests
+    public class PackageSplitTests
     {
         [Fact]
         public void DataFiles()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // is size splitted to files correctly to two data files?
             // 120% of 1 data file
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             long testSize = baseInfo.DataFileLength * 120 / 100;
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            PackageDataStreamPart[] parts = sequencer.GetDataFilesForPackage(@"c:\example", testSequence).ToArray();
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
+            PackageSequenceStreamPart[] parts = sequencer.GetDataFilesForPackage(@"c:\example", testSequence).ToArray();
             Assert.Equal(2, parts.Count());
             Assert.Equal(baseInfo.DataFileLength, parts[0].PartLength);
             Assert.Equal(testSize - baseInfo.DataFileLength, parts[1].PartLength);
@@ -32,14 +33,14 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void DataFiles_FullFile()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // is size splitted to files correctly to two data files?
             // 200% of 1 data file
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             long testSize = baseInfo.DataFileLength * 2; // two full files
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            PackageDataStreamPart[] parts = sequencer.GetDataFilesForPackage(@"c:\example", testSequence).ToArray();
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
+            PackageSequenceStreamPart[] parts = sequencer.GetDataFilesForPackage(@"c:\example", testSequence).ToArray();
             Assert.Equal(2, parts.Count());
             Assert.Equal(baseInfo.DataFileLength, parts[0].PartLength);
             Assert.Equal(baseInfo.DataFileLength, parts[1].PartLength);
@@ -54,14 +55,14 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void Segments()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // is size is splitted correctly to two segments?
             // 120% of 1 segment
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             long testSize = baseInfo.SegmentLength * 120 / 100;
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            PackageDataStreamPart[] parts = sequencer.GetPartsForPackage(@"c:\example", testSequence).ToArray();
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
+            PackageSequenceStreamPart[] parts = sequencer.GetPartsForPackage(@"c:\example", testSequence).ToArray();
             Assert.Equal(2, parts.Count());
             Assert.Equal(baseInfo.SegmentLength, parts[0].PartLength);
             Assert.Equal(testSize - baseInfo.SegmentLength, parts[1].PartLength);
@@ -74,14 +75,14 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void Segments_FullSegment()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // is size is splitted correctly to two segments?
             // 200% of 1 segment
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             long testSize = baseInfo.SegmentLength * 2; // two full segments
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            PackageDataStreamPart[] parts = sequencer.GetPartsForPackage(@"c:\example", testSequence).ToArray();
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
+            PackageSequenceStreamPart[] parts = sequencer.GetPartsForPackage(@"c:\example", testSequence).ToArray();
             Assert.Equal(2, parts.Count());
             Assert.Equal(baseInfo.SegmentLength, parts[0].PartLength);
             Assert.Equal(baseInfo.SegmentLength, parts[1].PartLength);
@@ -94,7 +95,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void SegmentsFitsToDataFileDefault()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // make sure file can be evenly splitted to segments
             Assert.True(baseInfo.DataFileLength > baseInfo.SegmentLength);
@@ -105,24 +106,24 @@ namespace ShareCluster.Tests.Packaging
         public void SegmentsFitsToDataFileValidation()
         {
             // success
-            var baseInfo2 = new PackageSequenceBaseInfo(dataFileLength: 100, segmentLength: 10);
+            var baseInfo2 = new PackageSplitBaseInfo(dataFileLength: 100, segmentLength: 10);
 
             // fail (cannot fit evenly)
-            Assert.Throws<ArgumentException>(() => new PackageSequenceBaseInfo(dataFileLength: 100, segmentLength: 11));
+            Assert.Throws<ArgumentException>(() => new PackageSplitBaseInfo(dataFileLength: 100, segmentLength: 11));
         }
 
         [Fact]
         public void DataFilesAndSegments_Full()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // is size is splitted correctly to files and segments?
             // 2 data files + 5.2 segments
 
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             long testSize = baseInfo.DataFileLength * 2 + baseInfo.SegmentLength * 520 / 100;
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
-            PackageDataStreamPart[] parts = sequencer.GetPartsForPackage(@"c:\example", testSequence).ToArray();
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
+            PackageSequenceStreamPart[] parts = sequencer.GetPartsForPackage(@"c:\example", testSequence).ToArray();
 
             // expected count of parts
             Assert.Equal(parts.Count(), baseInfo.SegmentsPerDataFile * 2 + 6); // two files, 5 full segments and 1 smaller segment
@@ -134,7 +135,7 @@ namespace ShareCluster.Tests.Packaging
                 {
                     int partIndex = fileIndex * baseInfo.SegmentsPerDataFile + segmentIndex;
                     if (partIndex >= parts.Length) break;
-                    PackageDataStreamPart part = parts[partIndex];
+                    PackageSequenceStreamPart part = parts[partIndex];
 
                     // expected offsets
                     Assert.Equal(fileIndex, part.DataFileIndex);
@@ -163,15 +164,15 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void DataFilesAndSegments_SegmentsOutOfRange()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             long testSize = baseInfo.SegmentLength * 2 + baseInfo.SegmentLength * 520 / 100;
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
             int segmentsCount = (int)((testSize + baseInfo.SegmentLength - 1) / baseInfo.SegmentLength);
 
             Assert.Equal(segmentsCount, testSequence.SegmentsCount);
 
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
             Assert.Throws<ArgumentOutOfRangeException>(() => sequencer.GetPartsForSpecificSegments(@"c:\example", testSequence, new int[] { -1 }).ToArray());
             Assert.Throws<ArgumentOutOfRangeException>(() => sequencer.GetPartsForSpecificSegments(@"c:\example", testSequence, new int[] { segmentsCount }).ToArray());
         }
@@ -179,7 +180,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void DataFilesAndSegments_Segments()
         {
-            PackageSequenceBaseInfo baseInfo = PackageSequenceBaseInfo.Default;
+            PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
 
             // are returned segments correct for just selected segments?
             // file 2 data files + 5.2 segments
@@ -189,10 +190,10 @@ namespace ShareCluster.Tests.Packaging
             // - last segment from third file
             // - middle segment from first file
 
-            var sequencer = new PackagePartsSequencer();
+            var sequencer = new PackageFolderPartsSequencer();
 
             long testSize = baseInfo.DataFileLength * 2 + baseInfo.SegmentLength * 520 / 100;
-            var testSequence = new PackageSequenceInfo(baseInfo, testSize);
+            var testSequence = new PackageSplitInfo(baseInfo, testSize);
 
             int[] segmentIndexes = new int[]
             {
@@ -206,7 +207,7 @@ namespace ShareCluster.Tests.Packaging
             long testSubsetSize = baseInfo.SegmentLength * 4 // 4 full segments
                 + (testSize % baseInfo.SegmentLength); // 1 last segment
 
-            PackageDataStreamPart[] parts = sequencer.GetPartsForSpecificSegments(@"c:\example", testSequence, segmentIndexes).ToArray();
+            PackageSequenceStreamPart[] parts = sequencer.GetPartsForSpecificSegments(@"c:\example", testSequence, segmentIndexes).ToArray();
 
             // basic checks
             Assert.Equal(segmentIndexes.Length, parts.Length);

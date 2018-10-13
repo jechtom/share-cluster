@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ShareCluster.Packaging.PackageFolders
+namespace ShareCluster.Packaging.IO
 {
     /// <summary>
     /// Provides customizable stream build up from different parts.
@@ -24,9 +24,9 @@ namespace ShareCluster.Packaging.PackageFolders
         private long _position;
         private bool _isDisposed;
 
-        private PackageDataStreamPart _currentPart;
+        private IStreamPart _currentPart;
         private long _nextPartPosition;
-        private IEnumerator<PackageDataStreamPart> _partsSource;
+        private IEnumerator<IStreamPart> _partsSource;
         private IPackageDataStreamController _controller;
 
         public PackageDataStream(ILoggerFactory loggerFactory, IPackageDataStreamController controller)

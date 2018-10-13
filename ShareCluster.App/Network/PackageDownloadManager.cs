@@ -504,8 +504,8 @@ namespace ShareCluster.Network
                 _parent._logger.LogTrace("Downloading \"{0}\" {1:s} - from {2} - segments {3}", package.Metadata.Name, package.Id, peer.ServiceEndPoint, parts.Format());
 
                 var message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
-                var sequencer = new PackagePartsSequencer();
-                long totalSizeOfParts = sequencer.GetSizeOfParts(package.Sequence, parts);
+                var sequencer = new PackageFolderPartsSequencer();
+                long totalSizeOfParts = sequencer.GetSizeOfParts(package.SplitInfo, parts);
 
                 // remarks:
                 // - write incoming stream to streamValidate
@@ -520,13 +520,13 @@ namespace ShareCluster.Network
 
                 Stream createStream()
                 {
-                    IEnumerable<PackageDataStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.Sequence, parts);
+                    IEnumerable<PackageSequenceStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.SplitInfo, parts);
 
-                    controllerWriter = new WritePackageDataStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.Reference.FolderPath, package.Sequence, partsSource);
+                    controllerWriter = new WritePackageDataStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.Reference.FolderPath, package.SplitInfo, partsSource);
                     streamWrite = new PackageDataStream(_parent._appInfo.LoggerFactory, controllerWriter)
                     { Measure = package.DownloadMeasure };
 
-                    controllerValidate = new ValidatePackageDataStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.Sequence, package.Hashes, partsSource, streamWrite);
+                    controllerValidate = new ValidatePackageDataStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.SplitInfo, package.Hashes, partsSource, streamWrite);
                     streamValidate = new PackageDataStream(_parent._appInfo.LoggerFactory, controllerValidate);
 
                     return streamValidate;

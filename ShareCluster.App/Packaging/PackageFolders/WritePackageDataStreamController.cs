@@ -17,12 +17,12 @@ namespace ShareCluster.Packaging.PackageFolders
         private readonly ILogger<WritePackageDataStreamController> logger;
         private readonly CryptoProvider _cryptoProvider;
         private readonly string _packageRootPath;
-        private readonly PackageSequenceBaseInfo _sequenceBaseInfo;
+        private readonly PackageSplitBaseInfo _sequenceBaseInfo;
         private readonly PackageSequenceStreamPart[] _parts;
         private CurrentPart _currentPart;
         private bool _isDisposed;
 
-        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSequenceBaseInfo sequenceBaseInfo, IEnumerable<PackageSequenceStreamPart> partsToWrite)
+        public WritePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, string packageRootPath, PackageSplitBaseInfo sequenceBaseInfo, IEnumerable<PackageSequenceStreamPart> partsToWrite)
         {
             logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));

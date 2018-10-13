@@ -26,7 +26,7 @@ namespace ShareCluster.Packaging
         ) {}
 
         /// <summary>
-        /// Gets default <see cref="PackageSequenceBaseInfo"/>. Currently only default values are supported and expected.
+        /// Gets default <see cref="PackageSplitBaseInfo"/>. Currently only default values are supported and expected.
         /// </summary>
         public static PackageSplitBaseInfo Default { get; } = new PackageSplitBaseInfo(dataFileLength: _defaultDataFileLength, segmentLength: _defaultSegmentLength);
 

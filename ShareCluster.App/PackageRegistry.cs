@@ -59,15 +59,15 @@ namespace ShareCluster
                 PackageHashes hashes;
                 PackageDownloadInfo download;
                 PackageMeta meta;
-                PackageSplitInfo packageSequence;
+                PackageSplitInfo splitInfo;
                 try
                 {
                     hashes = _localPackageManager.ReadPackageHashesFile(pr);
-                    packageSequence = hashes.CreatePackageSplitInfo();
-                    download = _localPackageManager.ReadPackageDownloadStatus(pr, packageSequence);
+                    splitInfo = hashes.PackageSplitInfo;
+                    download = _localPackageManager.ReadPackageDownloadStatus(pr, splitInfo);
                     meta = _localPackageManager.ReadPackageMetadata(pr);
 
-                    var item = new LocalPackageInfo(pr, download, hashes, meta, packageSequence);
+                    var item = new LocalPackageInfo(pr, download, hashes, meta, splitInfo);
                     packagesInitData.Add(item);
                 }
                 catch(Exception e)

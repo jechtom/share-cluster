@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging.PackageFolders;
+using ShareCluster.Packaging;
 
 namespace ShareCluster
 {

@@ -17,7 +17,7 @@ namespace ShareCluster.Packaging
     {
         private readonly ILogger<WritePackageDataStreamController> _logger;
         private readonly CryptoProvider _cryptoProvider;
-        private readonly PackageSequenceBaseInfo _sequenceBaseInfo;
+        private readonly PackageSplitBaseInfo _sequenceBaseInfo;
         private readonly Dto.PackageHashes _hashes;
         private readonly PackageSequenceStreamPart[] _parts;
         private CurrentPart _currentPart;
@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging
         private Stream _nestedStream;
 
         /// <param name="nestedStream">Can be null if you just want to validate hashes.</param>
-        public ValidatePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSequenceBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageSequenceStreamPart> partsToValidate, Stream nestedStream)
+        public ValidatePackageDataStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, PackageSplitBaseInfo sequenceBaseInfo, Dto.PackageHashes hashes, IEnumerable<PackageSequenceStreamPart> partsToValidate, Stream nestedStream)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<WritePackageDataStreamController>();
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
@@ -49,7 +49,7 @@ namespace ShareCluster.Packaging
 
         public long? Length { get; }
 
-        public PackageSequenceBaseInfo SequenceBaseInfo => _sequenceBaseInfo;
+        public PackageSplitBaseInfo SequenceBaseInfo => _sequenceBaseInfo;
 
         public IEnumerable<PackageSequenceStreamPart> EnumerateParts() => _parts;
 

@@ -8,7 +8,7 @@ namespace ShareCluster.Packaging
 {
     public class LocalPackageInfo
     {
-        public LocalPackageInfo(PackageFolderReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata, PackageSplitInfo sequence)
+        public LocalPackageInfo(PackageFolderReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata)
         {
             LockProvider = new PackageLocks();
             DownloadMeasure = new MeasureItem(MeasureType.Throughput);
@@ -17,11 +17,9 @@ namespace ShareCluster.Packaging
             DownloadStatus = downloadStatus ?? throw new ArgumentNullException(nameof(downloadStatus));
             Hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
             Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
-            Sequence = sequence ?? throw new ArgumentNullException(nameof(sequence));
             if (!Reference.Id.Equals(DownloadStatus.PackageId)) throw new ArgumentException("Invalid hash.", nameof(downloadStatus));
             if (!Reference.Id.Equals(Hashes.PackageId)) throw new ArgumentException("Invalid hash.", nameof(hashes));
             if (!Reference.Id.Equals(Metadata.PackageId)) throw new ArgumentException("Invalid hash.", nameof(metadata));
-            if (!Metadata.PackageSize.Equals(Sequence.PackageSize)) throw new ArgumentException("Invalid size of package sequence.", nameof(sequence));
         }
 
         public Id Id => Reference.Id;
@@ -29,7 +27,7 @@ namespace ShareCluster.Packaging
         public PackageDownloadInfo DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }
         public Dto.PackageMeta Metadata { get; }
-        public PackageSplitInfo Sequence { get; }
+        public PackageSplitInfo SplitInfo => Hashes.PackageSplitInfo
         public PackageLocks LockProvider { get; }
         public MeasureItem DownloadMeasure { get; }
         public MeasureItem UploadMeasure { get; }
