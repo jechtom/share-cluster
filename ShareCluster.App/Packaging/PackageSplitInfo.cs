@@ -66,5 +66,20 @@ namespace ShareCluster.Packaging
             if (segmentIndex < 0 || segmentIndex >= SegmentsCount) throw new ArgumentOutOfRangeException(nameof(segmentIndex));
             return (segmentIndex == SegmentsCount - 1) ? SegmentLastLength : SegmentLength;
         }
+
+        /// <summary>
+        /// Gets size of all given segments together.
+        /// </summary>
+        /// <param name="parts"></param>
+        /// <returns></returns>
+        public long GetSizeOfSegments(Span<int> parts)
+        {
+            long result = 0;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                result += (parts[i] == SegmentsCount - 1) ? SegmentLastLength : SegmentLength;
+            }
+            return result;
+        }
     }
 }

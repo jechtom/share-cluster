@@ -39,7 +39,7 @@ namespace ShareCluster.WebInterface
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
             if (start)
             {
                 _packageDownloadManager.StartDownloadPackage(package);
@@ -52,7 +52,7 @@ namespace ShareCluster.WebInterface
 
         public void TryVerifyPackage(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
 
             // create lock
             lock(_syncLock)
@@ -145,7 +145,7 @@ namespace ShareCluster.WebInterface
 
         public void ExtractPackage(Id packageId, string folder, bool validate)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
 
             // run
             var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(package, folder, validate: validate)));
@@ -164,7 +164,7 @@ namespace ShareCluster.WebInterface
 
         public void DeletePackage(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
 
             // start
             Task deleteTask = _packageRegistry.DeletePackageAsync(package);
@@ -187,7 +187,7 @@ namespace ShareCluster.WebInterface
 
         public PackageOperationViewModel GetPackageOrNull(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.LockProvider.IsMarkedToDelete) return null;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return null;
             return new PackageOperationViewModel()
             {
                 Id = package.Id,

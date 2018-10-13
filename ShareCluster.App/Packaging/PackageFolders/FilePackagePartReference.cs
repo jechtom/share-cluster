@@ -6,11 +6,11 @@ using System.Text;
 namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
-    /// Describes reference to part of data stream.
+    /// Reference to part of data file.
     /// </summary>
-    public class PackageSequenceStreamPart
+    public class FilePackagePartReference
     {
-        public PackageSequenceStreamPart(
+        public FilePackagePartReference(
             string path,
             long partLength,
             long segmentOffsetInDataFile,

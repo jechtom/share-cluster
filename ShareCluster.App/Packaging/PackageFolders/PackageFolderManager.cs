@@ -96,9 +96,9 @@ namespace ShareCluster.Packaging.PackageFolders
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (ICreatePackageDataStreamController controller = new CreatePackageFolderDataStreamController(_app.PackageVersion, _app.LoggerFactory, _app.Crypto, _sequenceForNewPackages, buildDirectory.FullName))
+            using (ICreatePackageDataStreamController controller = new CreatePackageFolderController(_app.PackageVersion, _app.LoggerFactory, _app.Crypto, _sequenceForNewPackages, buildDirectory.FullName))
             {
-                using (var packageStream = new PackageDataStream(_app.LoggerFactory, controller) { Measure = writeMeasure })
+                using (var packageStream = new StreamSplitter(_app.LoggerFactory, controller) { Measure = writeMeasure })
                 {
                     var archive = new FolderStreamSerializer(_app.MessageSerializer);
                     archive.SerializeFolderToStream(folderToProcess, packageStream);
@@ -172,9 +172,9 @@ namespace ShareCluster.Packaging.PackageFolders
 
                 // read all and extract
                 var sequencer = new PackageFolderPartsSequencer();
-                IEnumerable<PackageSequenceStreamPart> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SequenceInfo);
+                IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SplitInfo);
                 using (var readController = new ReadPackageDataStreamController(_app.LoggerFactory, folderPackage, allParts))
-                using (var readStream = new PackageDataStream(_app.LoggerFactory, readController))
+                using (var readStream = new StreamSplitter(_app.LoggerFactory, readController))
                 {
                     var archive = new FolderStreamSerializer(_app.MessageSerializer);
                     archive.DeserializeStreamToFolder(readStream, targetFolder);
@@ -279,7 +279,7 @@ namespace ShareCluster.Packaging.PackageFolders
             UpdateMetadata(metadata);
 
             // allocate
-            var allocator = new PackageDataAllocator(_app.LoggerFactory);
+            var allocator = new PackageFolderSpaceAllocator(_app.LoggerFactory);
             allocator.Allocate(packagePath, hashes.PackageSplitInfo, overwrite: false);
 
             // log and build result

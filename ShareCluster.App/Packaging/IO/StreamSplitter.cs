@@ -16,9 +16,9 @@ namespace ShareCluster.Packaging.IO
     /// <remarks>
     /// This class is used to access package data splitted to data files as one stream and also to access different requested parts of data files as one stream.
     /// </remarks>
-    public class PackageDataStream : Stream
+    public class StreamSplitter : Stream
     {
-        ILogger<PackageDataStream> _logger;
+        ILogger<StreamSplitter> _logger;
 
         private long? _length;
         private long _position;
@@ -27,11 +27,11 @@ namespace ShareCluster.Packaging.IO
         private IStreamPart _currentPart;
         private long _nextPartPosition;
         private IEnumerator<IStreamPart> _partsSource;
-        private IPackageDataStreamController _controller;
+        private IStreamSplitterController _controller;
 
-        public PackageDataStream(ILoggerFactory loggerFactory, IPackageDataStreamController controller)
+        public StreamSplitter(ILoggerFactory loggerFactory, IStreamSplitterController controller)
         {
-            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataStream>();
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<StreamSplitter>();
             _controller = controller ?? throw new ArgumentNullException(nameof(controller));
             _length = controller.Length;
             _partsSource = controller.EnumerateParts().GetEnumerator();

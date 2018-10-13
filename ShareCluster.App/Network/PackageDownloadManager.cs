@@ -3,6 +3,8 @@ using ShareCluster.Network;
 using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Packaging.IO;
+using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -171,7 +173,7 @@ namespace ShareCluster.Network
                 if (_downloads.Contains(package)) return;
 
                 // marked for delete? ignore
-                if (package.LockProvider.IsMarkedToDelete) return;
+                if (package.Locks.IsMarkedToDelete) return;
 
                 // already downloaded? ignore
                 if (package.DownloadStatus.IsDownloaded) return;
@@ -218,7 +220,7 @@ namespace ShareCluster.Network
                 var detail = new PackageStatusDetail();
                 Id id = packageIds[i];
                 packages[i] = detail;
-                if (!_packageRegistry.TryGetPackage(id, out LocalPackageInfo info) || info.LockProvider.IsMarkedToDelete)
+                if (!_packageRegistry.TryGetPackage(id, out LocalPackageInfo info) || info.Locks.IsMarkedToDelete)
                 {
                     detail.IsFound = false;
                     continue;
@@ -368,7 +370,7 @@ namespace ShareCluster.Network
                 try
                 {
                     // try allocate lock (make sure it will be release if allocation is approved)
-                    if (!_package.LockProvider.TryLock(out _lockToken))
+                    if (!_package.Locks.TryLock(out _lockToken))
                     {
                         // already marked for deletion
                         return (PackageDownloadSlotResult.MarkedForDelete, null);
@@ -430,7 +432,7 @@ namespace ShareCluster.Network
                 // release package lock
                 if (_isPackageLockReleaseNeeded)
                 {
-                    _package.LockProvider.Unlock(_lockToken);
+                    _package.Locks.Unlock(_lockToken);
                     _isPackageLockReleaseNeeded = false;
                 }
 
@@ -504,29 +506,29 @@ namespace ShareCluster.Network
                 _parent._logger.LogTrace("Downloading \"{0}\" {1:s} - from {2} - segments {3}", package.Metadata.Name, package.Id, peer.ServiceEndPoint, parts.Format());
 
                 var message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
-                var sequencer = new PackageFolderPartsSequencer();
-                long totalSizeOfParts = sequencer.GetSizeOfParts(package.SplitInfo, parts);
+                long totalSizeOfParts = package.SplitInfo.GetSizeOfSegments(parts);
 
                 // remarks:
                 // - write incoming stream to streamValidate
                 // - streamValidate validates data and writes it to nested streamWrite
                 // - streamWrite writes data to data files
 
-                WritePackageDataStreamController controllerWriter = null;
+                IStreamSplitterController controllerWriter = package.PackageDataAccessor.CreateWriteSpecificPackageData(parts);
+
                 Stream streamWrite = null;
 
-                ValidatePackageDataStreamController controllerValidate = null;
+                ValidateHashStreamController controllerValidate = null;
                 Stream streamValidate = null;
+
+                dataac
 
                 Stream createStream()
                 {
-                    IEnumerable<PackageSequenceStreamPart> partsSource = sequencer.GetPartsForSpecificSegments(package.Reference.FolderPath, package.SplitInfo, parts);
-
-                    controllerWriter = new WritePackageDataStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.Reference.FolderPath, package.SplitInfo, partsSource);
+                    var sequencer = new PackageFolderPartsSequencer();
                     streamWrite = new PackageDataStream(_parent._appInfo.LoggerFactory, controllerWriter)
                     { Measure = package.DownloadMeasure };
 
-                    controllerValidate = new ValidatePackageDataStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.SplitInfo, package.Hashes, partsSource, streamWrite);
+                    controllerValidate = new ValidateHashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.SplitInfo, package.Hashes, partsSource, streamWrite);
                     streamValidate = new PackageDataStream(_parent._appInfo.LoggerFactory, controllerValidate);
 
                     return streamValidate;

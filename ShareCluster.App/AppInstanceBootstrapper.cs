@@ -55,8 +55,6 @@ namespace ShareCluster
                 };
             }
 
-            // 
-
             // start UDP announcer/listener
             UdpPeerDiscovery.Start(
                 allowListener: settings.EnableUdpDiscoveryListener,

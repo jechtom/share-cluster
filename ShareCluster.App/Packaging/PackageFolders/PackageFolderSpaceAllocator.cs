@@ -7,46 +7,49 @@ using System.Linq;
 
 namespace ShareCluster.Packaging.PackageFolders
 {
-    public class PackageDataAllocator
+    /// <summary>
+    /// Allocates empty files for package folder.
+    /// </summary>
+    public class PackageFolderSpaceAllocator
     {
-        private readonly ILogger<PackageDataAllocator> logger;
+        private readonly ILogger<PackageFolderSpaceAllocator> _logger;
 
-        public PackageDataAllocator(ILoggerFactory loggerFactory)
+        public PackageFolderSpaceAllocator(ILoggerFactory loggerFactory)
         {
-            logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageDataAllocator>();
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageFolderSpaceAllocator>();
         }
 
-        public void Allocate(string path, PackageSplitInfo sequence, bool overwrite)
+        public void Allocate(string path, PackageSplitInfo splitInfo, bool overwrite)
         {
             if (path == null)
             {
                 throw new ArgumentNullException(nameof(path));
             }
 
-            if (sequence == null)
+            if (splitInfo == null)
             {
-                throw new ArgumentNullException(nameof(sequence));
+                throw new ArgumentNullException(nameof(splitInfo));
             }
 
-            logger.LogInformation($"Allocating {SizeFormatter.ToString(sequence.PackageSize)} for package data in {path}");
+            _logger.LogInformation($"Allocating {SizeFormatter.ToString(splitInfo.PackageSize)} for package data in {path}");
             Directory.CreateDirectory(path);
 
             // check disk space and throw error if not enough
             var driveInfo = new DriveInfo(Directory.GetDirectoryRoot(path));
             long freeSpace = driveInfo.TotalFreeSpace;
-            if(freeSpace < sequence.PackageSize)
+            if(freeSpace < splitInfo.PackageSize)
             {
-                throw new InvalidOperationException($"There is not enough disk space on drive {driveInfo.Name}. Free space is {SizeFormatter.ToString(freeSpace)} but required is {SizeFormatter.ToString(sequence.PackageSize)}.");
+                throw new InvalidOperationException($"There is not enough disk space on drive {driveInfo.Name}. Free space is {SizeFormatter.ToString(freeSpace)} but required is {SizeFormatter.ToString(splitInfo.PackageSize)}.");
             }
 
             // prepare parts
             var sequencer = new PackageFolderPartsSequencer();
-            PackageSequenceStreamPart[] parts = sequencer.GetDataFilesForPackage(path, sequence).ToArray();
+            FilePackagePartReference[] parts = sequencer.GetDataFilesForPackage(path, splitInfo).ToArray();
 
             if (!overwrite)
             {
                 // check if already exists
-                foreach (PackageSequenceStreamPart part in parts)
+                foreach (FilePackagePartReference part in parts)
                 {
                     if (File.Exists(part.Path))
                     {
@@ -56,7 +59,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // allocate
-            foreach (PackageSequenceStreamPart part in parts)
+            foreach (FilePackagePartReference part in parts)
             {
                 using (var fs = new FileStream(part.Path, overwrite ? FileMode.OpenOrCreate : FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
@@ -64,7 +67,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 }
             }
 
-            logger.LogDebug("Allocation completed.");
+            _logger.LogDebug("Allocation completed.");
         }
     }
 }

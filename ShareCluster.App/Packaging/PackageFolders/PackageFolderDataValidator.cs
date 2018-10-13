@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Packaging.IO;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -50,17 +51,17 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // basic input data integrity validations
-            if (packageFolder.Hashes.PackageSize != packageFolder.SequenceInfo.PackageSize)
+            if (packageFolder.Hashes.PackageSize != packageFolder.SplitInfo.PackageSize)
             {
                 return PackageDataValidatorResult.WithError("Hashes file provided invalid package size that does not match with sequence.");
             }
 
-            if (packageFolder.Metadata.PackageSize != packageFolder.SequenceInfo.PackageSize)
+            if (packageFolder.Metadata.PackageSize != packageFolder.SplitInfo.PackageSize)
             {
                 return PackageDataValidatorResult.WithError("Metadata file provided invalid package size that does not match with sequence.");
             }
 
-            if (packageFolder.SequenceInfo.SegmentsCount != packageFolder.Hashes.PackageSegmentsHashes.Length)
+            if (packageFolder.SplitInfo.SegmentsCount != packageFolder.Hashes.PackageSegmentsHashes.Length)
             {
                 return PackageDataValidatorResult.WithError("Hashes file provided invalid count of segments that does not match with sequence.");
             }
@@ -84,7 +85,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 var sequencer = new PackageFolderPartsSequencer();
 
                 // check if data files exists and if correct size
-                foreach (PackageSequenceStreamPart dataFile in sequencer.GetDataFilesForPackage(packageFolder.FolderPath, packageFolder.SequenceInfo))
+                foreach (FilePackagePartReference dataFile in sequencer.GetDataFilesForPackage(packageFolder.FolderPath, packageFolder.SplitInfo))
                 {
                     try
                     {
@@ -111,13 +112,13 @@ namespace ShareCluster.Packaging.PackageFolders
                 if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
 
                 // do file hashes check
-                IEnumerable<PackageSequenceStreamPart> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SequenceInfo);
+                IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SplitInfo);
                 try
                 {
-                    using (var readPackageController = new ReadPackageDataStreamController(loggerFactory, packageFolder, allParts))
-                    using (var readPackageStream = new PackageDataStream(loggerFactory, readPackageController))
-                    using (var validatePackageController = new ValidatePackageDataStreamController(loggerFactory, cryptoProvider, packageFolder.SequenceInfo, packageFolder.Hashes, allParts, nestedStream: null))
-                    using (var validatePackageStream = new PackageDataStream(loggerFactory, validatePackageController))
+                    using (var readPackageController = new PackageFolderDataStreamController(loggerFactory, allParts))
+                    using (var readPackageStream = new StreamSplitter(loggerFactory, readPackageController))
+                    using (var validatePackageController = new ValidateHashStreamController(loggerFactory, cryptoProvider, packageFolder.Hashes, allParts, nestedStream: null))
+                    using (var validatePackageStream = new StreamSplitter(loggerFactory, validatePackageController))
                     {
                         await readPackageStream.CopyToAsync(validatePackageStream);
                     }

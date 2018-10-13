@@ -8,7 +8,7 @@ namespace ShareCluster.Packaging.IO
     /// <summary>
     /// Controls how data files are read or written.
     /// </summary>
-    public interface IPackageDataStreamController : IDisposable
+    public interface IStreamSplitterController : IDisposable
     {
         void OnStreamClosed();
         bool CanWrite { get; }

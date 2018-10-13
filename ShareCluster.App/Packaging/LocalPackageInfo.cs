@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Network;
+using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
 
 namespace ShareCluster.Packaging
@@ -10,7 +11,7 @@ namespace ShareCluster.Packaging
     {
         public LocalPackageInfo(PackageFolderReference reference, PackageDownloadInfo downloadStatus, Dto.PackageHashes hashes, Dto.PackageMeta metadata)
         {
-            LockProvider = new PackageLocks();
+            Locks = new PackageLocks();
             DownloadMeasure = new MeasureItem(MeasureType.Throughput);
             UploadMeasure = new MeasureItem(MeasureType.Throughput);
             Reference = reference ?? throw new ArgumentNullException(nameof(reference));
@@ -27,10 +28,11 @@ namespace ShareCluster.Packaging
         public PackageDownloadInfo DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }
         public Dto.PackageMeta Metadata { get; }
-        public PackageSplitInfo SplitInfo => Hashes.PackageSplitInfo
-        public PackageLocks LockProvider { get; }
+        public PackageSplitInfo SplitInfo => Hashes.PackageSplitInfo;
+        public PackageLocks Locks { get; }
         public MeasureItem DownloadMeasure { get; }
         public MeasureItem UploadMeasure { get; }
+        public IPackageDataAccessor PackageDataAccessor => throw new NotImplementedException();
         public override string ToString() => $"\"{Metadata.Name}\" {Id:s} ({SizeFormatter.ToString(Metadata.PackageSize)})";
     }
 }

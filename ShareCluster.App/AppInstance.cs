@@ -13,6 +13,7 @@ using ShareCluster.Network.Http;
 using ShareCluster.WebInterface;
 using System.Reflection;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using ShareCluster.Packaging.IO;
 
 namespace ShareCluster
 {
@@ -85,6 +86,7 @@ namespace ShareCluster
             services.AddSingleton<IClock>(_appInfo.Clock);
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<UdpPeerDiscovery>();
+            services.AddSingleton<PackageHashesSerializer>();
             services.AddSingleton<NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<LocalPackageManager>();

@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace ShareCluster.Packaging.PackageFolders
+namespace ShareCluster.Packaging.IO
 {
     /// <summary>
     /// Provides creating archive from file system and extract files and folder from archive.
@@ -48,7 +48,7 @@ namespace ShareCluster.Packaging.PackageFolders
         /// <summary>
         /// Gets current version of serializer. This is mechanism to prevent version mismatch if newer version of serializer will be released.
         /// </summary>
-        public VersionNumber StreamSerializerVersion { get; } = new VersionNumber(1);
+        public VersionNumber SerializerVersion { get; } = new VersionNumber(1);
 
         public FolderStreamSerializer(IMessageSerializer serializer)
         {
@@ -77,7 +77,7 @@ namespace ShareCluster.Packaging.PackageFolders
             if (!rootPath.Exists) throw new InvalidOperationException($"Folder not found: { sourceDirectoryName }");
 
             // write version
-            _serializer.Serialize(StreamSerializerVersion, stream);
+            _serializer.Serialize(SerializerVersion, stream);
 
             var foldersToProcessStack = new Stack<DirectoryInfo>(); // use stack (instead of queue) to process sub-folders first
             var foldersTreeStack = new Stack<DirectoryInfo>();
@@ -174,7 +174,11 @@ namespace ShareCluster.Packaging.PackageFolders
             rootDirectoryInfo.Create();
 
             VersionNumber version = _serializer.Deserialize<VersionNumber>(readStream);
-            ThrowIfVersionNotEqual(expectedVersion: StreamSerializerVersion, foundVersion: version);
+            FormatVersionMismatchException.ThrowIfDifferent(
+                expectedVersion: SerializerVersion,
+                actualVersion: version,
+                "Unsupported version of data in given stream."
+            );
 
             var foldersStack = new Stack<string>();
 
@@ -245,17 +249,6 @@ namespace ShareCluster.Packaging.PackageFolders
                 var fileInfo = new FileInfo(path);
                 ApplyAttributes(fileInfo, entry);
             }
-        }
-
-        private static void ThrowIfVersionNotEqual(VersionNumber expectedVersion, VersionNumber foundVersion)
-        {
-            if (expectedVersion.Equals(foundVersion)) return;
-
-            throw new PackageVersionMismatchException(
-                expectedVersion,
-                foundVersion,
-                $"Version mismatch in given stream. Expected {expectedVersion} but found was {foundVersion}."
-                );
         }
 
         private void ApplyAttributes(FileSystemInfo fileSystemInfo, PackageEntry entry)

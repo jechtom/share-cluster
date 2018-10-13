@@ -138,7 +138,7 @@ namespace ShareCluster.Network
             }
 
             // obtain lock
-            if (!package.LockProvider.TryLock(out object lockToken))
+            if (!package.Locks.TryLock(out object lockToken))
             {
                 return (null, DataResponseFaul.CreateDataPackageNotFoundMessage());
             }
@@ -151,7 +151,7 @@ namespace ShareCluster.Network
             var stream = new PackageDataStream(_appInfo.LoggerFactory, controller) { Measure = package.UploadMeasure };
             stream.Disposing += () => {
                 int currentSlots = Interlocked.Increment(ref _uploadSlots);
-                package.LockProvider.Unlock(lockToken);
+                package.Locks.Unlock(lockToken);
             };
             return (stream, null);
         }
@@ -176,7 +176,7 @@ namespace ShareCluster.Network
                         }
 
                         // obtain lock
-                        if (package.LockProvider.TryLock(out object lockToken))
+                        if (package.Locks.TryLock(out object lockToken))
                         {
                             // create reader stream
                             var sequencer = new PackageFolderPartsSequencer();
@@ -187,7 +187,7 @@ namespace ShareCluster.Network
                             stream.Disposing += () =>
                             {
                                 int currentSlots = Interlocked.Increment(ref _uploadSlots);
-                                package.LockProvider.Unlock(lockToken);
+                                package.Locks.Unlock(lockToken);
                             };
                             return (stream, null);
                         }

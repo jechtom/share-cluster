@@ -16,7 +16,7 @@ namespace ShareCluster
     /// <summary>
     /// Provides synchronized access package repository and in-memory package cache.
     /// </summary>
-    public class PackageRegistry : IPackageRegistry
+    public class PackageRegistry
     {
         private readonly ILogger<PackageRegistry> _logger;
         private readonly PackageFolderManager _localPackageManager;
@@ -67,7 +67,7 @@ namespace ShareCluster
                     download = _localPackageManager.ReadPackageDownloadStatus(pr, splitInfo);
                     meta = _localPackageManager.ReadPackageMetadata(pr);
 
-                    var item = new LocalPackageInfo(pr, download, hashes, meta, splitInfo);
+                    var item = new LocalPackageInfo(pr, download, hashes, meta);
                     packagesInitData.Add(item);
                 }
                 catch(Exception e)
@@ -213,7 +213,7 @@ namespace ShareCluster
                 throw new ArgumentNullException(nameof(packageInfo));
             }
 
-            if (!packageInfo.LockProvider.TryLock(out object lockToken)) return; // marked to delete?
+            if (!packageInfo.Locks.TryLock(out object lockToken)) return; // marked to delete?
             try
             {
                 // update!
@@ -224,11 +224,11 @@ namespace ShareCluster
             }
             finally
             {
-                packageInfo.LockProvider.Unlock(lockToken);
+                packageInfo.Locks.Unlock(lockToken);
             }
         }
 
-        public async Task DeletePackageAsync(PackageFolder packageFolder)
+        public async Task DeletePackageAsync(LocalPackageInfo packageFolder)
         {
             if (packageFolder == null)
             {
