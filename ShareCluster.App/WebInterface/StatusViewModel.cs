@@ -8,7 +8,7 @@ namespace ShareCluster.WebInterface
 {
     public class StatusViewModel
     {
-        public IEnumerable<LocalPackageInfo> Packages { get; set; }
+        public IEnumerable<LocalPackage> Packages { get; set; }
         public IEnumerable<PeerInfo> Peers { get; set; }
         public IEnumerable<DiscoveredPackage> PackagesAvailableToDownload { get; set; }
         public InstanceHash Instance { get; set; }

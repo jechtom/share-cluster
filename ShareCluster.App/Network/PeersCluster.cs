@@ -56,7 +56,7 @@ namespace ShareCluster.Network
             _packageDownloadManager.DownloadStatusChange += PackageDownloadManager_DownloadStatusChange;
         }
 
-        private void PackageRegistry_LocalPackageDeleted(LocalPackageInfo obj)
+        private void PackageRegistry_LocalPackageDeleted(LocalPackage obj)
         {
             PlanSendingClusterUpdate(notifyAll: true);
         }
@@ -70,7 +70,7 @@ namespace ShareCluster.Network
             }
         }
 
-        private void PackageRegistry_NewLocalPackageCreated(LocalPackageInfo obj)
+        private void PackageRegistry_NewLocalPackageCreated(LocalPackage obj)
         {
             // new local package created? announce it to peers
             PlanSendingClusterUpdate(notifyAll: true);
@@ -109,7 +109,7 @@ namespace ShareCluster.Network
             }
         }
         
-        public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackageInfo package, int[] requestedSegments)
+        public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackage package, int[] requestedSegments)
         {
             if (package == null)
             {

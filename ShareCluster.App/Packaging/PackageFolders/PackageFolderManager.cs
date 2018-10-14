@@ -82,6 +82,14 @@ namespace ShareCluster.Packaging.PackageFolders
             Directory.CreateDirectory(PackageRepositoryPath);
         }
 
+        public PackageFolder Get(PackageFolderReference reference)
+        {
+            var result = new PackageFolder(packageDefinition, reference.FolderPath, packageMeta);
+            {
+
+            }
+        }
+
         public PackageFolder CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
         {
             var operationMeasure = Stopwatch.StartNew();
@@ -195,13 +203,13 @@ namespace ShareCluster.Packaging.PackageFolders
         public PackageDefinition ReadPackageHashesFile(PackageFolderReference reference)
         {
             PackageDefinitionDto dto = ReadPackageFile<PackageDefinitionDto>(reference, PackageHashesFileName);
-            PackageDefinition result = _app.PackageDefinitionSerializer.Deserialize(dto);
+            PackageDefinition result = _app.PackageDefinitionSerializer.Deserialize(dto, reference.Id);
             return result;
         }
 
         public PackageDownloadInfo ReadPackageDownloadStatus(PackageFolderReference reference, PackageSplitInfo sequenceInfo)
         {
-            PackageDownload dto = ReadPackageFile<PackageDownload>(reference, PackageDownloadFileName);
+            PackageDownloadDto dto = ReadPackageFile<PackageDownloadDto>(reference, PackageDownloadFileName);
             var result = new PackageDownloadInfo(dto, sequenceInfo);
             return result;
         }
@@ -212,8 +220,7 @@ namespace ShareCluster.Packaging.PackageFolders
             return dto;
         }
 
-        [Obsolete("This should be moved out of this specific implementation.")]
-        public T ReadPackageFile<T>(PackageFolderReference reference, string fileName) where T : class, IPackageInfoDto
+        public T ReadPackageFile<T>(PackageFolderReference reference, string fileName) where T : class
         {
             if (reference == null)
             {
@@ -238,14 +245,6 @@ namespace ShareCluster.Packaging.PackageFolders
                 throw;
             }
 
-            if (!reference.Id.Equals(data.PackageId))
-            {
-                _logger.LogError($"Package at {reference.FolderPath} has mismatch hash. Expected {reference.Id:s}, actual {data.PackageId:s}.");
-                throw new InvalidOperationException("Local package hash mismatch.");
-            }
-
-            _app.CompatibilityChecker.ThrowIfNotCompatibleWith(CompatibilitySet.Package, $"{filePath}", data.Version);
-
             return data;
         }
 
@@ -261,7 +260,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Folder deleted {packageReference.FolderPath}.");
         }
 
-        public LocalPackageInfo RegisterPackage(PackageDefinition hashes, PackageMeta metadata)
+        public LocalPackage RegisterPackage(PackageDefinition hashes, PackageMeta metadata)
         {
             if (hashes == null)
             {
@@ -292,7 +291,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
 
             var reference = new PackageFolderReference(hashes.PackageId, packagePath);
-            var result = new LocalPackageInfo(reference, downloadStatus, hashes, metadata);
+            var result = new LocalPackage(reference, downloadStatus, hashes, metadata);
             return result;
         }
 

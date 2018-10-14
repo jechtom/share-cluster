@@ -6,7 +6,7 @@ using System.Text;
 namespace ShareCluster.Packaging.Dto
 {
     [ProtoContract]
-    public class PackageDownload : IPackageInfoDto
+    public class PackageDownloadDto
     {
         [ProtoMember(1)]
         public virtual VersionNumber Version { get; set; }

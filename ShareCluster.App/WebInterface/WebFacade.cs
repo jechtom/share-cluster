@@ -37,7 +37,7 @@ namespace ShareCluster.WebInterface
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
             if (start)
             {
                 _packageDownloadManager.StartDownloadPackage(package);
@@ -50,7 +50,7 @@ namespace ShareCluster.WebInterface
 
         public void TryVerifyPackage(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // create lock
             lock(_syncLock)
@@ -143,7 +143,7 @@ namespace ShareCluster.WebInterface
 
         public void ExtractPackage(Id packageId, string folder, bool validate)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // run
             var packageFolder = new PackageFolder(package.Definition, package.Reference.FolderPath, package.Metadata);
@@ -164,7 +164,7 @@ namespace ShareCluster.WebInterface
 
         public void DeletePackage(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // start
             Task deleteTask = _packageRegistry.DeletePackageAsync(package);
@@ -187,7 +187,7 @@ namespace ShareCluster.WebInterface
 
         public PackageOperationViewModel GetPackageOrNull(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return null;
+            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return null;
             return new PackageOperationViewModel()
             {
                 Id = package.Id,

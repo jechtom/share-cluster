@@ -14,20 +14,20 @@ namespace ShareCluster
     /// </summary>
     public interface IPackageRegistry
     {
-        LocalPackageInfo[] ImmutablePackages { get; }
+        LocalPackage[] ImmutablePackages { get; }
         IImmutableList<PackageStatus> ImmutablePackagesStatuses { get; }
         DiscoveredPackage[] ImmutableDiscoveredPackages { get; }
 
-        event Action<LocalPackageInfo> LocalPackageCreated;
+        event Action<LocalPackage> LocalPackageCreated;
         event Action<DiscoveredPackage> RemotePackageDiscovered;
-        event Action<LocalPackageInfo> LocalPackageDeleting;
-        event Action<LocalPackageInfo> LocalPackageDeleted;
+        event Action<LocalPackage> LocalPackageDeleting;
+        event Action<LocalPackage> LocalPackageDeleted;
 
         void RegisterDiscoveredPackages(IEnumerable<DiscoveredPackage> enumerable);
-        LocalPackageInfo SaveRemotePackage(PackageDefinitionDto hashes, PackageMeta meta);
-        LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure);
-        bool TryGetPackage(Id packageHash, out LocalPackageInfo package);
-        void UpdateDownloadStatus(LocalPackageInfo packageInfo);
-        Task DeletePackageAsync(LocalPackageInfo package);
+        LocalPackage SaveRemotePackage(PackageDefinitionDto hashes, PackageMeta meta);
+        LocalPackage CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure);
+        bool TryGetPackage(Id packageHash, out LocalPackage package);
+        void UpdateDownloadStatus(LocalPackage packageInfo);
+        Task DeletePackageAsync(LocalPackage package);
     }
 }

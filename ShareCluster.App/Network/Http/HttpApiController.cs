@@ -31,7 +31,7 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public PackageResponse Package([FromBody]PackageRequest request)
         {
-            if (!_packageRegistry.TryGetPackage(request.PackageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete)
+            if (!_packageRegistry.TryGetPackage(request.PackageId, out LocalPackage package) || package.Locks.IsMarkedToDelete)
             {
                 return new PackageResponse()
                 {
@@ -70,7 +70,7 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
-            if (!_packageRegistry.TryGetPackage(request.PackageHash, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete)
+            if (!_packageRegistry.TryGetPackage(request.PackageHash, out LocalPackage package) || package.Locks.IsMarkedToDelete)
             {
                 return new ObjectResult(DataResponseFaul.CreateDataPackageNotFoundMessage());
             }

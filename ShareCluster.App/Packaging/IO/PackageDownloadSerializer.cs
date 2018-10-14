@@ -8,10 +8,9 @@ using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Packaging.IO
 {
-    public class PackageDefinitionSerializer
+    public class PackageDownloadSerializer
     {
         private readonly IMessageSerializer _serializer;
-        private readonly CryptoProvider _cryptoProvider;
         private readonly ILogger<PackageDefinitionSerializer> _logger;
 
         /// <summary>
@@ -19,16 +18,15 @@ namespace ShareCluster.Packaging.IO
         /// </summary>
         public VersionNumber SerializerVersion { get; } = new VersionNumber(1);
 
-        public PackageDefinitionSerializer(IMessageSerializer serializer, CryptoProvider cryptoProvider, ILogger<PackageDefinitionSerializer> logger)
+        public PackageDownloadSerializer(IMessageSerializer serializer, ILogger<PackageDefinitionSerializer> logger)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-            _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public PackageDefinitionDto Serialize(PackageDefinition value)
+        public PackageDownloadDto Serialize(PackageDownload value)
         {
-            var result = new PackageDefinitionDto(
+            var result = new PackageDownloadDto(
                 version: SerializerVersion,
                 packageId: value.PackageId,
                 packageSize: value.PackageSize,
@@ -39,7 +37,7 @@ namespace ShareCluster.Packaging.IO
             return result;
         }
 
-        public PackageDefinition Deserialize(PackageDefinitionDto dto, Id packageId)
+        public PackageDownload Deserialize(PackageDownloadDto dto, Id packageId)
         {
             if (dto == null)
             {
@@ -47,28 +45,10 @@ namespace ShareCluster.Packaging.IO
             }
 
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
-
-            var splitInfo = new PackageSplitInfo(
-                baseInfo: new PackageSplitBaseInfo(
-                    dataFileLength: dto.DataFileLength,
-                    segmentLength: dto.SegmentLength
-                    ),
-                packageSize: dto.PackageSize
-            );
-
-            var result = new PackageDefinition(
-                packageId: dto.PackageId,
-                packageSegmentsHashes: dto.PackageSegmentsHashes.ToImmutableArray(),
-                packageSplitInfo: splitInfo
-            );
+            
+            var result = new PackageDownload(dto.PackageId, dto.);
 
             // verify
-            Id expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
-            if(expectedId != result.PackageId)
-            {
-                throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);
-            }
-
             if (packageId != result.PackageId)
             {
                 throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);

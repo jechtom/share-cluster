@@ -10,7 +10,7 @@ namespace ShareCluster.Network.Messages
     [ProtoContract]
     public class PackageStatus
     {
-        private readonly LocalPackageInfo _packageInfo;
+        private readonly LocalPackage _packageInfo;
         private readonly bool _useDataFromPackage;
 
         private PackageMeta _meta;
@@ -19,7 +19,7 @@ namespace ShareCluster.Network.Messages
         /// <summary>
         /// For serialization.
         /// </summary>
-        public PackageStatus(LocalPackageInfo packageInfo)
+        public PackageStatus(LocalPackage packageInfo)
         {
             _packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
             _useDataFromPackage = true;

@@ -20,18 +20,18 @@ namespace ShareCluster
     {
         private readonly ILogger<PackageRegistry> _logger;
         private readonly PackageFolderManager _localPackageManager;
-        private Dictionary<Id, LocalPackageInfo> _localPackages;
+        private Dictionary<Id, LocalPackage> _localPackages;
         private Dictionary<Id, DiscoveredPackage> _discoveredPackages;
         private readonly object _packagesLock = new object();
 
         // pre-calculated
         private ImmutableList<PackageStatus> _immutablePackagesStatus;
-        private LocalPackageInfo[] _immutablePackages;
+        private LocalPackage[] _immutablePackages;
         private DiscoveredPackage[] _immutableDiscoveredPackagesArray;
 
         public event Action<DiscoveredPackage> RemotePackageDiscovered;
-        public event Action<LocalPackageInfo> LocalPackageDeleting;
-        public event Action<LocalPackageInfo> LocalPackageDeleted;
+        public event Action<LocalPackage> LocalPackageDeleting;
+        public event Action<LocalPackage> LocalPackageDeleted;
 
         public PackageRegistry(ILoggerFactory loggerFactory, PackageFolderManager localPackageManager)
         {
@@ -42,17 +42,17 @@ namespace ShareCluster
 
         public IImmutableList<PackageStatus> ImmutablePackagesStatuses => _immutablePackagesStatus;
 
-        public LocalPackageInfo[] ImmutablePackages => _immutablePackages;
+        public LocalPackage[] ImmutablePackages => _immutablePackages;
 
         public DiscoveredPackage[] ImmutableDiscoveredPackages => _immutableDiscoveredPackagesArray;
 
         private void Init()
         {
-            _localPackages = new Dictionary<Id, LocalPackageInfo>();
+            _localPackages = new Dictionary<Id, LocalPackage>();
 
             PackageFolderReference[] packageReferences = _localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
 
-            var packagesInitData = new List<LocalPackageInfo>();
+            var packagesInitData = new List<LocalPackage>();
             foreach (PackageFolderReference pr in packageReferences)
             {
                 PackageDefinition definition;
@@ -66,7 +66,7 @@ namespace ShareCluster
                     download = _localPackageManager.ReadPackageDownloadStatus(pr, splitInfo);
                     meta = _localPackageManager.ReadPackageMetadata(pr);
 
-                    var item = new LocalPackageInfo(pr, download, definition, meta);
+                    var item = new LocalPackage(pr, download, definition, meta);
                     packagesInitData.Add(item);
                 }
                 catch(Exception e)
@@ -79,12 +79,12 @@ namespace ShareCluster
             UpdateLists(addToLocal: packagesInitData, removeFromLocal: null, addToDiscovered: Enumerable.Empty<DiscoveredPackage>());
         }
 
-        private void UpdateLists(IEnumerable<LocalPackageInfo> addToLocal, IEnumerable<LocalPackageInfo> removeFromLocal, IEnumerable<DiscoveredPackage> addToDiscovered)
+        private void UpdateLists(IEnumerable<LocalPackage> addToLocal, IEnumerable<LocalPackage> removeFromLocal, IEnumerable<DiscoveredPackage> addToDiscovered)
         {
             lock (_packagesLock)
             {
                 // init
-                if (_localPackages == null) _localPackages = new Dictionary<Id, LocalPackageInfo>();
+                if (_localPackages == null) _localPackages = new Dictionary<Id, LocalPackage>();
                 if (_discoveredPackages == null) _discoveredPackages = new Dictionary<Id, DiscoveredPackage>();
                 bool updateDiscoveredArray = false;
 
@@ -92,11 +92,11 @@ namespace ShareCluster
                 if (addToLocal != null || removeFromLocal != null)
                 {
                     // regenerate local packages list
-                    IEnumerable<LocalPackageInfo> packageSource = _localPackages.Values;
+                    IEnumerable<LocalPackage> packageSource = _localPackages.Values;
                     if (addToLocal != null)
                     {
                         packageSource = packageSource.Concat(addToLocal);
-                        foreach (LocalPackageInfo item in addToLocal)
+                        foreach (LocalPackage item in addToLocal)
                         {
                             _logger.LogDebug("Added local package: {0} - {1}", item, item.DownloadStatus);
                         }
@@ -104,7 +104,7 @@ namespace ShareCluster
                     if (removeFromLocal != null)
                     {
                         packageSource = packageSource.Except(removeFromLocal);
-                        foreach (LocalPackageInfo item in removeFromLocal)
+                        foreach (LocalPackage item in removeFromLocal)
                         {
                             _logger.LogDebug("Removed local package: {0} - {1}", item, item.DownloadStatus);
                         }
@@ -160,10 +160,10 @@ namespace ShareCluster
             }
         }
 
-        public LocalPackageInfo SaveRemotePackage(PackageDefinition definition, PackageMeta meta)
+        public LocalPackage SaveRemotePackage(PackageDefinition definition, PackageMeta meta)
         {
             // register
-            LocalPackageInfo package;
+            LocalPackage package;
             lock (_packagesLock)
             {
                 package = _localPackageManager.RegisterPackage(definition, meta);
@@ -173,7 +173,7 @@ namespace ShareCluster
             return package;
         }
 
-        public LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure)
+        public LocalPackage CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure)
         {
             PackageFolder package = _localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
             throw new InvalidOperationException("Convert to local package");
@@ -182,7 +182,7 @@ namespace ShareCluster
             //return package;
         }
         
-        private void RegisterPackageInternal(LocalPackageInfo package)
+        private void RegisterPackageInternal(LocalPackage package)
         {
             lock (_packagesLock)
             {
@@ -190,11 +190,11 @@ namespace ShareCluster
                 {
                     throw new InvalidOperationException("Registering package with existing hash.");
                 }
-                UpdateLists(addToLocal: new LocalPackageInfo[] { package }, removeFromLocal: null, addToDiscovered: null);
+                UpdateLists(addToLocal: new LocalPackage[] { package }, removeFromLocal: null, addToDiscovered: null);
             }
         }
 
-        public bool TryGetPackage(Id packageHash, out LocalPackageInfo package)
+        public bool TryGetPackage(Id packageHash, out LocalPackage package)
         {
             lock(_packagesLock)
             {
@@ -206,7 +206,7 @@ namespace ShareCluster
             }
         }
 
-        public void UpdateDownloadStatus(LocalPackageInfo packageInfo)
+        public void UpdateDownloadStatus(LocalPackage packageInfo)
         {
             if (packageInfo == null)
             {
@@ -228,7 +228,7 @@ namespace ShareCluster
             }
         }
 
-        public async Task DeletePackageAsync(LocalPackageInfo packageFolder)
+        public async Task DeletePackageAsync(LocalPackage packageFolder)
         {
             if (packageFolder == null)
             {

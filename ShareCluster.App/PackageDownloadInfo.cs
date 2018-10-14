@@ -10,14 +10,14 @@ namespace ShareCluster
 {
     public class PackageDownloadInfo
     {
-        private readonly PackageDownload _dto;
+        private readonly PackageDownloadDto _dto;
         private readonly object _syncLock = new object();
         private readonly PackageSplitInfo _sequenceInfo;
         private readonly byte _lastByteMask;
         private readonly HashSet<int> _partsInProgress;
         private long _progressBytesReserved;
 
-        public PackageDownloadInfo(PackageDownload dto, PackageSplitInfo sequenceInfo)
+        public PackageDownloadInfo(PackageDownloadDto dto, PackageSplitInfo sequenceInfo)
         {
             _dto = dto ?? throw new ArgumentNullException(nameof(dto));
             _sequenceInfo = sequenceInfo ?? throw new ArgumentNullException(nameof(sequenceInfo));
@@ -34,7 +34,7 @@ namespace ShareCluster
                 throw new ArgumentNullException(nameof(sequenceInfo));
             }
 
-            var data = new PackageDownload()
+            var data = new PackageDownloadDto()
             {
                 PackageId = packageId,
                 IsDownloading = false, // already downloaded
@@ -54,7 +54,7 @@ namespace ShareCluster
 
             int bitmapSize = GetBitmapSizeForPackage(sequenceInfo.SegmentsCount);
 
-            var data = new PackageDownload()
+            var data = new PackageDownloadDto()
             {
                 PackageId = packageId,
                 IsDownloading = false, // don't start automatically - this needs to be handled by downloader
@@ -67,7 +67,7 @@ namespace ShareCluster
         
         private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
 
-        public PackageDownload Data => _dto;
+        public PackageDownloadDto Data => _dto;
         public Id PackageId => _dto.PackageId;
         public bool IsDownloaded => _dto.DownloadedBytes == _sequenceInfo.PackageSize;
         public bool IsMoreToDownload => Data.DownloadedBytes + _progressBytesReserved < _sequenceInfo.PackageSize;

@@ -48,7 +48,7 @@ namespace ShareCluster.Network
 
         public event Action NewDataAvailable;
         
-        public void InterestedInPackage(LocalPackageInfo packageInfo)
+        public void InterestedInPackage(LocalPackage packageInfo)
         {
             _logger.LogDebug("Started looking for peers having: {0}", packageInfo);
             lock(_syncLock)
@@ -71,7 +71,7 @@ namespace ShareCluster.Network
             TryRunStatusCallbackNow();
         }
 
-        public void NotInterestedInPackage(LocalPackageInfo packageInfo)
+        public void NotInterestedInPackage(LocalPackage packageInfo)
         {
             _logger.LogDebug("Stopped looking for peers having: {0}", packageInfo);
             lock (_syncLock)
@@ -282,7 +282,7 @@ namespace ShareCluster.Network
             return (peer, result: statusResult, success);
         }
 
-        public List<PeerInfo> GetClientListForPackage(LocalPackageInfo package)
+        public List<PeerInfo> GetClientListForPackage(LocalPackage package)
         {
             lock (_syncLock)
             {
@@ -291,7 +291,7 @@ namespace ShareCluster.Network
             }
         }
 
-        public bool TryGetBitmapOfPeer(LocalPackageInfo package, PeerInfo peer, out byte[] remoteBitmap)
+        public bool TryGetBitmapOfPeer(LocalPackage package, PeerInfo peer, out byte[] remoteBitmap)
         {
             lock (_syncLock)
             {
@@ -305,7 +305,7 @@ namespace ShareCluster.Network
             }
         }
 
-        public void PostponePeersPackage(LocalPackageInfo package, PeerInfo peer)
+        public void PostponePeersPackage(LocalPackage package, PeerInfo peer)
         {
             _logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.ServiceEndPoint, package);
 
@@ -327,7 +327,7 @@ namespace ShareCluster.Network
             }
         }
 
-        public void PostponePeerReset(PeerInfo peer, LocalPackageInfo package)
+        public void PostponePeerReset(PeerInfo peer, LocalPackage package)
         {
             lock (_syncLock)
             {
@@ -338,7 +338,7 @@ namespace ShareCluster.Network
             }
         }
 
-        public void StatsUpdateSuccessPart(PeerInfo peer, LocalPackageInfo package, long downloadedBytes)
+        public void StatsUpdateSuccessPart(PeerInfo peer, LocalPackage package, long downloadedBytes)
         {
             lock (_syncLock)
             {
@@ -350,10 +350,10 @@ namespace ShareCluster.Network
         class PackagePeersStatus
         {
             private readonly ILogger<PackagePeersStatus> _logger;
-            private readonly LocalPackageInfo _packageInfo;
+            private readonly LocalPackage _packageInfo;
             private readonly Dictionary<PeerInfo, PackagePeerStatus> _peerStatuses;
 
-            public PackagePeersStatus(ILogger<PackagePeersStatus> logger, LocalPackageInfo packageInfo)
+            public PackagePeersStatus(ILogger<PackagePeersStatus> logger, LocalPackage packageInfo)
             {
                 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
                 _packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
