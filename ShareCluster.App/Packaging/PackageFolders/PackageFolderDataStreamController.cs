@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
-    /// Controller to use with <see cref="StreamSplitter"/> when writing or reading data to/from package folder.
+    /// Controller to use with <see cref="ControlledStream"/> when writing or reading data to/from package folder.
     /// </summary>
-    public class PackageFolderDataStreamController : IStreamSplitterController
+    public class PackageFolderDataStreamController : IStreamController
     {
         private readonly ILogger<PackageFolderDataStreamController> _logger;
         private readonly CurrentPart[] _parts;

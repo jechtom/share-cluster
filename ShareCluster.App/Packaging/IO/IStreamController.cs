@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.IO
 {
     /// <summary>
-    /// Controls how data files are read or written.
+    /// Controls the flow of data in <see cref="ControlledStream"/>.
     /// </summary>
-    public interface IStreamSplitterController : IDisposable
+    public interface IStreamController : IDisposable
     {
         void OnStreamClosed();
         bool CanWrite { get; }

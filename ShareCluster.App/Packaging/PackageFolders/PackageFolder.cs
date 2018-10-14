@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Packaging.PackageFolders
 {
@@ -9,18 +10,18 @@ namespace ShareCluster.Packaging.PackageFolders
     /// </summary>
     public class PackageFolder : IPackageFolderReference
     {
-        public PackageFolder(Id packageId, string directoryPath, PackageSplitInfo splitInfo)
+        public PackageFolder(PackageHashes hashes, string directoryPath, PackageMeta packageMeta)
         {
-            Id = packageId;
+            Hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
             FolderPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
-            SplitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
+            Metadata = packageMeta ?? throw new ArgumentNullException(nameof(packageMeta));
             Locks = new PackageLocks();
         }
 
-        public Id Id { get; }
-        public PackageSplitInfo SplitInfo { get; }
+        public Id Id => Hashes.PackageId;
+        public PackageSplitInfo SplitInfo => Hashes.PackageSplitInfo;
         public string FolderPath { get; }
-        public PackageLocks Locks { get; }
+        public PackageLocks Locks { get; } // TODO get out
         public PackageDownloadInfo DownloadStatus { get; }
         public Dto.PackageHashes Hashes { get; }
         public Dto.PackageMeta Metadata { get; }

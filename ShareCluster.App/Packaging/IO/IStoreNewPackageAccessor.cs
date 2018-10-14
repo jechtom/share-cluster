@@ -7,6 +7,6 @@ namespace ShareCluster.Packaging.IO
     public interface IStoreNewPackageAccessor
     {
         void PreAllocate();
-        IStreamSplitterController CreateWriteController();
+        IStreamController CreateWriteController();
     }
 }

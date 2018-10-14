@@ -82,7 +82,7 @@ namespace ShareCluster.Packaging.PackageFolders
             Directory.CreateDirectory(PackageRepositoryPath);
         }
 
-        public LocalPackageInfo CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
+        public PackageFolder CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
         {
             var operationMeasure = Stopwatch.StartNew();
 
@@ -96,15 +96,25 @@ namespace ShareCluster.Packaging.PackageFolders
             // create package archive
             PackageHashes packageHashes;
             int entriesCount;
-            using (var controller = new CreatePackageFolderController(_app.LoggerFactory, _app.PackageHashesSerializer, _app.Crypto, _defaultSplitInfo, buildDirectory.FullName))
+
+            var computeHashBehavior = new ComputeHashStreamBehavior(_app.LoggerFactory, _defaultSplitInfo);
+
+            using (var dataFilesController = new CreatePackageFolderController(_app.LoggerFactory, _defaultSplitInfo, buildDirectory.FullName))
+            using (var dataFilesStream = new ControlledStream(_app.LoggerFactory, dataFilesController) { Measure = writeMeasure })
             {
-                using (var packageStream = new StreamSplitter(_app.LoggerFactory, controller) { Measure = writeMeasure })
+                using (var hashStreamController = new HashStreamController(_app.LoggerFactory, _app.Crypto, computeHashBehavior, dataFilesStream))
+                using (var hashStream = new ControlledStream(_app.LoggerFactory, hashStreamController))
                 {
                     var archive = new FolderStreamSerializer(_app.MessageSerializer);
-                    archive.SerializeFolderToStream(folderToProcess, packageStream);
+                    archive.SerializeFolderToStream(folderToProcess, hashStream);
                     entriesCount = archive.EntriesCount;
                 }
-                packageHashes = controller.CreatedPackageHashes;
+                packageHashes = new PackageHashes(
+                    _app.PackageHashesSerializer.SerializerVersion,
+                    computeHashBehavior.BuildPackageHashes(),
+                    _app.Crypto,
+                    dataFilesController.ResultSplitInfo
+                );
             }
 
             // store package hashes
@@ -137,7 +147,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
             var reference = new PackageFolderReference(packageHashes.PackageId, packagePath);
-            var result = new LocalPackageInfo(reference, downloadStatus, packageHashes, metadata);
+            var result = new PackageFolder(packageHashes, packagePath, metadata);
             return result;
         }
 
@@ -173,7 +183,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 var sequencer = new PackageFolderPartsSequencer();
                 IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(folderPackage.FolderPath, folderPackage.SplitInfo);
                 using (var readController = new PackageFolderDataStreamController(_app.LoggerFactory, allParts, ReadWriteMode.Read))
-                using (var readStream = new StreamSplitter(_app.LoggerFactory, readController))
+                using (var readStream = new ControlledStream(_app.LoggerFactory, readController))
                 {
                     var archive = new FolderStreamSerializer(_app.MessageSerializer);
                     archive.DeserializeStreamToFolder(readStream, targetFolder);

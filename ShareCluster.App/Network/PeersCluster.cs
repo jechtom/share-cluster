@@ -146,8 +146,8 @@ namespace ShareCluster.Network
 
             // create reader stream
             _logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
-            IStreamSplitterController readPartsController = package.PackageDataAccessor.CreateReadSpecificPackageData(requestedSegments);
-            var stream = new StreamSplitter(_appInfo.LoggerFactory, readPartsController)
+            IStreamController readPartsController = package.PackageDataAccessor.CreateReadSpecificPackageData(requestedSegments);
+            var stream = new ControlledStream(_appInfo.LoggerFactory, readPartsController)
             {
                 Measure = package.UploadMeasure
             };

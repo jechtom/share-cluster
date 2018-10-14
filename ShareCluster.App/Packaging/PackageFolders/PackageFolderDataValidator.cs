@@ -112,13 +112,14 @@ namespace ShareCluster.Packaging.PackageFolders
                 if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
 
                 // do file hashes check
+                var verifyHashBehavior = new VerifyHashStreamBehavior(_loggerFactory, packageFolder.Hashes);
                 IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SplitInfo);
                 try
                 {
                     using (var readPackageController = new PackageFolderDataStreamController(_loggerFactory, allParts, ReadWriteMode.Read))
-                    using (var readPackageStream = new StreamSplitter(_loggerFactory, readPackageController))
-                    using (var validatePackageController = new HashStreamController(_loggerFactory, _cryptoProvider, packageFolder.Hashes, allParts, nestedStream: null))
-                    using (var validatePackageStream = new StreamSplitter(_loggerFactory, validatePackageController))
+                    using (var readPackageStream = new ControlledStream(_loggerFactory, readPackageController))
+                    using (var validatePackageController = new HashStreamController(_loggerFactory, _cryptoProvider, verifyHashBehavior, nestedStream: null))
+                    using (var validatePackageStream = new ControlledStream(_loggerFactory, validatePackageController))
                     {
                         await readPackageStream.CopyToAsync(validatePackageStream);
                     }

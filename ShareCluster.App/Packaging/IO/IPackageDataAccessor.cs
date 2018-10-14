@@ -7,10 +7,9 @@ namespace ShareCluster.Packaging.IO
 {
     public interface IPackageDataAccessor
     {
-        IStreamSplitterController CreateReadAllPackageData();
-        IStreamSplitterController CreateReadSpecificPackageData(int[] parts);
-        IStreamSplitterController CreateWriteSpecificPackageData(int[] parts);
-        IStoreNewPackageAccessor CreateStoreNewPackageAccessor();
+        IStreamController CreateReadAllPackageData();
+        IStreamController CreateReadSpecificPackageData(int[] parts);
+        IStreamController CreateWriteSpecificPackageData(int[] parts);
         Task<PackageDataValidatorResult> ValidatePackageDataAsync(MeasureItem measureItem);
         void DeletePackage();
     }

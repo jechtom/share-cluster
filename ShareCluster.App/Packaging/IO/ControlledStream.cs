@@ -11,14 +11,14 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.IO
 {
     /// <summary>
-    /// Provides customizable stream build up from different parts.
+    /// Provides customizable stream build up from different parts. Use <see cref="IStreamController"/> to provide behavior.
     /// </summary>
     /// <remarks>
     /// This class is used to access package data splitted to data files as one stream and also to access different requested parts of data files as one stream.
     /// </remarks>
-    public class StreamSplitter : Stream
+    public class ControlledStream : Stream
     {
-        ILogger<StreamSplitter> _logger;
+        ILogger<ControlledStream> _logger;
 
         private long? _length;
         private long _position;
@@ -27,11 +27,11 @@ namespace ShareCluster.Packaging.IO
         private IStreamPart _currentPart;
         private long _nextPartPosition;
         private IEnumerator<IStreamPart> _partsSource;
-        private IStreamSplitterController _controller;
+        private IStreamController _controller;
 
-        public StreamSplitter(ILoggerFactory loggerFactory, IStreamSplitterController controller)
+        public ControlledStream(ILoggerFactory loggerFactory, IStreamController controller)
         {
-            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<StreamSplitter>();
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ControlledStream>();
             _controller = controller ?? throw new ArgumentNullException(nameof(controller));
             _length = controller.Length;
             _partsSource = controller.EnumerateParts().GetEnumerator();
@@ -113,6 +113,12 @@ namespace ShareCluster.Packaging.IO
         private async Task<int> ReadOrWriteAsync(bool write, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             int bytesProcessedTotal = 0;
+
+            // verify we are not trying to exceed stream size if defined
+            if(_length != null  && _position + count > _length)
+            {
+                throw new EndOfStreamException($"Can't process more than {_length}B. Stream size is limited for this stream.");
+            }
 
             while (count > 0)
             {

@@ -11,51 +11,46 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.PackageFolders
 {
     /// <summary>
-    /// Controller to use with <see cref="StreamSplitter"/> when creating new package. It will compute hashes and allocate as many space as needed.
+    /// Controller to use with <see cref="ControlledStream"/> when creating new package. It will allocate as many space as needed.
     /// </summary>
-    public class CreatePackageFolderController : IStreamSplitterController       
+    public class CreatePackageFolderController : IStreamController       
     {
         private readonly ILogger<CreatePackageFolderController> _logger;
-        private readonly PackageHashesSerializer _packageHashesSerializer;
-        private readonly CryptoProvider _cryptoProvider;
-        private readonly PackageSplitBaseInfo _sequenceBaseInfo;
+        private readonly PackageSplitBaseInfo _splitBaseInfo;
+        private PackageSplitInfo _resultSplitInfo;
         private readonly string _packageRootPath;
-        private readonly List<Id> _segmentHashes;
-        private Dto.PackageHashes _packageId;
         private CurrentPart _currentPart;
         private long _totalSize;
         private bool _isDisposed;
         private bool _isClosed;
 
-        public CreatePackageFolderController(ILoggerFactory loggerFactory, PackageHashesSerializer packageHashesSerializer, CryptoProvider cryptoProvider, PackageSplitBaseInfo sequenceBaseInfo, string packageRootPath)
+        public CreatePackageFolderController(ILoggerFactory loggerFactory, PackageSplitBaseInfo splitBaseInfo, string packageRootPath)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<CreatePackageFolderController>();
-            _packageHashesSerializer = packageHashesSerializer ?? throw new ArgumentNullException(nameof(packageHashesSerializer));
-            _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            _sequenceBaseInfo = sequenceBaseInfo ?? throw new ArgumentNullException(nameof(sequenceBaseInfo));
+            _splitBaseInfo = splitBaseInfo ?? throw new ArgumentNullException(nameof(splitBaseInfo));
             _packageRootPath = packageRootPath ?? throw new ArgumentNullException(nameof(packageRootPath));
-            _segmentHashes = new List<Id>();
         }
+
+        public PackageSplitInfo ResultSplitInfo =>
+            _resultSplitInfo ?? throw new InvalidOperationException("Result not ready yet.");
 
         public bool CanWrite => true;
 
         public bool CanRead => true; // required, not know why
 
         public long? Length => null; // don't know how much data there will be
-
-        public Dto.PackageHashes CreatedPackageHashes => _packageId ?? throw new InvalidOperationException("Package data are not available at the moment.");
-
+        
         public IEnumerable<IStreamPart> EnumerateParts() =>
             new PackageFolderPartsSequencer()
-                .GetPartsInfinite(_packageRootPath, _sequenceBaseInfo)
-                .Select(p => new CurrentPart(p));
+                .GetDataFilesInfinite(_packageRootPath, _splitBaseInfo)
+                .Select(p => new CurrentPart(p.Path, p.DataFileLength));
 
         public void OnStreamPartChange(IStreamPart oldPart, IStreamPart newPart)
             => OnStreamPartChangeInternal((CurrentPart)oldPart, (CurrentPart)newPart);
         
         public void Dispose()
         {
-            DisposeCurrentPart();
+            CloseAndDisposeCurrentPart();
             _isDisposed = true;
         }
 
@@ -65,10 +60,7 @@ namespace ShareCluster.Packaging.PackageFolders
 
             // do not allow to process twice
             if (_isClosed) return;
-
-            // compute hash of last part
-            ComputeCurrentPartHash();
-
+            
             // trim last data file
             if (_currentPart != null)
             {
@@ -77,12 +69,11 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // dispose all
-            DisposeCurrentPart();
+            CloseAndDisposeCurrentPart();
 
             // build result
-            var sequenceInfo = new PackageSplitInfo(_sequenceBaseInfo, _totalSize);
-            _packageId = new Dto.PackageHashes(_packageHashesSerializer.SerializerVersion, _segmentHashes, _cryptoProvider, sequenceInfo);
-            _logger.LogDebug($"Closed package data files. Written {SizeFormatter.ToString(_totalSize)}. Hash is {_packageId.PackageId:s}.");
+            _resultSplitInfo = new PackageSplitInfo(_splitBaseInfo, _totalSize);
+            _logger.LogDebug($"Closed package data files. Written {SizeFormatter.ToString(_resultSplitInfo.PackageSize)} to {_resultSplitInfo.DataFileLength} data file(s).");
             _isClosed = true;
         }
         
@@ -90,59 +81,35 @@ namespace ShareCluster.Packaging.PackageFolders
         {
             EnsureNotDisposed();
 
-            bool newPartInSameFile = oldPart != null && newPart != null && oldPart.Part.Path == newPart.Part.Path;
-
-            // compute hash for prev part
-            if (oldPart != null) ComputeCurrentPartHash();
-
-            // dispose old stream if changing file
-            if (!newPartInSameFile && oldPart != null) DisposeCurrentPart();
+            // close and dispose current
+            if (oldPart != null)
+            {
+                CloseAndDisposeCurrentPart();
+            }
 
             // update current part
             if (newPart != null)
             {
                 _currentPart = newPart;
 
-                if (!newPartInSameFile)
-                {
-                    // create new file and set expected length
-                    _logger.LogDebug($"Creating new data file {Path.GetFileName(newPart.Part.Path)}. Already wrote {SizeFormatter.ToString(_totalSize)}.");
-                    _currentPart.FileStream = new FileStream(newPart.Part.Path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
-                    _currentPart.FileStream.SetLength(newPart.Part.DataFileLength);
-                }
-
-                // create hash stream and alg for next part and move to correct position in file
-                _currentPart.FileStream.Seek(newPart.Part.SegmentOffsetInDataFile, SeekOrigin.Begin);
-                _currentPart.HashAlgorithm = _cryptoProvider.CreateHashAlgorithm();
-                _currentPart.HashStream = new CryptoStream(_currentPart.FileStream, _currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
+                // create new file and set expected length
+                _logger.LogDebug($"Creating new data file {Path.GetFileName(newPart.Path)}. Already wrote {SizeFormatter.ToString(_totalSize)}.");
+                _currentPart.FileStream = new FileStream(newPart.Path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+                _currentPart.FileStream.SetLength(newPart.DataFileSize);
+                _currentPart.FileStream.Seek(0, SeekOrigin.Begin);
             }
         }
 
-        private void DisposeCurrentPart()
+        private void CloseAndDisposeCurrentPart()
         {
             if (_currentPart == null) return;
 
-            _currentPart.HashStream.Dispose();
-            _currentPart.HashAlgorithm.Dispose();
             _totalSize += _currentPart.FileStream.Length;
+            _currentPart.FileStream.Flush();
             _currentPart.FileStream.Dispose();
             _currentPart = null;
         }
-
-        private void ComputeCurrentPartHash()
-        {
-            if (_currentPart == null) return;
-
-            _currentPart.HashStream.FlushFinalBlock();
-            _currentPart.HashStream.Close();
-            _currentPart.HashStream.Dispose();
-
-            var partHash = new Id(_currentPart.HashAlgorithm.Hash);
-            _segmentHashes.Add(partHash);
-            _currentPart.HashAlgorithm.Dispose();
-            _currentPart.FileStream.Flush();
-        }
-
+        
         private void EnsureNotDisposed()
         {
             if (_isDisposed) throw new InvalidOperationException("Already disposed.");
@@ -150,18 +117,18 @@ namespace ShareCluster.Packaging.PackageFolders
 
         private class CurrentPart : IStreamPart
         {
-            public CurrentPart(FilePackagePartReference part)
+            public CurrentPart(string path, long dataFileSize)
             {
-                Part = part;
+                Path = path;
+                DataFileSize = dataFileSize;
             }
 
-            public FilePackagePartReference Part { get; }
+            public string Path { get; }
+            public long DataFileSize { get; }
             public FileStream FileStream { get; set; }
-            public CryptoStream HashStream { get; set; }
-            public HashAlgorithm HashAlgorithm { get; set; }
 
-            Stream IStreamPart.Stream => HashStream;
-            int IStreamPart.PartLength => checked((int)Part.PartLength);
+            Stream IStreamPart.Stream => FileStream;
+            int IStreamPart.PartLength => checked((int)DataFileSize);
         }
     }
 }

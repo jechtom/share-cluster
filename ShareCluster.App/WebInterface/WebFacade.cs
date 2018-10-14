@@ -146,7 +146,9 @@ namespace ShareCluster.WebInterface
             if (!_packageRegistry.TryGetPackage(packageId, out LocalPackageInfo package) || package.Locks.IsMarkedToDelete) return;
 
             // run
-            var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(package, folder, validate: validate)));
+            var packageFolder = new PackageFolder(package.Hashes, package.Reference.FolderPath, package.Metadata);
+            throw new InvalidOperationException("We should have somewhere packagefolder instance instead of constructing it again");
+            var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(packageFolder, folder, validate: validate)));
 
             // create and register task for starting download
             var task = new LongRunningTask(

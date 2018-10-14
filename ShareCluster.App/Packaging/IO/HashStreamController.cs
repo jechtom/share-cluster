@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,14 +10,13 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.IO
 {
     /// <summary>
-    /// Controller that computes hash of segments to use with <see cref="PackageDataStream"/> and sending it to next stream or to null stream.
+    /// Controller for <see cref="ControlledStream"/> that computes hash of segments and sending it to next stream or to null stream.
     /// </summary>
-    public class HashStreamController : IStreamSplitterController
+    public class HashStreamController : IStreamController
     {
-        private readonly ILogger<PackageFolderDataStreamController> _logger;
+        private readonly ILogger<HashStreamController> _logger;
         private readonly CryptoProvider _cryptoProvider;
-        private readonly Dto.PackageHashes _hashes;
-        private readonly CurrentPart[] _parts;
+        private readonly IHashStreamBehavior _behavior;
         private CurrentPart _currentPart;
         private readonly MemoryStream _memStream;
         private bool _isDisposed;
@@ -27,27 +25,46 @@ namespace ShareCluster.Packaging.IO
         private Stream _nestedStream;
 
         /// <param name="nestedStream">Can be null if you just want to validate hashes.</param>
-        public HashStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, Dto.PackageHashes hashes, IEnumerable<FilePackagePartReference> partsToValidate, Stream nestedStream)
+        public HashStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, IHashStreamBehavior behavior, Stream nestedStream)
         {
-            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageFolderDataStreamController>();
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<HashStreamController>();
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
-            _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
-            _parts = (partsToValidate ?? throw new ArgumentNullException(nameof(partsToValidate))).Select(p => new CurrentPart(p)).ToArray();
-            Length = _parts.Sum(p => p.Part.PartLength);
+            _behavior = behavior ?? throw new ArgumentNullException(nameof(behavior));
 
             // where to write validated data?
             _nestedStream = nestedStream;
             _writeToNestedStream = nestedStream != null;
-            if (_writeToNestedStream) _memStream = new MemoryStream(capacity: (int)_hashes.PackageSplitInfo.SegmentLength);
+            if (_writeToNestedStream && _behavior.IsNestedStreamBufferingEnabled)
+            {
+                if(_behavior.NestedStreamBufferSize <= 0 )
+                {
+                    throw new ArgumentException($"Invalid size of {nameof(behavior.NestedStreamBufferSize)}. Must be positive and non-zero integer.", nameof(behavior));
+                }
+                _memStream = new MemoryStream(capacity: checked((int)_behavior.NestedStreamBufferSize));
+            }
         }
 
         public bool CanWrite => true;
 
         public bool CanRead => true; // required, not know why
 
-        public long? Length { get; }
+        public long? Length => _behavior.TotalLength;
         
-        public IEnumerable<IStreamPart> EnumerateParts() => _parts;
+        public IEnumerable<IStreamPart> EnumerateParts()
+        {
+            int blockIndex = 0;
+            while(true)
+            {
+                var nextPart = new CurrentPart()
+                {
+                    BlockIndex = blockIndex,
+                    MaximumBlockSize = _behavior.ResolveNextBlockMaximumSize(blockIndex)
+                };
+
+                yield return nextPart;
+                blockIndex++;
+            }
+        }
 
         public void OnStreamPartChange(IStreamPart oldPart, IStreamPart newPart)
             => OnStreamPartChangeInternal((CurrentPart)oldPart, (CurrentPart)newPart);
@@ -56,28 +73,29 @@ namespace ShareCluster.Packaging.IO
         {
             EnsureNotDisposed();
 
-            bool keepSameSegment = oldPart != null && newPart != null && oldPart.Part.SegmentIndex == newPart.Part.SegmentIndex;
-
-            // compute hash
-            if(oldPart != null) ComputeCurrentPartHash();
-
-            // TODO: this needs to be fixed this is mess at the moment
-            throw new NotImplementedException();
-
-            // close old one
-            if (!keepSameSegment && oldPart != null) DisposeCurrentPart();
-
+            // compute hash and close old part
+            if (oldPart != null)
+            {
+                ComputeCurrentPartHash();
+                DisposeCurrentPart();
+            }
+            
             // update current part
             if(newPart != null)
             {
                 _currentPart = newPart;
                 _currentPart.HashAlgorithm = _cryptoProvider.CreateHashAlgorithm();
-                if (_writeToNestedStream)
+                if (_writeToNestedStream && _behavior.IsNestedStreamBufferingEnabled)
                 {
-                    // allocate and write to memory stream
+                    // allocate and write to memory stream bufer
                     _memStream.Position = 0;
                     _memStream.SetLength(0);
                     _currentPart.HashStream = new CryptoStream(_memStream, _currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
+                }
+                else if(_writeToNestedStream)
+                {
+                    // write directly to nested stream
+                    _currentPart.HashStream = new CryptoStream(_nestedStream, _currentPart.HashAlgorithm, CryptoStreamMode.Write, leaveOpen: true);
                 }
                 else
                 {
@@ -100,33 +118,28 @@ namespace ShareCluster.Packaging.IO
         {
             if (_currentPart == null) return;
 
+
             // get hash and close crypto stream
             _currentPart.HashStream.FlushFinalBlock();
+            int blockLength = checked((int)_currentPart.HashStream.Length);
             _currentPart.HashStream.Close();
             _currentPart.HashStream.Dispose();
-
-            var partHash = new Id(_currentPart.HashAlgorithm.Hash);
-            Id expetedHash = _hashes.PackageSegmentsHashes[_currentPart.Part.SegmentIndex];
-
+            var blockHash = new Id(_currentPart.HashAlgorithm.Hash);
             _currentPart.HashAlgorithm.Dispose();
 
-            // verify hash
-            if (partHash.Equals(expetedHash))
-            {
-                _logger.LogTrace("Hash OK for segment {0}. Hash {1:s}", _currentPart.Part.SegmentIndex, expetedHash);
-            }
-            else
-            {
-                string message = string.Format("Hash mismatch for segment {0}. Expected {1:s}, computed {2:s}", _currentPart.Part.SegmentIndex, expetedHash, partHash);
-                _logger.LogWarning(message);
-                throw new HashMismatchException(message);
-            }
-
-            // write to file (now it is validated)
+            // let behavior know about hash
+            _behavior.OnHashCalculated(blockHash, blockLength, _currentPart.BlockIndex);
+            
             if(_writeToNestedStream)
             {
-                _memStream.Position = 0;
-                _memStream.CopyTo(_nestedStream);
+                // if buffering is enabled, then write buffer to nested stream
+                if (_behavior.IsNestedStreamBufferingEnabled)
+                {
+                    _memStream.Position = 0;
+                    _memStream.CopyTo(_nestedStream);
+                }
+
+                // fluash in any case if writing to nested is enabled
                 _nestedStream.Flush();
             }
         }
@@ -149,17 +162,13 @@ namespace ShareCluster.Packaging.IO
             
         private class CurrentPart : IStreamPart
         {
-            public CurrentPart(FilePackagePartReference part)
-            {
-                Part = part ?? throw new ArgumentNullException(nameof(part));
-            }
-
-            public FilePackagePartReference Part { get; set; }
             public HashAlgorithm HashAlgorithm { get; set; }
             public CryptoStream HashStream { get; set; }
+            public int MaximumBlockSize { get; set; }
+            public int BlockIndex { get; set; }
 
             Stream IStreamPart.Stream => HashStream;
-            int IStreamPart.PartLength => checked((int)Part.PartLength);
+            int IStreamPart.PartLength => MaximumBlockSize;
         }
     }
 }

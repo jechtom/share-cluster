@@ -513,7 +513,8 @@ namespace ShareCluster.Network
                 // - streamValidate validates data and writes it to nested streamWrite
                 // - streamWrite writes data to data files
 
-                IStreamSplitterController controllerWriter = package.PackageDataAccessor.CreateWriteSpecificPackageData(parts);
+                IStreamController controllerWriter = package.PackageDataAccessor.CreateWriteSpecificPackageData(parts);
+                var hashValidateBehavior = new VerifyHashStreamBehavior(_parent._appInfo.LoggerFactory, package.Hashes, parts);
 
                 Stream streamWrite = null;
 
@@ -523,13 +524,13 @@ namespace ShareCluster.Network
                 Stream createStream()
                 {
                     var sequencer = new PackageFolderPartsSequencer();
-                    streamWrite = new StreamSplitter(_parent._appInfo.LoggerFactory, controllerWriter)
+                    streamWrite = new ControlledStream(_parent._appInfo.LoggerFactory, controllerWriter)
                     {
                         Measure = package.DownloadMeasure
                     };
 
-                    controllerValidate = new HashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, package.Hashes, partsSource, streamWrite);
-                    streamValidate = new StreamSplitter(_parent._appInfo.LoggerFactory, controllerValidate);
+                    controllerValidate = new HashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, hashValidateBehavior, streamWrite);
+                    streamValidate = new ControlledStream(_parent._appInfo.LoggerFactory, controllerValidate);
 
                     return streamValidate;
                 }

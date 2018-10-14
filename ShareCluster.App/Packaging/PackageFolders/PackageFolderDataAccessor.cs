@@ -23,7 +23,7 @@ namespace ShareCluster.Packaging.PackageFolders
 
         public PackageFolder PackageFolder { get; }
 
-        public IStreamSplitterController CreateReadAllPackageData()
+        public IStreamController CreateReadAllPackageData()
         {
             var sequencer = new PackageFolderPartsSequencer();
             IEnumerable<FilePackagePartReference> partsSource = sequencer.GetPartsForPackage(PackageFolder.FolderPath, PackageFolder.SplitInfo);
@@ -31,22 +31,15 @@ namespace ShareCluster.Packaging.PackageFolders
             return result;
         }
 
-        public IStreamSplitterController CreateReadSpecificPackageData(int[] parts)
+        public IStreamController CreateReadSpecificPackageData(int[] parts)
         {
             var sequencer = new PackageFolderPartsSequencer();
             IEnumerable<FilePackagePartReference> partsSource = sequencer.GetPartsForSpecificSegments(PackageFolder.FolderPath, PackageFolder.SplitInfo, parts);
             var result = new PackageFolderDataStreamController(_loggerFactory, partsSource, ReadWriteMode.Read);
             return result;
         }
-
-        public IStoreNewPackageAccessor CreateStoreNewPackageAccessor()
-        {
-            var sequencer = new PackageFolderPartsSequencer();
-            var result = new CreatePackageFolderController(_loggerFactory, ReadWriteMode.Read);
-            return result;
-        }
-
-        public IStreamSplitterController CreateWriteSpecificPackageData(int[] parts)
+        
+        public IStreamController CreateWriteSpecificPackageData(int[] parts)
         {
             var sequencer = new PackageFolderPartsSequencer();
             IEnumerable<FilePackagePartReference> partsSource = sequencer.GetPartsForSpecificSegments(PackageFolder.FolderPath, PackageFolder.SplitInfo, parts);

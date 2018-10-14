@@ -176,10 +176,11 @@ namespace ShareCluster
 
         public LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure)
         {
-            LocalPackageInfo package = _localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
-            RegisterPackageInternal(package);
-            LocalPackageCreated?.Invoke(package);
-            return package;
+            PackageFolder package = _localPackageManager.CreatePackageFromFolder(path, name, writeMeasure);
+            throw new InvalidOperationException("Convert to local package");
+            //RegisterPackageInternal(package);
+            //LocalPackageCreated?.Invoke(package);
+            //return package;
         }
         
         private void RegisterPackageInternal(LocalPackageInfo package)
