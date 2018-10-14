@@ -24,7 +24,7 @@ namespace ShareCluster
         event Action<LocalPackageInfo> LocalPackageDeleted;
 
         void RegisterDiscoveredPackages(IEnumerable<DiscoveredPackage> enumerable);
-        LocalPackageInfo SaveRemotePackage(PackageHashes hashes, PackageMeta meta);
+        LocalPackageInfo SaveRemotePackage(PackageDefinitionDto hashes, PackageMeta meta);
         LocalPackageInfo CreatePackageFromFolder(string path, string name, MeasureItem writeMeasure);
         bool TryGetPackage(Id packageHash, out LocalPackageInfo package);
         void UpdateDownloadStatus(LocalPackageInfo packageInfo);

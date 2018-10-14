@@ -94,7 +94,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Creating package \"{name}\" from folder: {folderToProcess}");
 
             // create package archive
-            PackageHashes packageHashes;
+            PackageDefinition packageDefinition;
             int entriesCount;
 
             var computeHashBehavior = new ComputeHashStreamBehavior(_app.LoggerFactory, _defaultSplitInfo);
@@ -109,19 +109,14 @@ namespace ShareCluster.Packaging.PackageFolders
                     archive.SerializeFolderToStream(folderToProcess, hashStream);
                     entriesCount = archive.EntriesCount;
                 }
-                packageHashes = new PackageHashes(
-                    _app.PackageHashesSerializer.SerializerVersion,
-                    computeHashBehavior.BuildPackageHashes(),
-                    _app.Crypto,
-                    dataFilesController.ResultSplitInfo
-                );
+                packageDefinition = PackageDefinition.Build(_app.Crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
             }
 
             // store package hashes
-            UpdateHashes(packageHashes, directoryPath: buildDirectory.FullName);
+            UpdateHashes(packageDefinition, directoryPath: buildDirectory.FullName);
 
             // store download status
-            var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageHashes.PackageId, packageHashes.PackageSplitInfo);
+            var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageDefinition.PackageId, packageDefinition.PackageSplitInfo);
             UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
 
             // store metadata
@@ -129,25 +124,25 @@ namespace ShareCluster.Packaging.PackageFolders
             {
                 Created = DateTimeOffset.Now,
                 Name = name,
-                PackageSize = packageHashes.PackageSize,
+                PackageSize = packageDefinition.PackageSize,
                 Version = _app.PackageVersion,
-                PackageId = packageHashes.PackageId
+                PackageId = packageDefinition.PackageId
             };
             UpdateMetadata(metadata, directoryPath: buildDirectory.FullName);
 
             // rename folder
-            string packagePath = CreatePackagePath(packageHashes.PackageId);
+            string packagePath = CreatePackagePath(packageDefinition.PackageId);
             if (Directory.Exists(packagePath))
             {
-                throw new InvalidOperationException($"Folder for package {packageHashes.PackageId:s} already exists. {packagePath}");
+                throw new InvalidOperationException($"Folder for package {packageDefinition.PackageId:s} already exists. {packagePath}");
             }
             Directory.Move(buildDirectory.FullName, packagePath);
 
             operationMeasure.Stop();
-            _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageHashes.PackageId}\nSize: {SizeFormatter.ToString(packageHashes.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
+            _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageDefinition.PackageId}\nSize: {SizeFormatter.ToString(packageDefinition.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
-            var reference = new PackageFolderReference(packageHashes.PackageId, packagePath);
-            var result = new PackageFolder(packageHashes, packagePath, metadata);
+            var reference = new PackageFolderReference(packageDefinition.PackageId, packagePath);
+            var result = new PackageFolder(packageDefinition, packagePath, metadata);
             return result;
         }
 
@@ -197,10 +192,11 @@ namespace ShareCluster.Packaging.PackageFolders
             }
         }
 
-        public PackageHashes ReadPackageHashesFile(PackageFolderReference reference)
+        public PackageDefinition ReadPackageHashesFile(PackageFolderReference reference)
         {
-            PackageHashes dto = ReadPackageFile<PackageHashes>(reference, PackageHashesFileName);
-            return dto;
+            PackageDefinitionDto dto = ReadPackageFile<PackageDefinitionDto>(reference, PackageHashesFileName);
+            PackageDefinition result = _app.PackageDefinitionSerializer.Deserialize(dto);
+            return result;
         }
 
         public PackageDownloadInfo ReadPackageDownloadStatus(PackageFolderReference reference, PackageSplitInfo sequenceInfo)
@@ -216,6 +212,7 @@ namespace ShareCluster.Packaging.PackageFolders
             return dto;
         }
 
+        [Obsolete("This should be moved out of this specific implementation.")]
         public T ReadPackageFile<T>(PackageFolderReference reference, string fileName) where T : class, IPackageInfoDto
         {
             if (reference == null)
@@ -264,7 +261,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Folder deleted {packageReference.FolderPath}.");
         }
 
-        public LocalPackageInfo RegisterPackage(PackageHashes hashes, PackageMeta metadata)
+        public LocalPackageInfo RegisterPackage(PackageDefinition hashes, PackageMeta metadata)
         {
             if (hashes == null)
             {
@@ -311,10 +308,11 @@ namespace ShareCluster.Packaging.PackageFolders
             File.WriteAllBytes(path, _app.MessageSerializer.Serialize(metadata));
         }
 
-        private void UpdateHashes(PackageHashes hashes, string directoryPath = null)
+        private void UpdateHashes(PackageDefinition hashes, string directoryPath = null)
         {
+            PackageDefinitionDto dto = _app.PackageDefinitionSerializer.Serialize(hashes);
             string path = Path.Combine(directoryPath ?? CreatePackagePath(hashes.PackageId), PackageHashesFileName);
-            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(hashes));
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(dto));
         }
     }
 }

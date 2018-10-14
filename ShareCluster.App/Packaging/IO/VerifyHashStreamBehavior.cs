@@ -13,39 +13,39 @@ namespace ShareCluster.Packaging.IO
     public class VerifyHashStreamBehavior : IHashStreamBehavior
     {
         private readonly ILogger<VerifyHashStreamBehavior> _logger;
-        private readonly PackageHashes _hashes;
+        private readonly PackageDefinition _definition;
         private readonly int[] _partsToValidate;
         private readonly bool _verifyAll;
 
         /// <summary>
         /// Creates validation for specific parts of package.
         /// </summary>
-        public VerifyHashStreamBehavior(ILoggerFactory loggerFactory, PackageHashes hashes, int[] partsToValidate)
+        public VerifyHashStreamBehavior(ILoggerFactory loggerFactory, PackageDefinition definition, int[] partsToValidate)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<VerifyHashStreamBehavior>();
-            _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
+            _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _partsToValidate = partsToValidate ?? throw new ArgumentNullException(nameof(partsToValidate));
 
-            TotalLength = hashes.PackageSplitInfo.GetSizeOfSegments(partsToValidate);
+            TotalLength = definition.PackageSplitInfo.GetSizeOfSegments(partsToValidate);
         }
 
         /// <summary>
         /// Creates validation for all segments of package.
         /// </summary>
-        public VerifyHashStreamBehavior(ILoggerFactory loggerFactory, PackageHashes hashes)
+        public VerifyHashStreamBehavior(ILoggerFactory loggerFactory, PackageDefinition definition)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<VerifyHashStreamBehavior>();
-            _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
+            _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _verifyAll = true;
 
-            TotalLength = hashes.PackageSize;
+            TotalLength = definition.PackageSplitInfo.PackageSize;
         }
 
         public long? TotalLength { get; }
 
         public bool IsNestedStreamBufferingEnabled => true; // buffer to not propagate invalid block to data file
 
-        public long NestedStreamBufferSize => _hashes.PackageSplitInfo.SegmentLength; // maximum size of segment
+        public long NestedStreamBufferSize => _definition.PackageSplitInfo.SegmentLength; // maximum size of segment
 
         public void OnHashCalculated(Id blockHash, int blockSize, int blockIndex)
         {
@@ -53,7 +53,7 @@ namespace ShareCluster.Packaging.IO
 
             // if for any reason there is different size of block than expected throw an exception
             // remark: if this happen then there should be hash mismatch but better check it make debugging easier
-            long expectedSize = _hashes.PackageSplitInfo.GetSizeOfSegment(segmentIndex);
+            long expectedSize = _definition.PackageSplitInfo.GetSizeOfSegment(segmentIndex);
             if (blockSize != expectedSize)
             {
                 string message = string.Format(
@@ -65,7 +65,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // verify hash
-            Id expetedHash = _hashes.PackageSegmentsHashes[segmentIndex];
+            Id expetedHash = _definition.PackageSegmentsHashes[segmentIndex];
             if (!blockHash.Equals(expetedHash))
             {
                 string message = string.Format(
@@ -99,7 +99,7 @@ namespace ShareCluster.Packaging.IO
         public int ResolveNextBlockMaximumSize(int blockIndex)
         {
             var segmentIndex = GetSegmentIndexFromBlockIndex(blockIndex);
-            long expectedSize = _hashes.PackageSplitInfo.GetSizeOfSegment(segmentIndex);
+            long expectedSize = _definition.PackageSplitInfo.GetSizeOfSegment(segmentIndex);
             return checked((int)expectedSize);
         }
     }

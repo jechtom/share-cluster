@@ -5,7 +5,7 @@ namespace ShareCluster.Packaging
 {
     public class LocalPackage : PackageBase
     {
-        public LocalPackage(Id packageId, PackageHashes packageHashes)
+        public LocalPackage(Id packageId, PackageDefinitionDto packageHashes)
         {
             PackageId = packageId;
             PackageHashes = packageHashes ?? throw new ArgumentNullException(nameof(packageHashes));
@@ -13,6 +13,6 @@ namespace ShareCluster.Packaging
 
         public override Id PackageId { get; }
 
-        public PackageHashes PackageHashes { get; }
+        public PackageDefinitionDto PackageHashes { get; }
     }
 }

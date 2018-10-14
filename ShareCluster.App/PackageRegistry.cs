@@ -56,18 +56,18 @@ namespace ShareCluster
             var packagesInitData = new List<LocalPackageInfo>();
             foreach (PackageFolderReference pr in packageReferences)
             {
-                PackageHashes hashes;
+                PackageDefinition definition;
                 PackageDownloadInfo download;
                 PackageMeta meta;
                 PackageSplitInfo splitInfo;
                 try
                 {
-                    hashes = _localPackageManager.ReadPackageHashesFile(pr);
-                    splitInfo = hashes.PackageSplitInfo;
+                    definition = _localPackageManager.ReadPackageHashesFile(pr);
+                    splitInfo = definition.PackageSplitInfo;
                     download = _localPackageManager.ReadPackageDownloadStatus(pr, splitInfo);
                     meta = _localPackageManager.ReadPackageMetadata(pr);
 
-                    var item = new LocalPackageInfo(pr, download, hashes, meta);
+                    var item = new LocalPackageInfo(pr, download, definition, meta);
                     packagesInitData.Add(item);
                 }
                 catch(Exception e)
@@ -161,13 +161,13 @@ namespace ShareCluster
             }
         }
 
-        public LocalPackageInfo SaveRemotePackage(PackageHashes packageHashes, PackageMeta meta)
+        public LocalPackageInfo SaveRemotePackage(PackageDefinition definition, PackageMeta meta)
         {
             // register
             LocalPackageInfo package;
             lock (_packagesLock)
             {
-                package = _localPackageManager.RegisterPackage(packageHashes, meta);
+                package = _localPackageManager.RegisterPackage(definition, meta);
                 RegisterPackageInternal(package);
             }
 

@@ -32,11 +32,11 @@ namespace ShareCluster
 
             //to enable logging of messages: var serializer = new LoggingMessageSerializer(new ProtoBufMessageSerializer(), @"c:\todel\logs2\");
             var serializer = new ProtoBufMessageSerializer();
-
+            CryptoProvider crypto = CreateDefaultCryptoProvider();
             var result = new AppInfo()
             {
                 DataRootPath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "data"),
-                Crypto = CreateDefaultCryptoProvider(),
+                Crypto = crypto,
                 MessageSerializer = serializer,
                 NetworkVersion = new VersionNumber(2),
                 AppVersion = new VersionNumber(3),
@@ -47,7 +47,7 @@ namespace ShareCluster
                 LoggerFactory = loggerFactory,
                 Clock = new Clock(),
                 PackageSplitBaseInfo = PackageSplitBaseInfo.Default,
-                PackageHashesSerializer = new PackageHashesSerializer(serializer)
+                PackageDefinitionSerializer = new PackageDefinitionSerializer(serializer, crypto, loggerFactory.CreateLogger<PackageDefinitionSerializer>())
             };
 
             result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(),
@@ -106,7 +106,7 @@ namespace ShareCluster
         public ILoggerFactory LoggerFactory { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
         public InstanceHash InstanceId { get; private set; }
-        public PackageHashesSerializer PackageHashesSerializer { get; private set; }
+        public PackageDefinitionSerializer PackageDefinitionSerializer { get; private set; }
         public PackageSplitBaseInfo PackageSplitBaseInfo { get; private set; }
     }
 }

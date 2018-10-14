@@ -51,23 +51,18 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // basic input data integrity validations
-            if (packageFolder.Hashes.PackageSize != packageFolder.SplitInfo.PackageSize)
-            {
-                return PackageDataValidatorResult.WithError("Hashes file provided invalid package size that does not match with sequence.");
-            }
-
             if (packageFolder.Metadata.PackageSize != packageFolder.SplitInfo.PackageSize)
             {
                 return PackageDataValidatorResult.WithError("Metadata file provided invalid package size that does not match with sequence.");
             }
 
-            if (packageFolder.SplitInfo.SegmentsCount != packageFolder.Hashes.PackageSegmentsHashes.Length)
+            if (packageFolder.SplitInfo.SegmentsCount != packageFolder.Definition.PackageSegmentsHashes.Length)
             {
                 return PackageDataValidatorResult.WithError("Hashes file provided invalid count of segments that does not match with sequence.");
             }
 
             // validate package hash calculated from segment hashes
-            Id calculatedPackageHash = _cryptoProvider.HashFromHashes(packageFolder.Hashes.PackageSegmentsHashes);
+            Id calculatedPackageHash = _cryptoProvider.HashFromHashes(packageFolder.Definition.PackageSegmentsHashes);
             if (!calculatedPackageHash.Equals(packageFolder.Id))
             {
                 return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {packageFolder.Id:s}.");
@@ -112,7 +107,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
 
                 // do file hashes check
-                var verifyHashBehavior = new VerifyHashStreamBehavior(_loggerFactory, packageFolder.Hashes);
+                var verifyHashBehavior = new VerifyHashStreamBehavior(_loggerFactory, packageFolder.Definition);
                 IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SplitInfo);
                 try
                 {

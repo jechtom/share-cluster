@@ -10,7 +10,7 @@ namespace ShareCluster.Network.Messages
     public class PackageResponse : IMessage
     {
         [ProtoMember(1)]
-        public virtual PackageHashes Hashes { get; set; }
+        public virtual PackageDefinitionDto Hashes { get; set; }
 
         [ProtoMember(2)]
         public virtual long BytesDownloaded { get; set; }

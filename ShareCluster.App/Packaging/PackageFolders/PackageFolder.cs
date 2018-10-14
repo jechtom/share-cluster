@@ -10,20 +10,20 @@ namespace ShareCluster.Packaging.PackageFolders
     /// </summary>
     public class PackageFolder : IPackageFolderReference
     {
-        public PackageFolder(PackageHashes hashes, string directoryPath, PackageMeta packageMeta)
+        public PackageFolder(PackageDefinition definition, string directoryPath, PackageMeta packageMeta)
         {
-            Hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
+            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             FolderPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
             Metadata = packageMeta ?? throw new ArgumentNullException(nameof(packageMeta));
             Locks = new PackageLocks();
         }
 
-        public Id Id => Hashes.PackageId;
-        public PackageSplitInfo SplitInfo => Hashes.PackageSplitInfo;
+        public Id Id => Definition.PackageId;
+        public PackageSplitInfo SplitInfo => Definition.PackageSplitInfo;
         public string FolderPath { get; }
         public PackageLocks Locks { get; } // TODO get out
         public PackageDownloadInfo DownloadStatus { get; }
-        public Dto.PackageHashes Hashes { get; }
+        public PackageDefinition Definition { get; }
         public Dto.PackageMeta Metadata { get; }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Packaging.IO;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -16,12 +17,14 @@ namespace ShareCluster.Network.Http
     {
         private readonly PeersCluster _peersCluster;
         private readonly IPackageRegistry _packageRegistry;
+        private readonly PackageDefinitionSerializer _packageDefinitionSerializer;
         private readonly PackageDownloadManager _downloadManager;
 
-        public HttpApiController(PeersCluster peersCluster, IPackageRegistry packageRegistry, PackageDownloadManager downloadManager)
+        public HttpApiController(PeersCluster peersCluster, IPackageRegistry packageRegistry, PackageDefinitionSerializer packageDefinitionSerializer, PackageDownloadManager downloadManager)
         {
             _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
             _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
             _downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
         }
 
@@ -39,7 +42,7 @@ namespace ShareCluster.Network.Http
             return new PackageResponse()
             {
                 Found = true,
-                Hashes = package.Hashes,
+                Hashes = _packageDefinitionSerializer.Serialize(package.Definition),
                 BytesDownloaded = package.DownloadStatus.Data.DownloadedBytes
             };
         }

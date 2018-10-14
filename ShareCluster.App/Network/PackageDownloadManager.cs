@@ -514,7 +514,7 @@ namespace ShareCluster.Network
                 // - streamWrite writes data to data files
 
                 IStreamController controllerWriter = package.PackageDataAccessor.CreateWriteSpecificPackageData(parts);
-                var hashValidateBehavior = new VerifyHashStreamBehavior(_parent._appInfo.LoggerFactory, package.Hashes, parts);
+                var hashValidateBehavior = new VerifyHashStreamBehavior(_parent._appInfo.LoggerFactory, package.Definition, parts);
 
                 Stream streamWrite = null;
 
