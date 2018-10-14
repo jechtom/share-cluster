@@ -15,16 +15,15 @@
         /// If <see cref="IsNestedStreamBufferingEnabled"/> then no data are sent to nested stream before this method is called.
         /// </summary>
         /// <param name="blockHash">Computed hash of last block.</param>
-        /// <param name="blockSize">Size of last block.</param>
         /// <param name="blockIndex">Index of block.</param>
-        void OnHashCalculated(Id blockHash, int blockSize, int blockIndex);
+        void OnHashCalculated(Id blockHash, int blockIndex);
 
         /// <summary>
         /// Gets maximum size of next block.
         /// </summary>
         /// <param name="blockIndex">Index of block for which maximum size needs to be calculated.</param>
-        /// <returns>Maximum size of next block.</returns>
-        int ResolveNextBlockMaximumSize(int blockIndex);
+        /// <returns>Maximum size of next block or null if no more blocks are expected.</returns>
+        int? ResolveNextBlockMaximumSize(int blockIndex);
 
         /// <summary>
         /// Gets if data to nested stream are buffered.

@@ -10,10 +10,30 @@ namespace ShareCluster.Packaging.IO
     /// </summary>
     public interface IStreamController : IDisposable
     {
+        /// <summary>
+        /// Is called when stream ends or is closed.
+        /// </summary>
         void OnStreamClosed();
+
+        /// <summary>
+        /// Gets if stream is in write mode.
+        /// </summary>
         bool CanWrite { get; }
+
+        /// <summary>
+        /// Gets if stream is in read mode.
+        /// </summary>
         bool CanRead { get; }
+
+        /// <summary>
+        /// Enumerates <see cref="IStreamPart"/> that will be used to route data.
+        /// This can be infinite source if needed.
+        /// </summary>
         IEnumerable<IStreamPart> EnumerateParts();
+
+        /// <summary>
+        /// Gets total length of given stream. If uknown, set to null.
+        /// </summary>
         long? Length { get; }
 
         /// <summary>

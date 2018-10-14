@@ -97,7 +97,7 @@ namespace ShareCluster.Packaging.PackageFolders
             PackageDefinition packageDefinition;
             int entriesCount;
 
-            var computeHashBehavior = new ComputeHashStreamBehavior(_app.LoggerFactory, _defaultSplitInfo);
+            var computeHashBehavior = new HashStreamComputeBehavior(_app.LoggerFactory, _defaultSplitInfo.SegmentLength);
 
             using (var dataFilesController = new CreatePackageFolderController(_app.LoggerFactory, _defaultSplitInfo, buildDirectory.FullName))
             using (var dataFilesStream = new ControlledStream(_app.LoggerFactory, dataFilesController) { Measure = writeMeasure })

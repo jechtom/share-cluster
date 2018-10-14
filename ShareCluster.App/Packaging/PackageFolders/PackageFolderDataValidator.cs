@@ -107,7 +107,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
 
                 // do file hashes check
-                var verifyHashBehavior = new VerifyHashStreamBehavior(_loggerFactory, packageFolder.Definition);
+                var verifyHashBehavior = new HashStreamVerifyBehavior(_loggerFactory, packageFolder.Definition);
                 IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SplitInfo);
                 try
                 {

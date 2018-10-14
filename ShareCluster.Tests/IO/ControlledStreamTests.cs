@@ -30,9 +30,9 @@ namespace ShareCluster.Tests.IO
 
             // copy
             using (sourceStream)
-            using (var targetStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+            using (var targetStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
             {
-                sourceStream.CopyTo(targetStream);
+                sourceStream.CopyTo(targetStream, bufferSize: 7);
             }
 
             // assert
@@ -60,10 +60,10 @@ namespace ShareCluster.Tests.IO
 
             // copy
             byte[] actualData;
-            using (var sourceStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+            using (var sourceStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
             using (targetStream)
             {
-                sourceStream.CopyTo(targetStream);
+                sourceStream.CopyTo(targetStream, bufferSize: 7);
                 actualData = targetStream.ToArray();
             }
 
@@ -92,9 +92,9 @@ namespace ShareCluster.Tests.IO
 
             // copy
             using (sourceStream)
-            using (var targetStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+            using (var targetStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
             {
-                sourceStream.CopyTo(targetStream);
+                sourceStream.CopyTo(targetStream, bufferSize: 7);
             }
 
             // assert
@@ -129,10 +129,10 @@ namespace ShareCluster.Tests.IO
 
             // copy
             byte[] actualData;
-            using (var sourceStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+            using (var sourceStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
             using (targetStream)
             {
-                sourceStream.CopyTo(targetStream);
+                sourceStream.CopyTo(targetStream, bufferSize: 7);
                 actualData = targetStream.ToArray();
             }
 
@@ -161,9 +161,9 @@ namespace ShareCluster.Tests.IO
             (MemoryStream sourceStream, byte[] sourceData) = StreamHelpers.CreateRandomStream(120);
             using (sourceStream)
             {
-                using (var targetStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+                using (var targetStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
                 {
-                    sourceStream.CopyTo(targetStream);
+                    sourceStream.CopyTo(targetStream, bufferSize: 7);
                 }
             }
 
@@ -197,9 +197,9 @@ namespace ShareCluster.Tests.IO
             (MemoryStream sourceStream, byte[] sourceData) = StreamHelpers.CreateRandomStream(90);
             using (sourceStream)
             {
-                using (var targetStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+                using (var targetStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
                 {
-                    sourceStream.CopyTo(targetStream);
+                    sourceStream.CopyTo(targetStream, bufferSize: 7);
                 }
             }
 
@@ -228,12 +228,12 @@ namespace ShareCluster.Tests.IO
             (MemoryStream sourceStream, byte[] _) = StreamHelpers.CreateRandomStream(123);
             using (sourceStream)
             {
-                using (var targetStream = new ControlledStream(TestLoggerFactory.DefaultFactory, controller))
+                using (var targetStream = new ControlledStream(DefaultServices.DefaultLoggerFactory, controller))
                 {
                     // as there are more data in source, it should throw an exception
                     Assert.Throws<EndOfStreamException>(() =>
                     {
-                        sourceStream.CopyTo(targetStream);
+                        sourceStream.CopyTo(targetStream, bufferSize: 7);
                     });
                 }
             }

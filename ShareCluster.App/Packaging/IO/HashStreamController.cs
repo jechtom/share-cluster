@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.IO
 {
     /// <summary>
-    /// Controller for <see cref="ControlledStream"/> that computes hash of segments and sending it to next stream or to null stream.
+    /// Controller for <see cref="ControlledStream"/> that computes hashes of parts of data stream.
     /// </summary>
     public class HashStreamController : IStreamController
     {
@@ -46,7 +46,7 @@ namespace ShareCluster.Packaging.IO
 
         public bool CanWrite => true;
 
-        public bool CanRead => true; // required, not know why
+        public bool CanRead => false;
 
         public long? Length => _behavior.TotalLength;
         
@@ -55,10 +55,13 @@ namespace ShareCluster.Packaging.IO
             int blockIndex = 0;
             while(true)
             {
+                int? nextBlockSize = _behavior.ResolveNextBlockMaximumSize(blockIndex);
+                if (nextBlockSize == null) break;
+
                 var nextPart = new CurrentPart()
                 {
                     BlockIndex = blockIndex,
-                    MaximumBlockSize = _behavior.ResolveNextBlockMaximumSize(blockIndex)
+                    MaximumBlockSize = nextBlockSize.Value
                 };
 
                 yield return nextPart;
@@ -76,8 +79,16 @@ namespace ShareCluster.Packaging.IO
             // compute hash and close old part
             if (oldPart != null)
             {
-                ComputeCurrentPartHash();
-                DisposeCurrentPart();
+                try
+                {
+                    ComputeCurrentPartHash();
+                }
+                finally
+                {
+                    // if nested behavior throwed exception, lets dispose current part first
+                    // otherwise dispose will try to compute hash again
+                    DisposeCurrentPart();
+                }
             }
             
             // update current part
@@ -118,17 +129,15 @@ namespace ShareCluster.Packaging.IO
         {
             if (_currentPart == null) return;
 
-
             // get hash and close crypto stream
             _currentPart.HashStream.FlushFinalBlock();
-            int blockLength = checked((int)_currentPart.HashStream.Length);
             _currentPart.HashStream.Close();
             _currentPart.HashStream.Dispose();
             var blockHash = new Id(_currentPart.HashAlgorithm.Hash);
             _currentPart.HashAlgorithm.Dispose();
 
             // let behavior know about hash
-            _behavior.OnHashCalculated(blockHash, blockLength, _currentPart.BlockIndex);
+            _behavior.OnHashCalculated(blockHash, _currentPart.BlockIndex);
             
             if(_writeToNestedStream)
             {
@@ -146,6 +155,7 @@ namespace ShareCluster.Packaging.IO
 
         public void OnStreamClosed()
         {
+            ComputeCurrentPartHash();
             Dispose();
         }
 

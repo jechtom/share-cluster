@@ -250,11 +250,6 @@ namespace ShareCluster.Packaging.IO
                 _currentPart = null;
                 _hasEnded = true;
 
-                if (Length != Position)
-                {
-                    throw new InvalidOperationException("By stream Length we should not be at the end of stream controller didn't returned next part.");
-                }
-
                 return false;
             }
 

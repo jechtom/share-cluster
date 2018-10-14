@@ -10,17 +10,17 @@ namespace ShareCluster.Packaging.IO
     /// <summary>
     /// This is used as behavior configuration for <see cref="HashStreamController"/> to compute hash of newly created packages.
     /// </summary>
-    public class ComputeHashStreamBehavior : IHashStreamBehavior
+    public class HashStreamComputeBehavior : IHashStreamBehavior
     {
-        private readonly ILogger<ComputeHashStreamBehavior> _logger;
-        private readonly PackageSplitBaseInfo _packageSplitBaseInfo;
+        private readonly ILogger<HashStreamComputeBehavior> _logger;
+        private readonly int _segmentSize;
         private readonly List<Id> _hashes;
 
-        public ComputeHashStreamBehavior(ILoggerFactory loggerFactory, PackageSplitBaseInfo packageSplitBaseInfo)
+        public HashStreamComputeBehavior(ILoggerFactory loggerFactory, long segmentSize)
         {
-            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<ComputeHashStreamBehavior>();
-            _packageSplitBaseInfo = packageSplitBaseInfo ?? throw new ArgumentNullException(nameof(packageSplitBaseInfo));
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<HashStreamComputeBehavior>();
             _hashes = new List<Id>();
+            _segmentSize = checked((int)segmentSize);
         }
 
         public long? TotalLength => null; // unknown length
@@ -29,12 +29,12 @@ namespace ShareCluster.Packaging.IO
 
         public long NestedStreamBufferSize => throw new NotSupportedException();
 
-        public void OnHashCalculated(Id blockHash, int blockSize, int blockIndex)
+        public void OnHashCalculated(Id blockHash, int blockIndex)
         {
             _hashes.Add(blockHash);
         }
 
-        public int ResolveNextBlockMaximumSize(int blockIndex) => checked((int)_packageSplitBaseInfo.SegmentLength);
+        public int? ResolveNextBlockMaximumSize(int blockIndex) => _segmentSize;
 
         public IImmutableList<Id> BuildPackageHashes() => _hashes.ToImmutableList();
     }

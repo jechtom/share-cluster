@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace ShareCluster
 {
@@ -12,19 +9,17 @@ namespace ShareCluster
     {
         RandomNumberGenerator _randomGenerator;
         readonly Func<HashAlgorithm> _hashAlgFactory;
-        HashAlgorithm _internalAlg;
         
         public CryptoProvider(Func<HashAlgorithm> algorithmFactory)
         {
             _randomGenerator = new RNGCryptoServiceProvider();
             _hashAlgFactory = algorithmFactory ?? throw new ArgumentNullException(nameof(algorithmFactory));
-            _internalAlg = algorithmFactory();
-            BytesLength = (_internalAlg.HashSize + 7) / 8;
-
-            using (HashAlgorithm hash = algorithmFactory())
+            using (HashAlgorithm alg = algorithmFactory())
             {
-                EmptyHash = new Id(hash.ComputeHash(new byte[0]));
+                BytesLength = (alg.HashSize + 7) / 8;
             }
+
+            EmptyHash = ComputeHash(new byte[0]);
         }
 
         public HashAlgorithm CreateHashAlgorithm() => _hashAlgFactory();
@@ -37,6 +32,14 @@ namespace ShareCluster
             var result = new byte[BytesLength];
             _randomGenerator.GetBytes(result);
             return new Id(result);
+        }
+
+        public Id ComputeHash(byte[] bytes)
+        {
+            using (HashAlgorithm alg = CreateHashAlgorithm())
+            {
+                return new Id(alg.ComputeHash(bytes));
+            }
         }
 
         public Id HashFromHashes(IEnumerable<Id> hashes)

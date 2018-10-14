@@ -66,7 +66,7 @@ namespace ShareCluster.Packaging.IO
             Id expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
             if(expectedId != result.PackageId)
             {
-                throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}");
+                throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);
             }
 
             return result;

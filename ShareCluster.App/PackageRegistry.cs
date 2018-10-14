@@ -29,7 +29,6 @@ namespace ShareCluster
         private LocalPackageInfo[] _immutablePackages;
         private DiscoveredPackage[] _immutableDiscoveredPackagesArray;
 
-        public event Action<LocalPackageInfo> LocalPackageCreated;
         public event Action<DiscoveredPackage> RemotePackageDiscovered;
         public event Action<LocalPackageInfo> LocalPackageDeleting;
         public event Action<LocalPackageInfo> LocalPackageDeleted;
