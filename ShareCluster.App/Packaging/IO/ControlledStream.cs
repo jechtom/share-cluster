@@ -11,10 +11,11 @@ using System.Threading.Tasks;
 namespace ShareCluster.Packaging.IO
 {
     /// <summary>
-    /// Provides customizable stream build up from different parts. Use <see cref="IStreamController"/> to provide behavior.
+    /// This class is used split single stream to separate smaller parts. Use <see cref="IStreamController"/> to define splitting behavior.
     /// </summary>
     /// <remarks>
-    /// This class is used to access package data splitted to data files as one stream and also to access different requested parts of data files as one stream.
+    /// This is used for example to access to multiple data files like it is one stream.
+    /// Another example is to split one stream to separate crypto streams to compute hashes of segments od data and then joining it back together.
     /// </remarks>
     public class ControlledStream : Stream
     {
@@ -23,6 +24,7 @@ namespace ShareCluster.Packaging.IO
         private long? _length;
         private long _position;
         private bool _isDisposed;
+        private bool _hasEnded;
 
         private IStreamPart _currentPart;
         private long _nextPartPosition;
@@ -158,7 +160,7 @@ namespace ShareCluster.Packaging.IO
         {
             int bytesProcessedTotal = 0;
 
-            while (count > 0)
+            while (count > 0 && !_hasEnded)
             {
                 if (!ResolveCurrentItemAndEnsureStream()) break;
 
@@ -186,6 +188,11 @@ namespace ShareCluster.Packaging.IO
                 // remove range from current range
                 offset += bytesProcessed;
                 count -= bytesProcessed;
+            }
+            
+            if (write && count > 0)
+            {
+                throw new EndOfStreamException("Stream has already ended as no more parts has been identified. Cannot write more data.");
             }
 
             return bytesProcessedTotal;
@@ -227,6 +234,8 @@ namespace ShareCluster.Packaging.IO
 
         private bool ResolveCurrentItemAndEnsureStream()
         {
+            if (_hasEnded) return false;
+
             // not reach end of part yet?
             if (_nextPartPosition != _position)
             {
@@ -239,6 +248,7 @@ namespace ShareCluster.Packaging.IO
                 // nothing more to read
                 _controller.OnStreamPartChange(_currentPart, null);
                 _currentPart = null;
+                _hasEnded = true;
 
                 if (Length != Position)
                 {
