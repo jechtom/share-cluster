@@ -21,7 +21,9 @@ namespace ShareCluster.Packaging
         {
             foreach(PackageFolderReference packageFolderRef in _packageFolderManager.ListPackages(deleteUnfinishedBuilds: true))
             {
-                _packageFolderManager.
+                PackageFolder folderPackage = _packageFolderManager.GetPackage(packageFolderRef);
+                LocalPackage localPackage = folderPackage.CreateLocalPackage();
+                Registry.AddLocalPackage(localPackage);
             }
         }
 

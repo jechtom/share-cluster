@@ -1,91 +1,74 @@
-﻿using ShareCluster.Packaging.Dto;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Network.Messages;
-using ShareCluster.Packaging.PackageFolders;
-using ShareCluster.Packaging;
 
-namespace ShareCluster
+namespace ShareCluster.Packaging
 {
-    public class PackageDownloadInfo
+    public class PackageDownloadStatus
     {
-        private readonly PackageDownloadDto _dto;
         private readonly object _syncLock = new object();
-        private readonly PackageSplitInfo _sequenceInfo;
+        private readonly PackageSplitInfo _splitInfo;
         private readonly byte _lastByteMask;
-        private readonly HashSet<int> _partsInProgress;
+        private byte[] _segmentsBitmap;
         private long _progressBytesReserved;
+        private HashSet<int> _partsInProgress;
+        private long _bytesDownloaded;
+        private bool _isDownloading;
 
-        public PackageDownloadInfo(PackageDownloadDto dto, PackageSplitInfo sequenceInfo)
+        public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] downloadBitmap)
         {
-            _dto = dto ?? throw new ArgumentNullException(nameof(dto));
-            _sequenceInfo = sequenceInfo ?? throw new ArgumentNullException(nameof(sequenceInfo));
+            Locks = new PackageLocks();
+            _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
             _partsInProgress = new HashSet<int>();
 
-            int lastSegmentBits = (byte)(sequenceInfo.SegmentsCount % 8);
+            int lastSegmentBits = (byte)(splitInfo.SegmentsCount % 8);
             _lastByteMask = (byte)((1 << (lastSegmentBits == 0 ? 8 : lastSegmentBits)) - 1);
-        }
 
-        public static PackageDownloadInfo CreateForCreatedPackage(VersionNumber version, Id packageId, PackageSplitInfo sequenceInfo)
-        {
-            if (sequenceInfo == null)
+            if (isDownloaded)
             {
-                throw new ArgumentNullException(nameof(sequenceInfo));
+                // package downloaded
+                if (downloadBitmap != null)
+                {
+                    throw new ArgumentException($"If {nameof(isDownloaded)} is set, then {nameof(downloadBitmap)} must be null.", nameof(downloadBitmap));
+                }
+
+            }
+            else
+            {
+                // package not yet downloaded
+                _segmentsBitmap = downloadBitmap
+                    ?? throw new ArgumentNullException($"If {nameof(isDownloaded)} is not set, then {nameof(downloadBitmap)} can't be null.", nameof(downloadBitmap));
             }
 
-            var data = new PackageDownloadDto()
-            {
-                PackageId = packageId,
-                IsDownloading = false, // already downloaded
-                DownloadedBytes = sequenceInfo.PackageSize, // all downloaded
-                Version = version,
-                SegmentsBitmap = null // already downloaded (=null)
-            };
-            return new PackageDownloadInfo(data, sequenceInfo);
+            throw new NotImplementedException(); // TODO
+           
         }
 
-        public static PackageDownloadInfo CreateForReadyForDownloadPackage(VersionNumber version, Id packageId, PackageSplitInfo sequenceInfo)
-        {
-            if (sequenceInfo == null)
-            {
-                throw new ArgumentNullException(nameof(sequenceInfo));
-            }
+        public PackageLocks Locks { get; }
+        public long BytesDownloaded => _bytesDownloaded;
+        public long BytesTotal => _splitInfo.PackageSize;
+        public bool IsDownloaded => _segmentsBitmap == null;
+        public byte[] SegmentsBitmap => _segmentsBitmap;
+        public bool IsDownloading => _isDownloading;
 
-            int bitmapSize = GetBitmapSizeForPackage(sequenceInfo.SegmentsCount);
-
-            var data = new PackageDownloadDto()
-            {
-                PackageId = packageId,
-                IsDownloading = false, // don't start automatically - this needs to be handled by downloader
-                DownloadedBytes = 0, // nothing downloaded yet
-                Version = version,
-                SegmentsBitmap = new byte[bitmapSize]
-            };
-            return new PackageDownloadInfo(data, sequenceInfo);
-        }
-        
         private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
 
-        public PackageDownloadDto Data => _dto;
-        public Id PackageId => _dto.PackageId;
-        public bool IsDownloaded => _dto.DownloadedBytes == _sequenceInfo.PackageSize;
-        public bool IsMoreToDownload => Data.DownloadedBytes + _progressBytesReserved < _sequenceInfo.PackageSize;
-        public bool IsDownloading => Data.IsDownloading;
+        public bool IsMoreToDownload => BytesDownloaded + _progressBytesReserved < BytesTotal;
 
         public double Progress
         {
             get
             {
                 if (IsDownloaded) return 1;
-                if (Data.DownloadedBytes == 0) return 0;
-                return (double)Data.DownloadedBytes / (double)_sequenceInfo.PackageSize;
+                if (BytesDownloaded == 0) return 0;
+                return (double)BytesDownloaded / BytesTotal;
             }
         }
 
         public void ReturnLockedSegments(int[] segmentIndexes, bool areDownloaded)
         {
-            lock(_syncLock)
+            lock (_syncLock)
             {
                 if (IsDownloaded) throw new InvalidOperationException("Already downloaded.");
 
@@ -93,22 +76,22 @@ namespace ShareCluster
                 for (int i = 0; i < segmentIndexes.Length; i++)
                 {
                     int segmentIndex = segmentIndexes[i];
-                    long segmentSize = _sequenceInfo.GetSizeOfSegment(segmentIndex);
+                    long segmentSize = _splitInfo.GetSizeOfSegment(segmentIndex);
                     if (areDownloaded)
                     {
                         // mark as downloaded
-                        Data.SegmentsBitmap[segmentIndex / 8] |= (byte)(1 << (segmentIndex % 8));
-                        Data.DownloadedBytes += segmentSize;
+                        _segmentsBitmap[segmentIndex / 8] |= (byte)(1 << (segmentIndex % 8));
+                        _bytesDownloaded += segmentSize;
                     }
 
                     // return
                     _progressBytesReserved -= segmentSize;
                 }
 
-                if(IsDownloaded)
+                if (BytesDownloaded == BytesTotal)
                 {
-                    Data.SegmentsBitmap = null;
-                    Data.IsDownloading = false;
+                    _segmentsBitmap = null;
+                    _isDownloading = false;
                 }
             }
         }
@@ -126,7 +109,7 @@ namespace ShareCluster
             if (!IsDownloading) throw new InvalidOperationException("Not downloading at this moment.");
 
             bool isRemoteFull = remote == null;
-            if (!isRemoteFull && remote.Length != _dto.SegmentsBitmap.Length)
+            if (!isRemoteFull && remote.Length != _segmentsBitmap.Length)
             {
                 throw new InvalidOperationException("Unexpected length of bitmaps. Bitmaps must have same length.");
             }
@@ -134,13 +117,13 @@ namespace ShareCluster
             var result = new List<int>(capacity: count);
             lock (_syncLock)
             {
-                int segments = _dto.SegmentsBitmap.Length;
+                int segments = _segmentsBitmap.Length;
                 int startSegmentByte = ThreadSafeRandom.Next(0, segments);
                 int currentSegmentByte = startSegmentByte;
                 while (true)
                 {
                     // if our segment is NOT downloaded AND remote segment is ready to be downloaded
-                    int needed = (~_dto.SegmentsBitmap[currentSegmentByte]);
+                    int needed = (~_segmentsBitmap[currentSegmentByte]);
                     if (isRemoteFull)
                     {
                         // remote server have all segments
@@ -168,7 +151,7 @@ namespace ShareCluster
                     if (result.Count == count) break;
 
                     // move next
-                    currentSegmentByte = (currentSegmentByte + 1) % _dto.SegmentsBitmap.Length;
+                    currentSegmentByte = (currentSegmentByte + 1) % _segmentsBitmap.Length;
                     if (currentSegmentByte == startSegmentByte) break;
                 }
 
@@ -176,7 +159,7 @@ namespace ShareCluster
                 foreach (var segmentIndex in result)
                 {
                     // return
-                    _progressBytesReserved += _sequenceInfo.GetSizeOfSegment(segmentIndex);
+                    _progressBytesReserved += _splitInfo.GetSizeOfSegment(segmentIndex);
                 }
             }
 
@@ -198,27 +181,27 @@ namespace ShareCluster
                 throw new InvalidOperationException("Detail is invalid. It is marked as not found.");
             }
 
-            if (detail.BytesDownloaded < 0 || detail.BytesDownloaded > _sequenceInfo.PackageSize)
+            if (detail.BytesDownloaded < 0 || detail.BytesDownloaded > _splitInfo.PackageSize)
             {
                 throw new InvalidOperationException("Invalid bytes downloaded counter. Value is out of range.");
             }
 
-            if (detail.BytesDownloaded == _sequenceInfo.PackageSize && detail.SegmentsBitmap != null)
+            if (detail.BytesDownloaded == _splitInfo.PackageSize && detail.SegmentsBitmap != null)
             {
                 throw new InvalidOperationException("Invalid bitmap. Bitmap should be NULL if package is already downloaded.");
             }
 
-            if (detail.BytesDownloaded < _sequenceInfo.PackageSize && detail.SegmentsBitmap == null)
+            if (detail.BytesDownloaded < _splitInfo.PackageSize && detail.SegmentsBitmap == null)
             {
                 throw new InvalidOperationException("Invalid bitmap. Bitmap should NOT be NULL if package is not yet downloaded.");
             }
 
-            if (detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length != _dto.SegmentsBitmap.Length)
+            if (detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length != _segmentsBitmap.Length)
             {
                 throw new InvalidOperationException("Invalid bitmap. Invalid bitmap length.");
             }
 
-            if(detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length > 0 && (byte)(detail.SegmentsBitmap[detail.SegmentsBitmap.Length - 1] & ~_lastByteMask) != 0)
+            if (detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length > 0 && (byte)(detail.SegmentsBitmap[detail.SegmentsBitmap.Length - 1] & ~_lastByteMask) != 0)
             {
                 throw new InvalidOperationException("Invalid bitmap. Last bitmap byte is out of range.");
             }
@@ -234,13 +217,13 @@ namespace ShareCluster
                 foreach (var segmentIndex in segmentIndexes)
                 {
                     // out of range?
-                    if (segmentIndex < 0 || segmentIndex >= _sequenceInfo.SegmentsCount) return false;
+                    if (segmentIndex < 0 || segmentIndex >= _splitInfo.SegmentsCount) return false;
 
                     // is everything downloaded?
                     if (IsDownloaded) continue;
 
                     // is specific segment downloaded?
-                    bool isSegmentDownloaded = (Data.SegmentsBitmap[segmentIndex / 8] & (1 << (segmentIndex % 8))) != 0;
+                    bool isSegmentDownloaded = (_segmentsBitmap[segmentIndex / 8] & (1 << (segmentIndex % 8))) != 0;
                     if (!isSegmentDownloaded) return false;
                 }
             }
@@ -249,8 +232,9 @@ namespace ShareCluster
 
         public override string ToString()
         {
-            int percents = (int)(Data.DownloadedBytes * 100 / _sequenceInfo.PackageSize);
-            return $"{percents}% {(IsDownloaded ? "Completed" : "Unfinished")} {(IsDownloading?"Downloading":"Stopped")}";
+            int percents = (int)(BytesDownloaded * 100 / _splitInfo.PackageSize);
+            return $"{percents}% {(IsDownloaded ? "Completed" : "Unfinished")} {(IsDownloading ? "Downloading" : "Stopped")}";
         }
+
     }
 }

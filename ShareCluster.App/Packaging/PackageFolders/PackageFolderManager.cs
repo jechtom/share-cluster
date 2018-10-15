@@ -82,12 +82,19 @@ namespace ShareCluster.Packaging.PackageFolders
             Directory.CreateDirectory(PackageRepositoryPath);
         }
 
-        public PackageFolder Get(PackageFolderReference reference)
+        public PackageFolder GetPackage(PackageFolderReference reference)
         {
-            var result = new PackageFolder(packageDefinition, reference.FolderPath, packageMeta);
+            if (reference == null)
             {
-
+                throw new ArgumentNullException(nameof(reference));
             }
+
+            PackageDefinition packageDefinition = ReadPackageHashesFile(reference);
+            PackageMeta packageMeta = ReadPackageMetadata(reference);
+            PackageDownloadStatus packageDownload = ReadPackageDownloadStatus(reference);
+
+            var result = new PackageFolder(packageDefinition, reference.FolderPath, packageMeta, packageDownload);
+            return result;
         }
 
         public PackageFolder CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
@@ -150,7 +157,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageDefinition.PackageId}\nSize: {SizeFormatter.ToString(packageDefinition.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
             var reference = new PackageFolderReference(packageDefinition.PackageId, packagePath);
-            var result = new PackageFolder(packageDefinition, packagePath, metadata);
+            var result = new PackageFolder(packageDefinition, packagePath, metadata, PackageDownloadStatus.CreateDownloadedFor(packageDefinition));
             return result;
         }
 

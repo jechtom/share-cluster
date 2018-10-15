@@ -24,20 +24,19 @@ namespace ShareCluster.Packaging.IO
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public PackageDownloadDto Serialize(PackageDownload value)
+        public PackageDownloadDto Serialize(PackageDownloadStatus value, PackageDefinition packageDefinition)
         {
             var result = new PackageDownloadDto(
                 version: SerializerVersion,
-                packageId: value.PackageId,
-                packageSize: value.PackageSize,
-                packageSegmentsHashes: value.PackageSegmentsHashes,
-                segmentLength: value.PackageSplitInfo.SegmentLength,
-                dataFileLength: value.PackageSplitInfo.DataFileLength
+                packageId: packageDefinition.PackageId,
+                isDownloading: value.IsDownloading,
+                downloadedBytes: value.BytesDownloaded,
+                segmentsBitmap: value.SegmentsBitmap
             );
             return result;
         }
 
-        public PackageDownload Deserialize(PackageDownloadDto dto, Id packageId)
+        public PackageDownloadStatus Deserialize(PackageDownloadDto dto, PackageDefinition packageDefinition)
         {
             if (dto == null)
             {
@@ -46,13 +45,16 @@ namespace ShareCluster.Packaging.IO
 
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
             
-            var result = new PackageDownload(dto.PackageId, dto.);
-
             // verify
-            if (packageId != result.PackageId)
+            Id packageId = packageDefinition.PackageId;
+            if (packageId != dto.PackageId)
             {
-                throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);
+                throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {dto.PackageId:s}", packageId, dto.PackageId);
             }
+
+            // create result
+            var result = new PackageDownloadStatus(packageDefinition.PackageSplitInfo, dto.IsDownloading, dto.SegmentsBitmap);
+
 
             return result;
         }
