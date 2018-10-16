@@ -10,7 +10,7 @@ namespace ShareCluster.Packaging.Dto
     /// Defines files and folders in data file.
     /// </summary>
     [ProtoContract]
-    public class PackageEntry
+    public class PackageEntryDto
     {
         /// <summary>
         /// Gets or sets name of entry (folder or file).

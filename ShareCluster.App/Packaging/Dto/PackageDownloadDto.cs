@@ -9,7 +9,7 @@ namespace ShareCluster.Packaging.Dto
     public class PackageDownloadDto
     {
         public PackageDownloadDto() { }
-        public PackageDownloadDto(VersionNumber version, Id packageId, bool isDownloading, long downloadedBytes, byte[] segmentsBitmap)
+        public PackageDownloadDto(VersionNumber version, PackageId packageId, bool isDownloading, long downloadedBytes, byte[] segmentsBitmap)
         {
             Version = version;
             PackageId = packageId;
@@ -22,7 +22,7 @@ namespace ShareCluster.Packaging.Dto
         public virtual VersionNumber Version { get; set; }
 
         [ProtoMember(2)]
-        public virtual Id PackageId { get; set; }
+        public virtual PackageId PackageId { get; set; }
 
         [ProtoMember(3)]
         public virtual bool IsDownloading { get; set; }

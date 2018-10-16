@@ -20,8 +20,8 @@ namespace ShareCluster
     {
         private readonly ILogger<PackageRegistry> _logger;
         private readonly PackageFolderManager _localPackageManager;
-        private Dictionary<Id, LocalPackage> _localPackages;
-        private Dictionary<Id, DiscoveredPackage> _discoveredPackages;
+        private Dictionary<PackageId, LocalPackage> _localPackages;
+        private Dictionary<PackageId, DiscoveredPackage> _discoveredPackages;
         private readonly object _packagesLock = new object();
 
         // pre-calculated
@@ -48,7 +48,7 @@ namespace ShareCluster
 
         private void Init()
         {
-            _localPackages = new Dictionary<Id, LocalPackage>();
+            _localPackages = new Dictionary<PackageId, LocalPackage>();
 
             PackageFolderReference[] packageReferences = _localPackageManager.ListPackages(deleteUnfinishedBuilds: true).ToArray();
 
@@ -57,7 +57,7 @@ namespace ShareCluster
             {
                 PackageDefinition definition;
                 PackageDownloadInfo download;
-                PackageMeta meta;
+                PackageMetadataDto meta;
                 PackageSplitInfo splitInfo;
                 try
                 {
@@ -84,8 +84,8 @@ namespace ShareCluster
             lock (_packagesLock)
             {
                 // init
-                if (_localPackages == null) _localPackages = new Dictionary<Id, LocalPackage>();
-                if (_discoveredPackages == null) _discoveredPackages = new Dictionary<Id, DiscoveredPackage>();
+                if (_localPackages == null) _localPackages = new Dictionary<PackageId, LocalPackage>();
+                if (_discoveredPackages == null) _discoveredPackages = new Dictionary<PackageId, DiscoveredPackage>();
                 bool updateDiscoveredArray = false;
 
                 // update
@@ -160,7 +160,7 @@ namespace ShareCluster
             }
         }
 
-        public LocalPackage SaveRemotePackage(PackageDefinition definition, PackageMeta meta)
+        public LocalPackage SaveRemotePackage(PackageDefinition definition, PackageMetadataDto meta)
         {
             // register
             LocalPackage package;
@@ -194,7 +194,7 @@ namespace ShareCluster
             }
         }
 
-        public bool TryGetPackage(Id packageHash, out LocalPackage package)
+        public bool TryGetPackage(PackageId packageHash, out LocalPackage package)
         {
             lock(_packagesLock)
             {

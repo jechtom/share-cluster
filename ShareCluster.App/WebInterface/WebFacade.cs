@@ -21,7 +21,7 @@ namespace ShareCluster.WebInterface
         private readonly LongRunningTasksManager _tasks;
         private readonly PeersCluster _peersCluster;
         private readonly object _syncLock = new object();
-        private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
+        private readonly HashSet<PackageId> _packagesInVerify = new HashSet<PackageId>();
 
         public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, PackageFolderManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
@@ -35,7 +35,7 @@ namespace ShareCluster.WebInterface
             _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
         }
 
-        public void TryChangeDownloadPackage(Id packageId, bool start)
+        public void TryChangeDownloadPackage(PackageId packageId, bool start)
         {
             if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
             if (start)
@@ -48,7 +48,7 @@ namespace ShareCluster.WebInterface
             }
         }
 
-        public void TryVerifyPackage(Id packageId)
+        public void TryVerifyPackage(PackageId packageId)
         {
             if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
@@ -84,7 +84,7 @@ namespace ShareCluster.WebInterface
             _tasks.AddTaskToQueue(task);
         }
 
-        public void TryStartDownloadDiscovered(Id packageId)
+        public void TryStartDownloadDiscovered(PackageId packageId)
         {
             DiscoveredPackage packageDiscovery = _packageRegistry.ImmutableDiscoveredPackages.FirstOrDefault(p => p.PackageId.Equals(packageId));
             if (packageDiscovery == null) return;
@@ -141,7 +141,7 @@ namespace ShareCluster.WebInterface
             return result;
         }
 
-        public void ExtractPackage(Id packageId, string folder, bool validate)
+        public void ExtractPackage(PackageId packageId, string folder, bool validate)
         {
             if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
@@ -162,7 +162,7 @@ namespace ShareCluster.WebInterface
             _tasks.AddTaskToQueue(task);
         }
 
-        public void DeletePackage(Id packageId)
+        public void DeletePackage(PackageId packageId)
         {
             if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
@@ -185,7 +185,7 @@ namespace ShareCluster.WebInterface
             return _appInfo.DataRootPathExtractDefault;
         }
 
-        public PackageOperationViewModel GetPackageOrNull(Id packageId)
+        public PackageOperationViewModel GetPackageOrNull(PackageId packageId)
         {
             if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return null;
             return new PackageOperationViewModel()

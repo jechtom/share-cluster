@@ -13,7 +13,7 @@ namespace ShareCluster.Network.Messages
         private readonly LocalPackage _packageInfo;
         private readonly bool _useDataFromPackage;
 
-        private PackageMeta _meta;
+        private PackageMetadataDto _meta;
         private bool _isSeeder;
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace ShareCluster.Network.Messages
         }
 
         [ProtoMember(1)]
-        public virtual PackageMeta Meta
+        public virtual PackageMetadataDto Meta
         {
             get => _useDataFromPackage ? _packageInfo.Metadata : _meta;
             set

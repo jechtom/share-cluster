@@ -8,6 +8,7 @@ namespace ShareCluster.Packaging
     public class PackageDownloadStatus
     {
         private readonly object _syncLock = new object();
+        private readonly PackageLocks _locks;
         private readonly PackageSplitInfo _splitInfo;
         private readonly byte _lastByteMask;
         private byte[] _segmentsBitmap;
@@ -16,9 +17,9 @@ namespace ShareCluster.Packaging
         private long _bytesDownloaded;
         private bool _isDownloading;
 
-        public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] downloadBitmap)
+        public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] segmentsBitmap)
         {
-            Locks = new PackageLocks();
+            _locks = new PackageLocks();
             _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
             _partsInProgress = new HashSet<int>();
 
@@ -28,33 +29,35 @@ namespace ShareCluster.Packaging
             if (isDownloaded)
             {
                 // package downloaded
-                if (downloadBitmap != null)
+                if (segmentsBitmap != null)
                 {
-                    throw new ArgumentException($"If {nameof(isDownloaded)} is set, then {nameof(downloadBitmap)} must be null.", nameof(downloadBitmap));
+                    throw new ArgumentException($"If {nameof(isDownloaded)} is set, then {nameof(segmentsBitmap)} must be null.", nameof(segmentsBitmap));
                 }
-
             }
             else
             {
                 // package not yet downloaded
-                _segmentsBitmap = downloadBitmap
-                    ?? throw new ArgumentNullException($"If {nameof(isDownloaded)} is not set, then {nameof(downloadBitmap)} can't be null.", nameof(downloadBitmap));
-            }
+                _segmentsBitmap = segmentsBitmap
+                    ?? throw new ArgumentNullException($"If {nameof(isDownloaded)} is not set, then {nameof(segmentsBitmap)} can't be null.", nameof(segmentsBitmap));
 
-            throw new NotImplementedException(); // TODO
-           
+                // validate length
+                int expectedLength = GetBitmapSizeForPackage(splitInfo.SegmentsCount);
+                if(expectedLength != segmentsBitmap.Length)
+                {
+                    throw new ArgumentException($"Invalid length of bitmap. Expected {expectedLength}B but actual is {segmentsBitmap.Length}B.", nameof(segmentsBitmap));
+                }
+            }
         }
 
-        public PackageLocks Locks { get; }
+        public PackageLocks Locks => _locks;
         public long BytesDownloaded => _bytesDownloaded;
         public long BytesTotal => _splitInfo.PackageSize;
         public bool IsDownloaded => _segmentsBitmap == null;
         public byte[] SegmentsBitmap => _segmentsBitmap;
         public bool IsDownloading => _isDownloading;
+        public bool IsMoreToDownload => BytesDownloaded + _progressBytesReserved < BytesTotal;
 
         private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
-
-        public bool IsMoreToDownload => BytesDownloaded + _progressBytesReserved < BytesTotal;
 
         public double Progress
         {
@@ -166,6 +169,17 @@ namespace ShareCluster.Packaging
             return result.ToArray();
         }
 
+        public static PackageDownloadStatus CreateForDownloadedPackage(PackageSplitInfo splitInfo)
+        {
+            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: true, segmentsBitmap: null);
+        }
+
+        public static PackageDownloadStatus CreateForReadyToDownload(PackageSplitInfo splitInfo)
+        {
+            int sizeOfBitmap = GetBitmapSizeForPackage(splitInfo.SegmentsCount);
+            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: false, segmentsBitmap: new byte[sizeOfBitmap]);
+        }
+
         /// <summary>
         /// Throws exception if given status detail is invalid for package represented by this instance. This can happen only if data has been manipulated.
         /// </summary>
@@ -235,6 +249,5 @@ namespace ShareCluster.Packaging
             int percents = (int)(BytesDownloaded * 100 / _splitInfo.PackageSize);
             return $"{percents}% {(IsDownloaded ? "Completed" : "Unfinished")} {(IsDownloading ? "Downloading" : "Stopped")}";
         }
-
     }
 }

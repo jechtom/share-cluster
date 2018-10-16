@@ -47,12 +47,12 @@ namespace ShareCluster.Packaging.IO
 
         public long NestedStreamBufferSize => _definition.PackageSplitInfo.SegmentLength; // maximum size of segment
 
-        public void OnHashCalculated(Id blockHash, int blockIndex)
+        public void OnHashCalculated(PackageId blockHash, int blockIndex)
         {
             var segmentIndex = GetSegmentIndexFromBlockIndex(blockIndex);
             
             // verify hash
-            Id expetedHash = _definition.PackageSegmentsHashes[segmentIndex];
+            PackageId expetedHash = _definition.PackageSegmentsHashes[segmentIndex];
             if (!blockHash.Equals(expetedHash))
             {
                 string message = string.Format(

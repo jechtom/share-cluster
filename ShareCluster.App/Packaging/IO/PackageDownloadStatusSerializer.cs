@@ -8,7 +8,7 @@ using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Packaging.IO
 {
-    public class PackageDownloadSerializer
+    public class PackageDownloadStatusSerializer
     {
         private readonly IMessageSerializer _serializer;
         private readonly ILogger<PackageDefinitionSerializer> _logger;
@@ -18,7 +18,7 @@ namespace ShareCluster.Packaging.IO
         /// </summary>
         public VersionNumber SerializerVersion { get; } = new VersionNumber(1);
 
-        public PackageDownloadSerializer(IMessageSerializer serializer, ILogger<PackageDefinitionSerializer> logger)
+        public PackageDownloadStatusSerializer(IMessageSerializer serializer, ILogger<PackageDefinitionSerializer> logger)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -46,7 +46,7 @@ namespace ShareCluster.Packaging.IO
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
             
             // verify
-            Id packageId = packageDefinition.PackageId;
+            PackageId packageId = packageDefinition.PackageId;
             if (packageId != dto.PackageId)
             {
                 throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {dto.PackageId:s}", packageId, dto.PackageId);

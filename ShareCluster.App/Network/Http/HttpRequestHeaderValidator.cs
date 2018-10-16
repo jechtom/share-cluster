@@ -59,7 +59,7 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
-            if (!Id.TryParse(valueString, out Id hash))
+            if (!PackageId.TryParse(valueString, out PackageId hash))
             {
                 ProcessInvalidVersion(context, $"Invalid value of header {InstanceHeaderName}");
                 return;

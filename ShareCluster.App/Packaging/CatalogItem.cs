@@ -4,7 +4,7 @@ namespace ShareCluster.Packaging
 {
     public class CatalogItem
     {
-        public CatalogItem(Id packageId, long packageSize, DateTimeOffset created, string name)
+        public CatalogItem(PackageId packageId, long packageSize, DateTimeOffset created, string name)
         {
             PackageId = packageId;
             PackageSize = packageSize;
@@ -12,7 +12,7 @@ namespace ShareCluster.Packaging
             Name = name ?? throw new ArgumentNullException(nameof(name));
         }
 
-        public virtual Id PackageId { get; }
+        public virtual PackageId PackageId { get; }
 
         public virtual long PackageSize { get; }
 

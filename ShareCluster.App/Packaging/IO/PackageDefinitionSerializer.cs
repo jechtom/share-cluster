@@ -39,7 +39,7 @@ namespace ShareCluster.Packaging.IO
             return result;
         }
 
-        public PackageDefinition Deserialize(PackageDefinitionDto dto, Id packageId)
+        public PackageDefinition Deserialize(PackageDefinitionDto dto, PackageId packageId)
         {
             if (dto == null)
             {
@@ -63,7 +63,7 @@ namespace ShareCluster.Packaging.IO
             );
 
             // verify
-            Id expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
+            PackageId expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
             if(expectedId != result.PackageId)
             {
                 throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);

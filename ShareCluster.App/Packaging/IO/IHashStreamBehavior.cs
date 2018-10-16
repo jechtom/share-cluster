@@ -16,7 +16,7 @@
         /// </summary>
         /// <param name="blockHash">Computed hash of last block.</param>
         /// <param name="blockIndex">Index of block.</param>
-        void OnHashCalculated(Id blockHash, int blockIndex);
+        void OnHashCalculated(PackageId blockHash, int blockIndex);
 
         /// <summary>
         /// Gets maximum size of next block.

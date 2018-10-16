@@ -2,6 +2,6 @@
 {
     public abstract class PackageBase : IPackage
     {
-        public abstract Id PackageId { get; }
+        public abstract PackageId PackageId { get; }
     }
 }

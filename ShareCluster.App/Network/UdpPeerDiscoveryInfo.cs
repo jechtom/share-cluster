@@ -9,6 +9,6 @@ namespace ShareCluster.Network
     {
         public IPEndPoint EndPoint { get; set; }
         public VersionNumber IndexRevision { get; set; }
-        public Id PeerId { get; set; }
+        public PackageId PeerId { get; set; }
     }
 }

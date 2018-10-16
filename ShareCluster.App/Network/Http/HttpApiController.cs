@@ -82,7 +82,7 @@ namespace ShareCluster.Network.Http
         }
 
         public IPAddress RemoteIpAddress { get; set; }
-        public Id PeerId { get; set; }
+        public PackageId PeerId { get; set; }
         public bool IsLoopback { get; set; }
     }
 }

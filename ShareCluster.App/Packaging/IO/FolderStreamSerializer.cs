@@ -99,7 +99,7 @@ namespace ShareCluster.Packaging.IO
                 foldersTreeStack.Push(folder);
 
                 // write folder info
-                _serializer.Serialize(new PackageEntry()
+                _serializer.Serialize(new PackageEntryDto()
                 {
                     Attributes = folder.Attributes,
                     Name = folder.Name,
@@ -117,7 +117,7 @@ namespace ShareCluster.Packaging.IO
                     if (entry is FileInfo file)
                     {
                         // write file info
-                        _serializer.Serialize(new PackageEntry()
+                        _serializer.Serialize(new PackageEntryDto()
                         {
                             Attributes = file.Attributes,
                             Name = file.Name,
@@ -152,7 +152,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // write file end (empty entry)
-            _serializer.Serialize(new PackageEntry() { PopDirectories = foldersTreeStack.Count }, stream);
+            _serializer.Serialize(new PackageEntryDto() { PopDirectories = foldersTreeStack.Count }, stream);
         }
 
         public void DeserializeStreamToFolder(Stream readStream, string rootDirectory)
@@ -185,7 +185,7 @@ namespace ShareCluster.Packaging.IO
             while(true)
             {
                 // read entry
-                PackageEntry entry = _serializer.Deserialize<PackageEntry>(readStream);
+                PackageEntryDto entry = _serializer.Deserialize<PackageEntryDto>(readStream);
 
                 if(entry == null)
                 {
@@ -251,7 +251,7 @@ namespace ShareCluster.Packaging.IO
             }
         }
 
-        private void ApplyAttributes(FileSystemInfo fileSystemInfo, PackageEntry entry)
+        private void ApplyAttributes(FileSystemInfo fileSystemInfo, PackageEntryDto entry)
         {
             fileSystemInfo.LastWriteTimeUtc = entry.LastWriteTimeUtc;
             fileSystemInfo.CreationTimeUtc = entry.CreationTimeUtc;

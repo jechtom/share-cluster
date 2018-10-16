@@ -26,12 +26,14 @@ namespace ShareCluster.Packaging.PackageFolders
         private readonly ILogger<PackageFolderManager> _logger;
         private readonly AppInfo _app;
         private readonly PackageSplitBaseInfo _defaultSplitInfo;
+        private readonly PackageSerializerFacade _serializerFacade;
 
-        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSplitBaseInfo defaultSplitInfo, string packageRepositoryPath)
+        public PackageFolderManager(ILogger<PackageFolderManager> logger, PackageSplitBaseInfo defaultSplitInfo, string packageRepositoryPath, PackageSerializerFacade serializerFacade)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _defaultSplitInfo = defaultSplitInfo ?? throw new ArgumentNullException(nameof(defaultSplitInfo));
             PackageRepositoryPath = packageRepositoryPath ?? throw new ArgumentNullException(nameof(packageRepositoryPath));
+            _serializerFacade = serializerFacade ?? throw new ArgumentNullException(nameof(serializerFacade));
         }
 
         public string PackageRepositoryPath { get; }
@@ -64,7 +66,7 @@ namespace ShareCluster.Packaging.PackageFolders
                     continue;
                 }
 
-                if(!Id.TryParse(name, out Id packageId))
+                if(!PackageId.TryParse(name, out PackageId packageId))
                 {
                     _logger.LogWarning("Cannot parse hash from folder name \"{0}\". Skipping.", name);
                 }
@@ -74,30 +76,38 @@ namespace ShareCluster.Packaging.PackageFolders
             }
         }
 
-        private string CreateBuildPath() => Path.Combine(PackageRepositoryPath, $"{BuildFolderPrefix}{_app.Crypto.CreateRandom()}");
-        private string CreatePackagePath(Id hash) => Path.Combine(PackageRepositoryPath, $"{hash}");
-
-        private void EnsurePath()
-        {
-            Directory.CreateDirectory(PackageRepositoryPath);
-        }
-
-        public PackageFolder GetPackage(PackageFolderReference reference)
+        public void LoadPackage(PackageFolderReference reference, IPackageBuilder packageBuilder)
         {
             if (reference == null)
             {
                 throw new ArgumentNullException(nameof(reference));
             }
 
-            PackageDefinition packageDefinition = ReadPackageHashesFile(reference);
-            PackageMeta packageMeta = ReadPackageMetadata(reference);
-            PackageDownloadStatus packageDownload = ReadPackageDownloadStatus(reference);
+            if (packageBuilder == null)
+            {
+                throw new ArgumentNullException(nameof(packageBuilder));
+            }
 
-            var result = new PackageFolder(packageDefinition, reference.FolderPath, packageMeta, packageDownload);
-            return result;
+            PackageDefinition packageDefinition = ReadPackageHashesFile(reference);
+            PackageDownloadStatus downloadStatus = ReadPackageDownloadStatus(reference, packageDefinition);
+            PackageMetadata metadata = ReadPackageMetadata(reference, packageDefinition);
+
+            // build result
+            packageBuilder.AddDefinition(packageDefinition);
+            packageBuilder.AddDownloadStatus(downloadStatus);
+            packageBuilder.AddMeta(metadata);
+            packageBuilder.AddDataAccessor(TODO);
         }
 
-        public PackageFolder CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
+        private string CreateBuildPath() => Path.Combine(PackageRepositoryPath, $"{BuildFolderPrefix}{_app.Crypto.CreateRandom()}");
+        private string CreatePackagePath(PackageId hash) => Path.Combine(PackageRepositoryPath, $"{hash}");
+
+        private void EnsurePath()
+        {
+            Directory.CreateDirectory(PackageRepositoryPath);
+        }
+
+        public void CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure, IPackageBuilder packageBuilder)
         {
             var operationMeasure = Stopwatch.StartNew();
 
@@ -131,19 +141,16 @@ namespace ShareCluster.Packaging.PackageFolders
             UpdateHashes(packageDefinition, directoryPath: buildDirectory.FullName);
 
             // store download status
-            var downloadStatus = PackageDownloadInfo.CreateForCreatedPackage(_app.PackageVersion, packageDefinition.PackageId, packageDefinition.PackageSplitInfo);
-            UpdateDownloadStatus(downloadStatus, directoryPath: buildDirectory.FullName);
+            var downloadStatus = PackageDownloadStatus.CreateForDownloadedPackage(packageDefinition.PackageSplitInfo);
+            UpdateDownloadStatus(downloadStatus, packageDefinition, directoryPath: buildDirectory.FullName);
 
             // store metadata
-            var metadata = new PackageMeta()
+            var metadata = new PackageMetadata()
             {
                 Created = DateTimeOffset.Now,
-                Name = name,
-                PackageSize = packageDefinition.PackageSize,
-                Version = _app.PackageVersion,
-                PackageId = packageDefinition.PackageId
+                Name = name
             };
-            UpdateMetadata(metadata, directoryPath: buildDirectory.FullName);
+            UpdateMetadata(metadata, packageDefinition, directoryPath: buildDirectory.FullName);
 
             // rename folder
             string packagePath = CreatePackagePath(packageDefinition.PackageId);
@@ -156,9 +163,11 @@ namespace ShareCluster.Packaging.PackageFolders
             operationMeasure.Stop();
             _logger.LogInformation($"Created package \"{packagePath}\":\nHash: {packageDefinition.PackageId}\nSize: {SizeFormatter.ToString(packageDefinition.PackageSize)}\nFiles and directories: {entriesCount}\nTime: {operationMeasure.Elapsed}");
 
-            var reference = new PackageFolderReference(packageDefinition.PackageId, packagePath);
-            var result = new PackageFolder(packageDefinition, packagePath, metadata, PackageDownloadStatus.CreateDownloadedFor(packageDefinition));
-            return result;
+            // build result
+            packageBuilder.AddDefinition(packageDefinition);
+            packageBuilder.AddDownloadStatus(downloadStatus);
+            packageBuilder.AddMeta(metadata);
+            packageBuilder.AddDataAccessor(TODO);
         }
 
         public void ExtractPackage(PackageFolder folderPackage, string targetFolder, bool validate)
@@ -207,27 +216,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
         }
 
-        public PackageDefinition ReadPackageHashesFile(PackageFolderReference reference)
-        {
-            PackageDefinitionDto dto = ReadPackageFile<PackageDefinitionDto>(reference, PackageHashesFileName);
-            PackageDefinition result = _app.PackageDefinitionSerializer.Deserialize(dto, reference.Id);
-            return result;
-        }
-
-        public PackageDownloadInfo ReadPackageDownloadStatus(PackageFolderReference reference, PackageSplitInfo sequenceInfo)
-        {
-            PackageDownloadDto dto = ReadPackageFile<PackageDownloadDto>(reference, PackageDownloadFileName);
-            var result = new PackageDownloadInfo(dto, sequenceInfo);
-            return result;
-        }
-
-        public PackageMeta ReadPackageMetadata(PackageFolderReference reference)
-        {
-            PackageMeta dto = ReadPackageFile<PackageMeta>(reference, PackageMetaFileName);
-            return dto;
-        }
-
-        public T ReadPackageFile<T>(PackageFolderReference reference, string fileName) where T : class
+        private T ReadPackageFile<T>(PackageFolderReference reference, string fileName) where T : class
         {
             if (reference == null)
             {
@@ -246,13 +235,55 @@ namespace ShareCluster.Packaging.PackageFolders
                     data = _app.MessageSerializer.Deserialize<T>(fileStream) ?? throw new InvalidOperationException("Deserialized object is null.");
                 }
             }
-            catch
+            catch(Exception e)
             {
-                _logger.LogError($"Cannot deserialize file: {filePath}");
+                _logger.LogError(e, $"Cannot deserialize file: {filePath}");
                 throw;
             }
 
             return data;
+        }
+
+        private PackageDefinition ReadPackageHashesFile(PackageFolderReference reference)
+        {
+            PackageDefinitionDto dto = ReadPackageFile<PackageDefinitionDto>(reference, PackageHashesFileName);
+            PackageDefinition result = _app.PackageDefinitionSerializer.Deserialize(dto, reference.Id);
+            return result;
+        }
+
+        private PackageDownloadStatus ReadPackageDownloadStatus(PackageFolderReference reference, PackageDefinition packageDefinition)
+        {
+            PackageDownloadDto dto = ReadPackageFile<PackageDownloadDto>(reference, PackageDownloadFileName);
+            PackageDownloadStatus result = _serializerFacade.DownloadStatusSerializer.Deserialize(dto, packageDefinition);
+            return result;
+        }
+
+        private PackageMetadata ReadPackageMetadata(PackageFolderReference reference, PackageDefinition packageDefinition)
+        {
+            PackageMetadataDto dto = ReadPackageFile<PackageMetadataDto>(reference, PackageMetaFileName);
+            PackageMetadata result = _serializerFacade.MetadataSerializer.Deserialize(dto, packageDefinition);
+            return result;
+        }
+
+        private void UpdateDownloadStatus(PackageDownloadStatus status, PackageDefinition packageDefinition, string directoryPath = null)
+        {
+            PackageDownloadDto dto = _serializerFacade.DownloadStatusSerializer.Serialize(status, packageDefinition);
+            string path = Path.Combine(directoryPath ?? CreatePackagePath(packageDefinition.PackageId), PackageDownloadFileName);
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(dto));
+        }
+
+        private void UpdateMetadata(PackageMetadata metadata, PackageDefinition packageDefinition, string directoryPath = null)
+        {
+            PackageMetadataDto dto = _serializerFacade.MetadataSerializer.Serialize(metadata, packageDefinition);
+            string path = Path.Combine(directoryPath ?? CreatePackagePath(packageDefinition.PackageId), PackageMetaFileName);
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(dto));
+        }
+
+        private void UpdateHashes(PackageDefinition hashes, string directoryPath = null)
+        {
+            PackageDefinitionDto dto = _app.PackageDefinitionSerializer.Serialize(hashes);
+            string path = Path.Combine(directoryPath ?? CreatePackagePath(hashes.PackageId), PackageHashesFileName);
+            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(dto));
         }
 
         public void DeletePackage(IPackageFolderReference packageReference)
@@ -267,58 +298,46 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Folder deleted {packageReference.FolderPath}.");
         }
 
-        public LocalPackage RegisterPackage(PackageDefinition hashes, PackageMeta metadata)
+        public void RegisterPackage(PackageDefinition packageDefinition, PackageMetadata metadata, IPackageBuilder packageBuilder)
         {
-            if (hashes == null)
+            if (packageDefinition == null)
             {
-                throw new ArgumentNullException(nameof(hashes));
+                throw new ArgumentNullException(nameof(packageDefinition));
+            }
+
+            if (metadata == null)
+            {
+                throw new ArgumentNullException(nameof(metadata));
             }
 
             // create directory
             EnsurePath();
-            string packagePath = CreatePackagePath(hashes.PackageId);
+            string packagePath = CreatePackagePath(packageDefinition.PackageId);
             if(Directory.Exists(packagePath))
             {
-                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", hashes.PackageId);
+                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", packageDefinition.PackageId);
                 throw new InvalidOperationException("Package already exists in local repository.");
             }
             Directory.CreateDirectory(packagePath);
 
             // store data
-            var downloadStatus = PackageDownloadInfo.CreateForReadyForDownloadPackage(_app.PackageVersion, hashes.PackageId, hashes.PackageSplitInfo);
-            UpdateDownloadStatus(downloadStatus);
-            UpdateHashes(hashes);
-            UpdateMetadata(metadata);
+            var downloadStatus = PackageDownloadStatus.CreateForReadyToDownload(packageDefinition.PackageSplitInfo);
+            UpdateHashes(packageDefinition);
+            UpdateDownloadStatus(downloadStatus, packageDefinition);
+            UpdateMetadata(metadata, packageDefinition);
 
             // allocate
             var allocator = new PackageFolderSpaceAllocator(_app.LoggerFactory);
-            allocator.Allocate(packagePath, hashes.PackageSplitInfo, overwrite: false);
+            allocator.Allocate(packagePath, packageDefinition.PackageSplitInfo, overwrite: false);
 
             // log and build result
-            _logger.LogInformation($"New package {hashes.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(hashes.PackageSize)}");
+            _logger.LogInformation($"New package {packageDefinition.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(packageDefinition.PackageSize)}");
 
-            var reference = new PackageFolderReference(hashes.PackageId, packagePath);
-            var result = new LocalPackage(reference, downloadStatus, hashes, metadata);
-            return result;
-        }
-
-        public void UpdateDownloadStatus(PackageDownloadInfo status, string directoryPath = null)
-        {
-            string path = Path.Combine(directoryPath ?? CreatePackagePath(status.PackageId), PackageDownloadFileName);
-            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(status.Data));
-        }
-
-        public void UpdateMetadata(PackageMeta metadata, string directoryPath = null)
-        {
-            string path = Path.Combine(directoryPath ?? CreatePackagePath(metadata.PackageId), PackageMetaFileName);
-            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(metadata));
-        }
-
-        private void UpdateHashes(PackageDefinition hashes, string directoryPath = null)
-        {
-            PackageDefinitionDto dto = _app.PackageDefinitionSerializer.Serialize(hashes);
-            string path = Path.Combine(directoryPath ?? CreatePackagePath(hashes.PackageId), PackageHashesFileName);
-            File.WriteAllBytes(path, _app.MessageSerializer.Serialize(dto));
+            // build result
+            packageBuilder.AddDefinition(packageDefinition);
+            packageBuilder.AddDownloadStatus(downloadStatus);
+            packageBuilder.AddMeta(metadata);
+            packageBuilder.AddDataAccessor(TODO);
         }
     }
 }

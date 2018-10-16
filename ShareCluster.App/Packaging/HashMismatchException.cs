@@ -6,13 +6,13 @@ namespace ShareCluster.Packaging
 {
     public class HashMismatchException : Exception
     {
-        public HashMismatchException(string message, Id hashExpected, Id hashActual) : base(message)
+        public HashMismatchException(string message, PackageId hashExpected, PackageId hashActual) : base(message)
         {
             HashExpected = hashExpected;
             HashActual = hashActual;
         }
 
-        public Id HashExpected { get; }
-        public Id HashActual { get; }
+        public PackageId HashExpected { get; }
+        public PackageId HashActual { get; }
     }
 }

@@ -11,6 +11,6 @@ namespace ShareCluster
             Hash = crypto.CreateRandom();
         }
 
-        public Id Hash { get; }
+        public PackageId Hash { get; }
     }
 }

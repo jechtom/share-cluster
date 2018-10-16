@@ -3,6 +3,6 @@
     public interface IPackageFolderReference
     {
         string FolderPath { get; }
-        Id Id { get; }
+        PackageId Id { get; }
     }
 }

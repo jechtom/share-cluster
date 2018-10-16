@@ -12,7 +12,7 @@ namespace ShareCluster.Network.Messages
     public class DiscoveryAnnounceMessage : IMessage
     {
         [ProtoMember(1)]
-        public virtual Id PeerId { get; set; }
+        public virtual PackageId PeerId { get; set; }
 
         [ProtoMember(2)]
         public virtual ushort ServicePort { get; set; }

@@ -10,13 +10,13 @@ namespace ShareCluster.Packaging
 {
     public class DiscoveredPackage
     {
-        public DiscoveredPackage(IPEndPoint endpoint, PackageMeta meta)
+        public DiscoveredPackage(IPEndPoint endpoint, PackageMetadataDto meta)
         {
             Meta = meta ?? throw new ArgumentNullException(nameof(meta));
         }
         
-        public PackageMeta Meta { get; set; }
+        public PackageMetadataDto Meta { get; set; }
         public string Name => Meta.Name;
-        public Id PackageId => Meta.PackageId;
+        public PackageId PackageId => Meta.PackageId;
     }
 }

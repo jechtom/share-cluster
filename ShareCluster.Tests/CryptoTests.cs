@@ -18,9 +18,9 @@ namespace ShareCluster.Tests
 
             byte[] bytes = Encoding.ASCII.GetBytes("Hello");
 
-            Id actual = DefaultServices.DefaultCrypto.ComputeHash(bytes);
+            PackageId actual = DefaultServices.DefaultCrypto.ComputeHash(bytes);
 
-            var expected = Id.Parse("185F8DB32271FE25F561A6FC938B2E264306EC304EDA518007D1764826381969");
+            var expected = PackageId.Parse("185F8DB32271FE25F561A6FC938B2E264306EC304EDA518007D1764826381969");
 
             Assert.Equal(expected, actual);
         }

@@ -11,9 +11,9 @@ namespace ShareCluster.Tests
         [Fact]
         public void IdCompareEquals()
         {
-            var id1 = Id.Parse("ABCD12");
-            var id2 = Id.Parse("ABCD12");
-            var id3 = Id.Parse("ABCE12");
+            var id1 = PackageId.Parse("ABCD12");
+            var id2 = PackageId.Parse("ABCD12");
+            var id3 = PackageId.Parse("ABCE12");
 
             Assert.True(id1.Equals(id2));
             Assert.Equal(id1, id2);
@@ -25,9 +25,9 @@ namespace ShareCluster.Tests
         [Fact]
         public void IdCompareOperator()
         {
-            var id1 = Id.Parse("ABCD12");
-            var id2 = Id.Parse("ABCD12");
-            var id3 = Id.Parse("ABCE12");
+            var id1 = PackageId.Parse("ABCD12");
+            var id2 = PackageId.Parse("ABCD12");
+            var id3 = PackageId.Parse("ABCE12");
 
             Assert.True(id1 == id2);
             Assert.False(id1 != id2);
@@ -40,7 +40,7 @@ namespace ShareCluster.Tests
         public void IdImmutableFromConstructorArray()
         {
             var bytes = new byte[] { 0x12, 0xA5 };
-            var id = new Id(bytes);
+            var id = new PackageId(bytes);
 
             Assert.Equal("12A5", id.ToString());
 
@@ -53,7 +53,7 @@ namespace ShareCluster.Tests
         [Fact]
         public void IdFormat()
         {
-            var id = Id.Parse("0012AABBDDEE");
+            var id = PackageId.Parse("0012AABBDDEE");
 
             //            0012AABBDDEE
             Assert.Equal("0012AABBDDEE", id.ToString());
@@ -68,16 +68,16 @@ namespace ShareCluster.Tests
         {
             Assert.Throws<FormatException>(() =>
             {
-                Id.Parse("123");
+                PackageId.Parse("123");
             });
         }
 
         [Fact]
         public void IdGetHashCode()
         {
-            var id1 = Id.Parse("0012AABBDDEE");
-            var id2 = Id.Parse("0012AABBDDEE");
-            var id3 = Id.Parse("0013AABBDDEE");
+            var id1 = PackageId.Parse("0012AABBDDEE");
+            var id2 = PackageId.Parse("0012AABBDDEE");
+            var id3 = PackageId.Parse("0013AABBDDEE");
 
             Assert.Equal(id1.GetHashCode(), id2.GetHashCode());
             Assert.NotEqual(id1.GetHashCode(), id3.GetHashCode());

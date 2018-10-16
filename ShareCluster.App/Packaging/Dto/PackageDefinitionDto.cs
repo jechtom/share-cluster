@@ -17,7 +17,7 @@ namespace ShareCluster.Packaging.Dto
         {
         }
 
-        public PackageDefinitionDto(VersionNumber version, Id packageId, long packageSize, IEnumerable<Id> packageSegmentsHashes, long segmentLength, long dataFileLength)
+        public PackageDefinitionDto(VersionNumber version, PackageId packageId, long packageSize, IEnumerable<PackageId> packageSegmentsHashes, long segmentLength, long dataFileLength)
         {
             Version = version;
             PackageId = packageId;
@@ -31,13 +31,13 @@ namespace ShareCluster.Packaging.Dto
         public virtual VersionNumber Version { get; }
 
         [ProtoMember(2)]
-        public virtual Id PackageId { get; }
+        public virtual PackageId PackageId { get; }
 
         [ProtoMember(3)]
         public virtual long PackageSize { get; }
 
         [ProtoMember(4)]
-        public virtual IEnumerable<Id> PackageSegmentsHashes { get; }
+        public virtual IEnumerable<PackageId> PackageSegmentsHashes { get; }
 
         [ProtoMember(5)]
         public virtual long SegmentLength { get; }

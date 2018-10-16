@@ -14,12 +14,12 @@ namespace ShareCluster.Packaging.IO
     {
         private readonly ILogger<HashStreamComputeBehavior> _logger;
         private readonly int _segmentSize;
-        private readonly List<Id> _hashes;
+        private readonly List<PackageId> _hashes;
 
         public HashStreamComputeBehavior(ILoggerFactory loggerFactory, long segmentSize)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<HashStreamComputeBehavior>();
-            _hashes = new List<Id>();
+            _hashes = new List<PackageId>();
             _segmentSize = checked((int)segmentSize);
         }
 
@@ -29,13 +29,13 @@ namespace ShareCluster.Packaging.IO
 
         public long NestedStreamBufferSize => throw new NotSupportedException();
 
-        public void OnHashCalculated(Id blockHash, int blockIndex)
+        public void OnHashCalculated(PackageId blockHash, int blockIndex)
         {
             _hashes.Add(blockHash);
         }
 
         public int? ResolveNextBlockMaximumSize(int blockIndex) => _segmentSize;
 
-        public IImmutableList<Id> BuildPackageHashes() => _hashes.ToImmutableList();
+        public IImmutableList<PackageId> BuildPackageHashes() => _hashes.ToImmutableList();
     }
 }

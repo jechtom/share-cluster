@@ -2,6 +2,6 @@
 {
     public interface IPackage
     {
-        Id PackageId { get; }
+        PackageId PackageId { get; }
     }
 }

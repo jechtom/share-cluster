@@ -28,7 +28,7 @@ namespace ShareCluster.Network
         private readonly Timer _statusTimer;
         private readonly Stopwatch _stopwatch;
 
-        private Dictionary<Id, PackagePeersStatus> _packageStates;
+        private Dictionary<PackageId, PackagePeersStatus> _packageStates;
         Dictionary<IPEndPoint, PeerOverallStatus> _peers;
         private readonly ILoggerFactory _loggerFactory;
         private readonly NetworkSettings _settings;
@@ -39,7 +39,7 @@ namespace ShareCluster.Network
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
             _stopwatch = Stopwatch.StartNew();
-            _packageStates = new Dictionary<Id, PackagePeersStatus>();
+            _packageStates = new Dictionary<PackageId, PackagePeersStatus>();
             _peers = new Dictionary<IPEndPoint, PeerOverallStatus>();
             _statusTimer = new Timer(StatusTimeoutCallback, null, _statusTimerInterval, Timeout.InfiniteTimeSpan);
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -122,7 +122,7 @@ namespace ShareCluster.Network
                         }
 
                         // update and add to peers list
-                        foreach (KeyValuePair<Id, PackagePeersStatus> packageState in _packageStates)
+                        foreach (KeyValuePair<PackageId, PackagePeersStatus> packageState in _packageStates)
                         {
                             if(peer.KnownPackages.TryGetValue(packageState.Key, out PackageStatus ps))
                             {
@@ -244,7 +244,7 @@ namespace ShareCluster.Network
                 // apply changes
                 for (int i = 0; i < requestMessage.PackageIds.Length; i++)
                 {
-                    Id packageId = requestMessage.PackageIds[i];
+                    PackageId packageId = requestMessage.PackageIds[i];
                     PackageStatusDetail result = input.result.Packages[i];
 
                     // download state (are we still interested in packages?)

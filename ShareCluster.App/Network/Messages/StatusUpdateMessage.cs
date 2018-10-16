@@ -12,7 +12,7 @@ namespace ShareCluster.Network.Messages
     public class StatusUpdateMessage : IMessage
     {
         [ProtoMember(1)]
-        public Id InstanceHash { get; set; }
+        public PackageId InstanceHash { get; set; }
 
         [ProtoMember(2)]
         public DiscoveryPeerData[] KnownPeers { get; set; }

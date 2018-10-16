@@ -62,7 +62,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // validate package hash calculated from segment hashes
-            Id calculatedPackageHash = _cryptoProvider.HashFromHashes(packageFolder.Definition.PackageSegmentsHashes);
+            PackageId calculatedPackageHash = _cryptoProvider.HashFromHashes(packageFolder.Definition.PackageSegmentsHashes);
             if (!calculatedPackageHash.Equals(packageFolder.Id))
             {
                 return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {packageFolder.Id:s}.");

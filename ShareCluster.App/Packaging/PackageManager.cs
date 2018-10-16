@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
 
 namespace ShareCluster.Packaging
@@ -9,7 +12,7 @@ namespace ShareCluster.Packaging
     public class PackageManager
     {
         private readonly ILogger<PackageManager> _logger;
-        private readonly PackageFolders.PackageFolderManager _packageFolderManager;
+        private readonly PackageFolderManager _packageFolderManager;
 
         public PackageManager(ILogger<PackageManager> logger, PackageFolders.PackageFolderManager packageFolderManager)
         {
@@ -21,10 +24,19 @@ namespace ShareCluster.Packaging
         {
             foreach(PackageFolderReference packageFolderRef in _packageFolderManager.ListPackages(deleteUnfinishedBuilds: true))
             {
-                PackageFolder folderPackage = _packageFolderManager.GetPackage(packageFolderRef);
-                LocalPackage localPackage = folderPackage.CreateLocalPackage();
+                var localPackageBuilder = new LocalPackageBuilder();
+                _packageFolderManager.LoadPackage(packageFolderRef, localPackageBuilder);
+                LocalPackage localPackage = localPackageBuilder.Build();
                 Registry.AddLocalPackage(localPackage);
             }
+        }
+
+        public void CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
+        {
+            var localPackageBuilder = new LocalPackageBuilder();
+            _packageFolderManager.CreatePackageFromFolder(folderToProcess, name, writeMeasure, localPackageBuilder);
+            LocalPackage localPackage = localPackageBuilder.Build();
+            Registry.AddLocalPackage(localPackage);
         }
 
         public IPackageRegistry Registry { get; private set; }

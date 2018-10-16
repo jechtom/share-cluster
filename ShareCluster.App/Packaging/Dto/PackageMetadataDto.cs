@@ -6,13 +6,13 @@ using System.Text;
 namespace ShareCluster.Packaging.Dto
 {
     [ProtoContract]
-    public class PackageMeta : IPackageInfoDto
+    public class PackageMetadataDto
     {
         [ProtoMember(1)]
         public virtual VersionNumber Version { get; set; }
 
         [ProtoMember(2)]
-        public virtual Id PackageId { get; set; }
+        public virtual PackageId PackageId { get; set; }
 
         [ProtoMember(3)]
         public virtual long PackageSize { get; set; }
