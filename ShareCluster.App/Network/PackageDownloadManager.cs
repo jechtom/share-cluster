@@ -28,10 +28,10 @@ namespace ShareCluster.Network
         private readonly IPeerRegistry _peerRegistry;
         private readonly List<LocalPackage> _downloads;
         private List<PackageDownloadSlot> _downloadSlots;
-        private readonly HashSet<PackageId> _packageDataDownloads = new HashSet<PackageId>();
+        private readonly HashSet<Id> _packageDataDownloads = new HashSet<Id>();
         private readonly object _syncLock = new object();
         private readonly PackageStatusUpdater _packageStatusUpdater;
-        private readonly Dictionary<PackageId, PostponeTimer> _postPoneUpdateDownloadFile;
+        private readonly Dictionary<Id, PostponeTimer> _postPoneUpdateDownloadFile;
         private readonly TimeSpan _postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
         private bool _isNextTryScheduled = false;
 
@@ -42,7 +42,7 @@ namespace ShareCluster.Network
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            _postPoneUpdateDownloadFile = new Dictionary<PackageId, PostponeTimer>();
+            _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
             _downloadSlots = new List<PackageDownloadSlot>(MaximumDownloadSlots);
             _downloads = new List<LocalPackage>();
             _packageStatusUpdater = new PackageStatusUpdater(appInfo.LoggerFactory, appInfo.NetworkSettings, client);
@@ -68,7 +68,7 @@ namespace ShareCluster.Network
         {
             lock (_syncLock)
             {
-                foreach (LocalPackage item in _packageRegistry.ImmutablePackages.Where(p => p.DownloadStatus.Data.IsDownloading))
+                foreach (LocalPackage item in _packageRegistry.ImmutablePackages.Where(p => p.DownloadStatus.IsDownloading))
                 {
                     StartDownloadPackage(item);
                 }
@@ -179,9 +179,9 @@ namespace ShareCluster.Network
                 if (package.DownloadStatus.IsDownloaded) return;
 
                 // mark as "Resume download"
-                if(!package.DownloadStatus.Data.IsDownloading)
+                if(!package.DownloadStatus.IsDownloading)
                 {
-                    package.DownloadStatus.Data.IsDownloading = true;
+                    package.DownloadStatus.IsDownloading = true;
                     _packageRegistry.UpdateDownloadStatus(package);
                 }
 
@@ -200,9 +200,9 @@ namespace ShareCluster.Network
                 if (!_downloads.Contains(package)) return;
 
                 // update status
-                if (package.DownloadStatus.IsDownloaded) package.DownloadStatus.Data.SegmentsBitmap = null;
+                if (package.DownloadStatus.IsDownloaded) package.DownloadStatus.SegmentsBitmap = null;
                 // mark as "don't resume download"
-                package.DownloadStatus.Data.IsDownloading = false;
+                package.DownloadStatus.IsDownloading = false;
                 _packageRegistry.UpdateDownloadStatus(package);
 
                 // stop
@@ -212,13 +212,13 @@ namespace ShareCluster.Network
             DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = package, HasStopped = true });
         }
 
-        public PackageStatusResponse GetPackageStatusResponse(PackageId[] packageIds)
+        public PackageStatusResponse GetPackageStatusResponse(Id[] packageIds)
         {
             var packages = new PackageStatusDetail[packageIds.Length];
             for (int i = 0; i < packageIds.Length; i++)
             {
                 var detail = new PackageStatusDetail();
-                PackageId id = packageIds[i];
+                Id id = packageIds[i];
                 packages[i] = detail;
                 if (!_packageRegistry.TryGetPackage(id, out LocalPackage info) || info.Locks.IsMarkedToDelete)
                 {
@@ -228,8 +228,8 @@ namespace ShareCluster.Network
 
                 // found 
                 detail.IsFound = true;
-                detail.BytesDownloaded = info.DownloadStatus.Data.DownloadedBytes;
-                detail.SegmentsBitmap = info.DownloadStatus.Data.SegmentsBitmap;
+                detail.BytesDownloaded = info.DownloadStatus.BytesDownloaded;
+                detail.SegmentsBitmap = info.DownloadStatus.SegmentsBitmap;
             }
 
             var result = new PackageStatusResponse()

@@ -10,7 +10,7 @@ namespace ShareCluster.Packaging
     /// </summary>
     public class PackageDefinition
     {
-        public PackageDefinition(PackageId packageId, ImmutableArray<PackageId> packageSegmentsHashes, PackageSplitInfo packageSplitInfo)
+        public PackageDefinition(Id packageId, ImmutableArray<Id> packageSegmentsHashes, PackageSplitInfo packageSplitInfo)
         {
             PackageId = packageId;
             PackageSegmentsHashes = packageSegmentsHashes;
@@ -22,10 +22,10 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public static PackageDefinition Build(CryptoProvider cryptoProvider, IEnumerable<PackageId> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
+        public static PackageDefinition Build(CryptoProvider cryptoProvider, IEnumerable<Id> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
         {
             var packageSegmentsHashes = packageSegmentsHashesSource.ToImmutableArray();
-            PackageId packageId = cryptoProvider.HashFromHashes(packageSegmentsHashes);
+            Id packageId = cryptoProvider.HashFromHashes(packageSegmentsHashes);
 
             return new PackageDefinition(
                 packageId,
@@ -34,8 +34,8 @@ namespace ShareCluster.Packaging
             );
         }
 
-        public PackageId PackageId { get; }
-        public ImmutableArray<PackageId> PackageSegmentsHashes { get; }
+        public Id PackageId { get; }
+        public ImmutableArray<Id> PackageSegmentsHashes { get; }
         public PackageSplitInfo PackageSplitInfo { get; }
         public long PackageSize => PackageSplitInfo.PackageSize;
 

@@ -22,54 +22,59 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger = loggerFactory.CreateLogger<PackageFolderDataValidator>();
         }
 
-        public async Task<PackageDataValidatorResult> ValidatePackageAsync(PackageFolder packageInfo, MeasureItem measure)
+        public async Task<PackageDataValidatorResult> ValidatePackageAsync(IPackageFolderReference reference, LocalPackage package, MeasureItem measure)
         {
-            _logger.LogDebug($"Starting validation of package {packageInfo}.");
-            PackageDataValidatorResult result = await ValidatePackageAsyncInternal(packageInfo);
+            _logger.LogDebug($"Starting validation of package {package}.");
+            PackageDataValidatorResult result = await ValidatePackageAsyncInternal(reference, package, measure);
             if(result.IsValid)
             {
-                _logger.LogInformation($"Package {packageInfo} is valid.");
+                _logger.LogInformation($"Package {package} is valid.");
             }
             else
             {
-                _logger.LogWarning($"Package {packageInfo} validation FAILED:\n{string.Join("\n", result.Errors)}");
+                _logger.LogWarning($"Package {package} validation FAILED:\n{string.Join("\n", result.Errors)}");
             }
             return result;
         }
 
-        private async Task<PackageDataValidatorResult> ValidatePackageAsyncInternal(PackageFolder packageFolder)
+        private async Task<PackageDataValidatorResult> ValidatePackageAsyncInternal(IPackageFolderReference reference, LocalPackage package, MeasureItem measure)
         {
-            if (packageFolder == null)
+            if (reference == null)
             {
-                throw new ArgumentNullException(nameof(packageFolder));
+                throw new ArgumentNullException(nameof(reference));
             }
 
-            if (!packageFolder.DownloadStatus.IsDownloaded)
+            if (package == null)
+            {
+                throw new ArgumentNullException(nameof(package));
+            }
+
+            if (reference.Id != package.Id)
+            {
+                // remark: this can be implemented but don't need it now
+                throw new InvalidOperationException("Id mismatch between reference and package.");
+            }
+
+            if (!package.DownloadStatus.IsDownloaded)
             {
                 // remark: this can be implemented but don't need it now
                 throw new InvalidOperationException("Can't validate integrity of not fully downloaded package.");
             }
 
-            // basic input data integrity validations
-            if (packageFolder.Metadata.PackageSize != packageFolder.SplitInfo.PackageSize)
-            {
-                return PackageDataValidatorResult.WithError("Metadata file provided invalid package size that does not match with sequence.");
-            }
-
-            if (packageFolder.SplitInfo.SegmentsCount != packageFolder.Definition.PackageSegmentsHashes.Length)
+            if (package.SplitInfo.SegmentsCount != package.Definition.PackageSegmentsHashes.Length)
             {
                 return PackageDataValidatorResult.WithError("Hashes file provided invalid count of segments that does not match with sequence.");
             }
 
             // validate package hash calculated from segment hashes
-            PackageId calculatedPackageHash = _cryptoProvider.HashFromHashes(packageFolder.Definition.PackageSegmentsHashes);
-            if (!calculatedPackageHash.Equals(packageFolder.Id))
+            Id calculatedPackageHash = _cryptoProvider.HashFromHashes(package.Definition.PackageSegmentsHashes);
+            if (!calculatedPackageHash.Equals(package.Id))
             {
-                return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {packageFolder.Id:s}.");
+                return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {package.Id:s}.");
             }
 
             // before working with files - obtain lock to make sure package is not deleted on check
-            if (!packageFolder.Locks.TryLock(out object lockToken))
+            if (!package.Locks.TryLock(out object lockToken))
             {
                 throw new InvalidOperationException("Can't obtain lock for this package. It is marked for deletion.");
             }
@@ -80,7 +85,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 var sequencer = new PackageFolderPartsSequencer();
 
                 // check if data files exists and if correct size
-                foreach (FilePackagePartReference dataFile in sequencer.GetDataFilesForPackage(packageFolder.FolderPath, packageFolder.SplitInfo))
+                foreach (FilePackagePartReference dataFile in sequencer.GetDataFilesForPackage(reference.FolderPath, package.SplitInfo))
                 {
                     try
                     {
@@ -107,14 +112,13 @@ namespace ShareCluster.Packaging.PackageFolders
                 if (errors.Any()) return PackageDataValidatorResult.WithErrors(errors);
 
                 // do file hashes check
-                var verifyHashBehavior = new HashStreamVerifyBehavior(_loggerFactory, packageFolder.Definition);
-                IEnumerable<FilePackagePartReference> allParts = sequencer.GetPartsForPackage(packageFolder.FolderPath, packageFolder.SplitInfo);
+                var verifyHashBehavior = new HashStreamVerifyBehavior(_loggerFactory, package.Definition);
                 try
                 {
-                    using (var readPackageController = new PackageFolderDataStreamController(_loggerFactory, allParts, ReadWriteMode.Read))
+                    using (IStreamController readPackageController = package.DataAccessor.CreateReadAllPackageData())
                     using (var readPackageStream = new ControlledStream(_loggerFactory, readPackageController))
                     using (var validatePackageController = new HashStreamController(_loggerFactory, _cryptoProvider, verifyHashBehavior, nestedStream: null))
-                    using (var validatePackageStream = new ControlledStream(_loggerFactory, validatePackageController))
+                    using (var validatePackageStream = new ControlledStream(_loggerFactory, validatePackageController) { Measure = measure })
                     {
                         await readPackageStream.CopyToAsync(validatePackageStream);
                     }
@@ -134,7 +138,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
             finally
             {
-                packageFolder.Locks.Unlock(lockToken);
+                package.Locks.Unlock(lockToken);
             }
         }
     }

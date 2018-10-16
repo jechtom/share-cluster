@@ -42,9 +42,7 @@ namespace ShareCluster.Packaging.IO
     {
         private const int _defaultBufferSize = 81920;
         private readonly IMessageSerializer _serializer;
-
-        public int EntriesCount { get; private set; }
-
+        
         /// <summary>
         /// Gets current version of serializer. This is mechanism to prevent version mismatch if newer version of serializer will be released.
         /// </summary>
@@ -55,8 +53,10 @@ namespace ShareCluster.Packaging.IO
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         }
 
-        public void SerializeFolderToStream(string sourceDirectoryName, Stream stream)
+        public FolderStreamSerializerStats SerializeFolderToStream(string sourceDirectoryName, Stream stream)
         {
+            int entriesCount = 0;
+
             if (sourceDirectoryName == null)
             {
                 throw new ArgumentNullException(nameof(sourceDirectoryName));
@@ -112,7 +112,7 @@ namespace ShareCluster.Packaging.IO
                 // enumerate directories and files
                 foreach (FileSystemInfo entry in folder.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly))
                 {
-                    EntriesCount++;
+                    entriesCount++;
 
                     if (entry is FileInfo file)
                     {
@@ -153,10 +153,13 @@ namespace ShareCluster.Packaging.IO
 
             // write file end (empty entry)
             _serializer.Serialize(new PackageEntryDto() { PopDirectories = foldersTreeStack.Count }, stream);
+            return new FolderStreamSerializerStats(entriesCount: entriesCount);
         }
 
-        public void DeserializeStreamToFolder(Stream readStream, string rootDirectory)
+        public FolderStreamSerializerStats DeserializeStreamToFolder(Stream readStream, string rootDirectory)
         {
+            int entriesCount = 0;
+
             if (readStream == null)
             {
                 throw new ArgumentNullException(nameof(readStream));
@@ -207,10 +210,10 @@ namespace ShareCluster.Packaging.IO
                         throw new InvalidOperationException("Invalid number of directory pops on final entry.");
                     }
 
-                    return;
+                    return new FolderStreamSerializerStats(entriesCount: entriesCount);
                 }
 
-                EntriesCount++;
+                entriesCount++;
 
                 // get to correct directory
                 for (int i = 0; i < entry.PopDirectories; i++)

@@ -21,7 +21,7 @@ namespace ShareCluster
             NetworkChangeNotifier networkChangeNotifier,
             IPeerRegistry peerRegistry,
             IPackageRegistry packageRegistry,
-            PackageFolderManager localPackageManager,
+            PackageFolderRepository localPackageManager,
             PeersCluster peersCluster
         )
         {
@@ -39,7 +39,7 @@ namespace ShareCluster
         public NetworkChangeNotifier NetworkChangeNotifier { get; }
         public IPeerRegistry PeerRegistry { get; }
         public IPackageRegistry PackageRegistry { get; }
-        public PackageFolderManager LocalPackageManager { get; }
+        public PackageFolderRepository LocalPackageManager { get; }
         public PeersCluster PeersCluster { get; }
 
         public void Start(AppInstanceSettings settings)

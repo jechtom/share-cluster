@@ -10,10 +10,10 @@ namespace ShareCluster.Network.Messages
     public class DiscoveryPeerData
     {
         [ProtoIgnore]
-        PeerInfo peer;
+        PeerInfo _peer;
 
         [ProtoIgnore]
-        long lastSuccessCommunication;
+        long _lastSuccessCommunication;
 
         public DiscoveryPeerData() { }
 
@@ -22,7 +22,7 @@ namespace ShareCluster.Network.Messages
         /// </summary>
         public DiscoveryPeerData WithPeer(PeerInfo peer)
         {
-            this.peer = peer ?? throw new ArgumentNullException(nameof(peer));
+            this._peer = peer ?? throw new ArgumentNullException(nameof(peer));
             ServiceEndpoint = peer.ServiceEndPoint;
             return this;
         }
@@ -33,11 +33,11 @@ namespace ShareCluster.Network.Messages
         [ProtoMember(2)]
         public virtual long LastSuccessCommunication
         {
-            get => peer != null ? peer.Status.LastSuccessCommunication.Ticks : lastSuccessCommunication;
+            get => _peer != null ? _peer.Status.LastSuccessCommunication.Ticks : _lastSuccessCommunication;
             set
             {
-                if (peer != null) throw new InvalidOperationException("Value is readonly.");
-                lastSuccessCommunication = value;
+                if (_peer != null) throw new InvalidOperationException("Value is readonly.");
+                _lastSuccessCommunication = value;
             }
         }
         

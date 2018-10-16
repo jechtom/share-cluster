@@ -7,11 +7,11 @@ namespace ShareCluster.Packaging
 {
     public interface IPackageRegistry
     {
-        IImmutableDictionary<PackageId, LocalPackage> LocalPackages { get; }
-        IImmutableDictionary<PackageId, RemotePackage> RemotePackages { get; }
+        IImmutableDictionary<Id, LocalPackage> LocalPackages { get; }
+        IImmutableDictionary<Id, RemotePackage> RemotePackages { get; }
 
         void AddLocalPackage(LocalPackage loccalPackage);
-        void AddRemotePackage(RemotePackage remotePackage);
+        void MergeRemotePackage(RemotePackage remotePackage);
         void RemoveLocalPackage(LocalPackage loccalPackage);
         void RemoveRemotePackage(RemotePackage remotePackage);
     }

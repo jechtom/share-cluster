@@ -133,7 +133,7 @@ namespace ShareCluster.Packaging.IO
             _currentPart.HashStream.FlushFinalBlock();
             _currentPart.HashStream.Close();
             _currentPart.HashStream.Dispose();
-            var blockHash = new PackageId(_currentPart.HashAlgorithm.Hash);
+            var blockHash = new Id(_currentPart.HashAlgorithm.Hash);
             _currentPart.HashAlgorithm.Dispose();
 
             // let behavior know about hash

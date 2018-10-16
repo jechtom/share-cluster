@@ -10,7 +10,7 @@ namespace ShareCluster.Packaging
     /// </summary>
     public class Catalog
     {
-        private Catalog(int version, ImmutableDictionary<PackageId, CatalogItem> items)
+        private Catalog(int version, ImmutableDictionary<Id, CatalogItem> items)
         {
             Version = version;
             Items = items ?? throw new ArgumentNullException(nameof(items));
@@ -18,9 +18,9 @@ namespace ShareCluster.Packaging
 
         public int Version { get; }
 
-        public ImmutableDictionary<PackageId, CatalogItem> Items { get; }
+        public ImmutableDictionary<Id, CatalogItem> Items { get; }
 
-        public static Catalog Empty { get; } = new Catalog(0, ImmutableDictionary<PackageId, CatalogItem>.Empty);
+        public static Catalog Empty { get; } = new Catalog(0, ImmutableDictionary<Id, CatalogItem>.Empty);
 
         public Catalog AddCatalogItem(CatalogItem catalogItem)
         {

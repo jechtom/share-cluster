@@ -6,10 +6,10 @@ using System.Text;
 namespace ShareCluster.Packaging.Dto
 {
     [ProtoContract]
-    public class PackageDownloadDto
+    public class PackageDownloadStatusDto
     {
-        public PackageDownloadDto() { }
-        public PackageDownloadDto(VersionNumber version, PackageId packageId, bool isDownloading, long downloadedBytes, byte[] segmentsBitmap)
+        public PackageDownloadStatusDto() { }
+        public PackageDownloadStatusDto(VersionNumber version, Id packageId, bool isDownloading, long downloadedBytes, byte[] segmentsBitmap)
         {
             Version = version;
             PackageId = packageId;
@@ -22,7 +22,7 @@ namespace ShareCluster.Packaging.Dto
         public virtual VersionNumber Version { get; set; }
 
         [ProtoMember(2)]
-        public virtual PackageId PackageId { get; set; }
+        public virtual Id PackageId { get; set; }
 
         [ProtoMember(3)]
         public virtual bool IsDownloading { get; set; }

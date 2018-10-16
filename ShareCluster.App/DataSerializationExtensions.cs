@@ -58,7 +58,7 @@ namespace ShareCluster
             }
         }
 
-        public static void Write(this Stream stream, PackageId id)
+        public static void Write(this Stream stream, Id id)
         {
             // rent byte array
             int len = id.Bytes.Length;

@@ -10,7 +10,7 @@ namespace ShareCluster.Packaging.IO
         IStreamController CreateReadAllPackageData();
         IStreamController CreateReadSpecificPackageData(int[] parts);
         IStreamController CreateWriteSpecificPackageData(int[] parts);
-        Task<PackageDataValidatorResult> ValidatePackageDataAsync(MeasureItem measureItem);
+        Task<PackageDataValidatorResult> ValidatePackageDataAsync(LocalPackage localPackage, MeasureItem measureItem);
         void DeletePackage();
         void UpdatePackageMeta(PackageMetadata metadata);
         void UpdatePackageDownloadStatus(PackageDownloadStatus status);

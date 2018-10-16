@@ -7,13 +7,13 @@ namespace ShareCluster.Packaging
 {
     public class RemotePackage
     {
-        private RemotePackage(PackageId packageId, IImmutableDictionary<PeerId, RemotePackageOccurence> occurrences)
+        private RemotePackage(Id packageId, IImmutableDictionary<PeerId, RemotePackageOccurence> occurrences)
         {
             PackageId = packageId;
             Occurrences = occurrences ?? throw new ArgumentNullException(nameof(occurrences));
         }
 
-        public PackageId PackageId { get; }
+        public Id PackageId { get; }
 
         public IImmutableDictionary<PeerId, RemotePackageOccurence> Occurrences { get; }
 
@@ -35,7 +35,7 @@ namespace ShareCluster.Packaging
             );
         }
 
-        public static RemotePackage WithPackage(PackageId packageId)
+        public static RemotePackage WithPackage(Id packageId)
         {
             return new RemotePackage(
                 packageId,

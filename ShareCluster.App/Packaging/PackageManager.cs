@@ -12,31 +12,21 @@ namespace ShareCluster.Packaging
     public class PackageManager
     {
         private readonly ILogger<PackageManager> _logger;
-        private readonly PackageFolderManager _packageFolderManager;
+        private readonly LocalPackageManager _localPackageManager;
 
-        public PackageManager(ILogger<PackageManager> logger, PackageFolders.PackageFolderManager packageFolderManager)
+        public PackageManager(ILogger<PackageManager> logger, LocalPackageManager localPackageManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _packageFolderManager = packageFolderManager ?? throw new ArgumentNullException(nameof(packageFolderManager));
+            _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
         }
 
         public void Init()
         {
-            foreach(PackageFolderReference packageFolderRef in _packageFolderManager.ListPackages(deleteUnfinishedBuilds: true))
+            // load local packages
+            foreach (LocalPackage localPackage in _localPackageManager.Load())
             {
-                var localPackageBuilder = new LocalPackageBuilder();
-                _packageFolderManager.LoadPackage(packageFolderRef, localPackageBuilder);
-                LocalPackage localPackage = localPackageBuilder.Build();
                 Registry.AddLocalPackage(localPackage);
             }
-        }
-
-        public void CreatePackageFromFolder(string folderToProcess, string name, MeasureItem writeMeasure)
-        {
-            var localPackageBuilder = new LocalPackageBuilder();
-            _packageFolderManager.CreatePackageFromFolder(folderToProcess, name, writeMeasure, localPackageBuilder);
-            LocalPackage localPackage = localPackageBuilder.Build();
-            Registry.AddLocalPackage(localPackage);
         }
 
         public IPackageRegistry Registry { get; private set; }

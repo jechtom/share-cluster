@@ -25,7 +25,7 @@ namespace ShareCluster.Tests.IO
 
             byte[] sourceBytes = Encoding.ASCII.GetBytes("Hello there!");
 
-            PackageId expectedHash = crypto.ComputeHash(sourceBytes);
+            Id expectedHash = crypto.ComputeHash(sourceBytes);
 
             var computeHashBehavior = new HashStreamComputeBehavior(loggerFactory, segmentSize: 50);
 
@@ -45,7 +45,7 @@ namespace ShareCluster.Tests.IO
 
             }
 
-            IImmutableList<PackageId> hashes = computeHashBehavior.BuildPackageHashes();
+            IImmutableList<Id> hashes = computeHashBehavior.BuildPackageHashes();
 
             // one segment
             Assert.Equal(1, hashes.Count);
@@ -61,9 +61,9 @@ namespace ShareCluster.Tests.IO
             byte[] sourceBytes = Encoding.ASCII.GetBytes("Hello12345ABC");
 
             // split by 5
-            PackageId expectedHash1 = crypto.ComputeHash(Encoding.ASCII.GetBytes("Hello"));
-            PackageId expectedHash2 = crypto.ComputeHash(Encoding.ASCII.GetBytes("12345"));
-            PackageId expectedHash3 = crypto.ComputeHash(Encoding.ASCII.GetBytes("ABC"));
+            Id expectedHash1 = crypto.ComputeHash(Encoding.ASCII.GetBytes("Hello"));
+            Id expectedHash2 = crypto.ComputeHash(Encoding.ASCII.GetBytes("12345"));
+            Id expectedHash3 = crypto.ComputeHash(Encoding.ASCII.GetBytes("ABC"));
 
             var computeHashBehavior = new HashStreamComputeBehavior(loggerFactory, segmentSize: 5);
 
@@ -83,7 +83,7 @@ namespace ShareCluster.Tests.IO
 
             }
 
-            IImmutableList<PackageId> hashes = computeHashBehavior.BuildPackageHashes();
+            IImmutableList<Id> hashes = computeHashBehavior.BuildPackageHashes();
 
             // multiple segments
             Assert.Equal(3, hashes.Count);

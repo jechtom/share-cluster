@@ -15,14 +15,14 @@ namespace ShareCluster
     /// </summary>
     [ProtoContract]
     [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.IdModelBinder))]
-    public struct PackageId : IEquatable<PackageId>, IFormattable
+    public struct Id : IEquatable<Id>, IFormattable
     {
         [ProtoMember(1)]
         public ImmutableArray<byte> Bytes;
 
         public bool IsNullOrEmpty => Bytes == null || Bytes.Length == 0;
 
-        public PackageId(byte[] data)
+        public Id(byte[] data)
         {
             Bytes = data?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(data));
         }
@@ -43,7 +43,7 @@ namespace ShareCluster
 
         public override bool Equals(object obj)
         {
-            return ((PackageId)obj).Equals(this);
+            return ((Id)obj).Equals(this);
         }
 
         public string ToString(string format)
@@ -53,7 +53,7 @@ namespace ShareCluster
 
         public override string ToString() => ToString(Bytes.Length);
 
-        public bool Equals(PackageId other) => Bytes.SequenceEqual(other.Bytes);
+        public bool Equals(Id other) => Bytes.SequenceEqual(other.Bytes);
 
         public string ToString(string format, IFormatProvider formatProvider)
         {
@@ -79,9 +79,9 @@ namespace ShareCluster
 
         public string ToString(int bytes) => Bytes.ToStringAsHex(0, bytes > Bytes.Length ? Bytes.Length : bytes);
 
-        public static PackageId Parse(string valueString)
+        public static Id Parse(string valueString)
         {
-            if(!TryParse(valueString, out PackageId result))
+            if(!TryParse(valueString, out Id result))
             {
                 throw new FormatException();
             }
@@ -89,7 +89,7 @@ namespace ShareCluster
             return result;
         }
 
-        public static bool TryParse(string valueString, out PackageId hash)
+        public static bool TryParse(string valueString, out Id hash)
         {
             if(valueString == null)
             {
@@ -103,11 +103,11 @@ namespace ShareCluster
                 return false;
             }
 
-            hash = new PackageId(bytes);
+            hash = new Id(bytes);
             return true;
         }
 
-        public static bool operator ==(PackageId left, PackageId right) => left.Equals(right);
-        public static bool operator != (PackageId left, PackageId right) => !left.Equals(right);
+        public static bool operator ==(Id left, Id right) => left.Equals(right);
+        public static bool operator != (Id left, Id right) => !left.Equals(right);
     }
 }

@@ -6,7 +6,7 @@ namespace ShareCluster.WebInterface
 {
     public class PackageOperationViewModel
     {
-        public PackageId Id { get; set; }
+        public Id Id { get; set; }
         public string Name { get; set; }
         public long Size { get; set; }
     }

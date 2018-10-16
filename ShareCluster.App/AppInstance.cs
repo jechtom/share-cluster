@@ -89,9 +89,12 @@ namespace ShareCluster
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<UdpPeerDiscovery>();
             services.AddSingleton<PackageDefinitionSerializer>();
+            services.AddSingleton<PackageDownloadStatusSerializer>();
+            services.AddSingleton<PackageMetadataSerializer>();
+            services.AddSingleton<PackageSerializerFacade>();
             services.AddSingleton<NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
-            services.AddSingleton<PackageFolderManager>();
+            services.AddSingleton<PackageFolderRepository>();
             services.AddSingleton<PackageRegistry>();
             services.AddSingleton<PackageDownloadManager>();
             services.AddSingleton<PeersCluster>();

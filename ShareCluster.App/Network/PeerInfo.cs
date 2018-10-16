@@ -23,7 +23,7 @@ namespace ShareCluster.Network
             Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
             DiscoveryMode = discoveryMode;
-            KnownPackages = new Dictionary<PackageId, PackageStatus>(0);
+            KnownPackages = new Dictionary<Id, PackageStatus>(0);
 
             if (endPoint.Port == 0) throw new ArgumentException("Zero port is not allowed.", nameof(endPoint));
         }
@@ -40,7 +40,7 @@ namespace ShareCluster.Network
         public PeerFlags DiscoveryMode { get; set; }
 
         // known packages
-        public IDictionary<PackageId, PackageStatus> KnownPackages { get; private set; }
+        public IDictionary<Id, PackageStatus> KnownPackages { get; private set; }
 
         public PeerClusterStatus Status { get; private set; }
         
@@ -67,7 +67,7 @@ namespace ShareCluster.Network
             if(changed) KnownPackageChanged?.Invoke(this);
         }
 
-        public void RemoveKnownPackage(PackageId packageId)
+        public void RemoveKnownPackage(Id packageId)
         {
             lock (syncLock)
             {

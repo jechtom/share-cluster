@@ -11,42 +11,49 @@ namespace ShareCluster.Packaging.IO
     public class PackageDownloadStatusSerializer
     {
         private readonly IMessageSerializer _serializer;
-        private readonly ILogger<PackageDefinitionSerializer> _logger;
+        private readonly ILogger<PackageDownloadStatusSerializer> _logger;
 
         /// <summary>
         /// Gets current version of serializer. This is mechanism to prevent version mismatch if newer version of serializer will be released.
         /// </summary>
         public VersionNumber SerializerVersion { get; } = new VersionNumber(1);
 
-        public PackageDownloadStatusSerializer(IMessageSerializer serializer, ILogger<PackageDefinitionSerializer> logger)
+        public PackageDownloadStatusSerializer(IMessageSerializer serializer, ILogger<PackageDownloadStatusSerializer> logger)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public PackageDownloadDto Serialize(PackageDownloadStatus value, PackageDefinition packageDefinition)
+        public void Serialize(PackageDownloadStatus value, PackageDefinition packageDefinition, Stream stream)
         {
-            var result = new PackageDownloadDto(
+            var dto = new PackageDownloadStatusDto(
                 version: SerializerVersion,
                 packageId: packageDefinition.PackageId,
                 isDownloading: value.IsDownloading,
                 downloadedBytes: value.BytesDownloaded,
                 segmentsBitmap: value.SegmentsBitmap
             );
-            return result;
+            _serializer.Serialize<PackageDownloadStatusDto>(dto, stream);
         }
 
-        public PackageDownloadStatus Deserialize(PackageDownloadDto dto, PackageDefinition packageDefinition)
+        public PackageDownloadStatus Deserialize(Stream stream, PackageDefinition packageDefinition)
         {
+            if (stream == null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+
+            PackageDownloadStatusDto dto = _serializer.Deserialize<PackageDownloadStatusDto>(stream);
+
             if (dto == null)
             {
-                throw new ArgumentNullException(nameof(dto));
+                throw new InvalidOperationException("No valid data in stream.");
             }
 
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
-            
+
             // verify
-            PackageId packageId = packageDefinition.PackageId;
+            Id packageId = packageDefinition.PackageId;
             if (packageId != dto.PackageId)
             {
                 throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {dto.PackageId:s}", packageId, dto.PackageId);
@@ -54,8 +61,7 @@ namespace ShareCluster.Packaging.IO
 
             // create result
             var result = new PackageDownloadStatus(packageDefinition.PackageSplitInfo, dto.IsDownloading, dto.SegmentsBitmap);
-
-
+            
             return result;
         }
     }

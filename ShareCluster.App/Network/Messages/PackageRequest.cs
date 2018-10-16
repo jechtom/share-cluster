@@ -10,12 +10,12 @@ namespace ShareCluster.Network.Messages
     {
         public PackageRequest() { }
 
-        public PackageRequest(PackageId packageId)
+        public PackageRequest(Id packageId)
         {
             PackageId = packageId;
         }
 
         [ProtoMember(1)]
-        public virtual PackageId PackageId { get; set; }
+        public virtual Id PackageId { get; set; }
     }
 }

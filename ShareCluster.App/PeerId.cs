@@ -7,7 +7,7 @@ namespace ShareCluster
 {
     public struct PeerId : IEquatable<PeerId>
     {
-        public PeerId(PackageId instanceId, IPEndPoint endpoint)
+        public PeerId(Id instanceId, IPEndPoint endpoint)
         {
             if (instanceId.IsNullOrEmpty) throw new ArgumentException("Can't be empty", nameof(instanceId));
 
@@ -15,7 +15,7 @@ namespace ShareCluster
             Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
         }
 
-        public PackageId InstanceId { get; }
+        public Id InstanceId { get; }
         public IPEndPoint Endpoint { get; }
 
         public override bool Equals(object obj)

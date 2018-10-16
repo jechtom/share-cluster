@@ -25,36 +25,36 @@ namespace ShareCluster
         public HashAlgorithm CreateHashAlgorithm() => _hashAlgFactory();
 
         public int BytesLength { get; }
-        public PackageId EmptyHash { get; }
+        public Id EmptyHash { get; }
 
-        public PackageId CreateRandom()
+        public Id CreateRandom()
         {
             var result = new byte[BytesLength];
             _randomGenerator.GetBytes(result);
-            return new PackageId(result);
+            return new Id(result);
         }
 
-        public PackageId ComputeHash(byte[] bytes)
+        public Id ComputeHash(byte[] bytes)
         {
             using (HashAlgorithm alg = CreateHashAlgorithm())
             {
-                return new PackageId(alg.ComputeHash(bytes));
+                return new Id(alg.ComputeHash(bytes));
             }
         }
 
-        public PackageId HashFromHashes(IEnumerable<PackageId> hashes)
+        public Id HashFromHashes(IEnumerable<Id> hashes)
         {
             using(HashAlgorithm hashAlg = CreateHashAlgorithm())
             using (var cryptoStream = new CryptoStream(Stream.Null, hashAlg, CryptoStreamMode.Write))
             {
-                foreach (PackageId hash in hashes)
+                foreach (Id hash in hashes)
                 {
                     cryptoStream.Write(hash);
                 }
 
                 // compute and return
                 cryptoStream.FlushFinalBlock();
-                return new PackageId(hashAlg.Hash);
+                return new Id(hashAlg.Hash);
             }
         }
     }

@@ -26,9 +26,9 @@ namespace ShareCluster.Packaging.IO
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public PackageDefinitionDto Serialize(PackageDefinition value)
+        public void Serialize(PackageDefinition value, Stream stream)
         {
-            var result = new PackageDefinitionDto(
+            var dto = new PackageDefinitionDto(
                 version: SerializerVersion,
                 packageId: value.PackageId,
                 packageSize: value.PackageSize,
@@ -36,14 +36,21 @@ namespace ShareCluster.Packaging.IO
                 segmentLength: value.PackageSplitInfo.SegmentLength,
                 dataFileLength: value.PackageSplitInfo.DataFileLength
             );
-            return result;
+            _serializer.Serialize<PackageDefinitionDto>(dto, stream);
         }
 
-        public PackageDefinition Deserialize(PackageDefinitionDto dto, PackageId packageId)
+        public PackageDefinition Deserialize(Stream stream, Id packageId)
         {
+            if (stream == null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+
+            PackageDefinitionDto dto = _serializer.Deserialize<PackageDefinitionDto>(stream);
+
             if (dto == null)
             {
-                throw new ArgumentNullException(nameof(dto));
+                throw new InvalidOperationException("No valid data in stream.");
             }
 
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
@@ -63,7 +70,7 @@ namespace ShareCluster.Packaging.IO
             );
 
             // verify
-            PackageId expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
+            Id expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
             if(expectedId != result.PackageId)
             {
                 throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);

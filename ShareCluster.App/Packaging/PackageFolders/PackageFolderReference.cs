@@ -7,14 +7,16 @@ namespace ShareCluster.Packaging.PackageFolders
 {
     public class PackageFolderReference : IPackageFolderReference
     {
-        public PackageFolderReference(PackageId packageId, string directoryPath)
+        public PackageFolderReference(Id packageId, string directoryPath)
         {
             Id = packageId;
             FolderPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
         }
 
-        public PackageId Id { get; }
+        public Id Id { get; }
 
         public string FolderPath { get; }
+
+        public override string ToString() => $"{Id:s} at {FolderPath}";
     }
 }

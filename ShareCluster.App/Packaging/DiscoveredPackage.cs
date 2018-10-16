@@ -17,6 +17,6 @@ namespace ShareCluster.Packaging
         
         public PackageMetadataDto Meta { get; set; }
         public string Name => Meta.Name;
-        public PackageId PackageId => Meta.PackageId;
+        public Id PackageId => Meta.PackageId;
     }
 }

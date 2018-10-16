@@ -6,7 +6,7 @@ namespace ShareCluster.Packaging
 {
     public static class IHasPackageIdExtensions
     {
-        public static void ThrowIfNullOrDifferentPackageId<T>(this T instance, PackageId expectedPackageId) where T: class, IHasPackageId
+        public static void ThrowIfNullOrDifferentPackageId<T>(this T instance, Id expectedPackageId) where T: class, IHasPackageId
         {
             if (instance == null)
             {

@@ -6,6 +6,6 @@ namespace ShareCluster.Packaging
 {
     public interface IHasPackageId
     {
-        PackageId PackageId { get; }
+        Id PackageId { get; }
     }
 }

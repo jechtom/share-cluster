@@ -7,7 +7,7 @@ namespace ShareCluster.Packaging
     /// </summary>
     public class PackageSplitBaseInfo
     {
-        private const long _defaultSegmentLength = 1024 * 1024;
+        private const long _defaultSegmentLength = 1024 * 1024 * 1;
         private const int _defaultSegmentsPerDataFile = 100;
         private const long _defaultDataFileLength = _defaultSegmentLength * _defaultSegmentsPerDataFile;
 
