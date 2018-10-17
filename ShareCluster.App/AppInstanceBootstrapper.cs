@@ -20,7 +20,7 @@ namespace ShareCluster
             UdpPeerDiscovery udpPeerDiscovery,
             NetworkChangeNotifier networkChangeNotifier,
             IPeerRegistry peerRegistry,
-            IPackageRegistry packageRegistry,
+            ILocalPackageRegistry localPackageRegistry,
             PackageFolderRepository localPackageManager,
             PeersCluster peersCluster
         )
@@ -29,7 +29,7 @@ namespace ShareCluster
             UdpPeerDiscovery = udpPeerDiscovery ?? throw new ArgumentNullException(nameof(udpPeerDiscovery));
             NetworkChangeNotifier = networkChangeNotifier ?? throw new ArgumentNullException(nameof(networkChangeNotifier));
             PeerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            PackageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            LocalPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             LocalPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             PeersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
         }
@@ -38,23 +38,13 @@ namespace ShareCluster
         public UdpPeerDiscovery UdpPeerDiscovery { get; }
         public NetworkChangeNotifier NetworkChangeNotifier { get; }
         public IPeerRegistry PeerRegistry { get; }
-        public IPackageRegistry PackageRegistry { get; }
+        public ILocalPackageRegistry LocalPackageRegistry { get; }
+        public IRemotePackageRegistry RemotePackageRegistry { get; }
         public PackageFolderRepository LocalPackageManager { get; }
         public PeersCluster PeersCluster { get; }
 
         public void Start(AppInstanceSettings settings)
         {
-            if (settings.DownloadEverything)
-            {
-                PackageRegistry.RemotePackageDiscovered += (package) =>
-                {
-                    if (PackageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(package, out System.Threading.Tasks.Task task))
-                    {
-                        task.Wait();
-                    }
-                };
-            }
-
             // start UDP announcer/listener
             UdpPeerDiscovery.Start(
                 allowListener: settings.EnableUdpDiscoveryListener,

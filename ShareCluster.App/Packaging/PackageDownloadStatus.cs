@@ -8,7 +8,7 @@ namespace ShareCluster.Packaging
     public class PackageDownloadStatus
     {
         private readonly object _syncLock = new object();
-        private readonly PackageLocks _locks;
+        private readonly EntityLocks _locks;
         private readonly PackageSplitInfo _splitInfo;
         private readonly byte _lastByteMask;
         private byte[] _segmentsBitmap;
@@ -19,7 +19,7 @@ namespace ShareCluster.Packaging
 
         public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] segmentsBitmap)
         {
-            _locks = new PackageLocks();
+            _locks = new EntityLocks();
             _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
             _partsInProgress = new HashSet<int>();
 
@@ -49,7 +49,7 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public PackageLocks Locks => _locks;
+        public EntityLocks Locks => _locks;
         public long BytesDownloaded => _bytesDownloaded;
         public long BytesTotal => _splitInfo.PackageSize;
         public bool IsDownloaded => _segmentsBitmap == null;

@@ -93,7 +93,7 @@ namespace ShareCluster.Network
         /// Return true if download has started. False if it was already in progress. 
         /// Throws en exception if failed to download hashes or start download.
         /// </returns>
-        public bool GetDiscoveredPackageAndStartDownloadPackage(DiscoveredPackage packageToDownload, out Task startDownloadTask)
+        public bool GetDiscoveredPackageAndStartDownloadPackage(RemotePackage packageToDownload, out Task startDownloadTask)
         {
             lock (_syncLock)
             {
@@ -105,7 +105,7 @@ namespace ShareCluster.Network
                 }
 
                 // already in progress, exit
-                if (_remotePackageRegistry.TryGetPackage(packageToDownload.PackageId, out LocalPackage _))
+                if (_localPackageRegistry.TryGetPackage(packageToDownload.PackageId, out LocalPackage _))
                 {
                     startDownloadTask = null;
                     return false;
@@ -507,7 +507,7 @@ namespace ShareCluster.Network
             {
                 _parent._logger.LogTrace("Downloading \"{0}\" {1:s} - from {2} - segments {3}", package.Metadata.Name, package.Id, peer.ServiceEndPoint, parts.Format());
 
-                var message = new DataRequest() { PackageHash = package.Id, RequestedParts = parts };
+                var message = new DataRequest() { PackageId = package.Id, RequestedParts = parts };
                 long totalSizeOfParts = package.SplitInfo.GetSizeOfSegments(parts);
 
                 // remarks:

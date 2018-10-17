@@ -6,12 +6,12 @@ using Xunit;
 
 namespace ShareCluster.Tests.Packaging
 {
-    public class PackageLocksTests
+    public class EntityLocksTests
     {
         [Fact]
         public void BasicTests()
         {
-            var pl = new PackageLocks();
+            var pl = new EntityLocks();
 
             Assert.False(pl.IsMarkedToDelete);
             Assert.True(pl.MarkForDelete().Wait(300), "Waited too long.");
@@ -21,7 +21,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void SingelLockRelease()
         {
-            var pl = new PackageLocks();
+            var pl = new EntityLocks();
 
             object token = pl.Lock();
             pl.Unlock(token);
@@ -33,7 +33,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void SingelLockReleaseWait()
         {
-            var pl = new PackageLocks();
+            var pl = new EntityLocks();
 
             object token = pl.Lock();
             Task deleteTask = pl.MarkForDelete();
@@ -46,7 +46,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void DoublelLockReleaseWait()
         {
-            var pl = new PackageLocks();
+            var pl = new EntityLocks();
 
             object token1 = pl.Lock(); // lock 1
             object token2 = pl.Lock(); // lock 2
@@ -62,7 +62,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void NotAllowLockAfterDelete()
         {
-            var pl = new PackageLocks();
+            var pl = new EntityLocks();
 
             object token = pl.Lock(); // lock 1
             Task deleteTask = pl.MarkForDelete(); // mark for delete start

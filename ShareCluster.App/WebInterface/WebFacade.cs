@@ -16,20 +16,22 @@ namespace ShareCluster.WebInterface
         private readonly PackageDownloadManager _packageDownloadManager;
         private readonly LocalPackageManager _localPackageManager;
         private readonly IPeerRegistry _peerRegistry;
-        private readonly IPackageRegistry _packageRegistry;
+        private readonly ILocalPackageRegistry _localPackageRegistry;
+        private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly InstanceHash _instanceHash;
         private readonly LongRunningTasksManager _tasks;
         private readonly PeersCluster _peersCluster;
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IPackageRegistry packageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
+            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
             _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
             _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
@@ -37,7 +39,7 @@ namespace ShareCluster.WebInterface
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
             if (start)
             {
                 _packageDownloadManager.StartDownloadPackage(package);
@@ -50,7 +52,7 @@ namespace ShareCluster.WebInterface
 
         public void TryVerifyPackage(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // create lock
             lock(_syncLock)
@@ -84,20 +86,22 @@ namespace ShareCluster.WebInterface
             _tasks.AddTaskToQueue(task);
         }
 
-        public void TryStartDownloadDiscovered(Id packageId)
+        public void TryStartDownloadRemotePackage(Id packageId)
         {
-            DiscoveredPackage packageDiscovery = _packageRegistry.ImmutableDiscoveredPackages.FirstOrDefault(p => p.PackageId.Equals(packageId));
-            if (packageDiscovery == null) return;
+            if(!_remotePackageRegistry.RemotePackages.TryGetValue(packageId, out RemotePackage remotePackage))
+            {
+                return;
+            }
 
             // try start download
-            if (!_packageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(packageDiscovery, out Task startDownloadTask))
+            if (!_packageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(remotePackage, out Task startDownloadTask))
             {
                 return;
             }
 
             // create and register task for starting download
             var task = new LongRunningTask(
-                    $"Starting download of package \"{packageDiscovery.Name}\" {packageDiscovery.PackageId:s}",
+                    $"Starting download of package \"{remotePackage.Name}\" {remotePackage.PackageId:s}",
                     startDownloadTask,
                     $"Download has started"
                 );
@@ -112,7 +116,7 @@ namespace ShareCluster.WebInterface
 
             // start
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            var taskCreate = Task.Run(new Action(() => _packageRegistry.CreatePackageFromFolder(folder, name, measureItem)));
+            var taskCreate = Task.Run(new Action(() => _localPackageManager.CreatePackageFromFolder(folder, name, measureItem)));
 
             // create and register task for starting download
             var task = new LongRunningTask(
@@ -130,9 +134,9 @@ namespace ShareCluster.WebInterface
         {
             var result = new StatusViewModel
             {
-                Packages = _packageRegistry.ImmutablePackages,
+                Packages = _localPackageRegistry.ImmutablePackages,
                 Peers = _peerRegistry.Peers.Values,
-                PackagesAvailableToDownload = _packageRegistry.ImmutableDiscoveredPackages,
+                PackagesAvailableToDownload = _localPackageRegistry.ImmutableDiscoveredPackages,
                 Instance = _instanceHash,
                 Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
                 UploadSlotsAvailable = _peersCluster.UploadSlotsAvailable,
@@ -143,7 +147,7 @@ namespace ShareCluster.WebInterface
 
         public void ExtractPackage(Id packageId, string folder, bool validate)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // run
             var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(package, folder, validate: validate)));
@@ -162,10 +166,10 @@ namespace ShareCluster.WebInterface
 
         public void DeletePackage(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // start
-            Task deleteTask = _packageRegistry.DeletePackageAsync(package);
+            Task deleteTask = _localPackageManager.DeletePackageAsync(package);
 
             // create and register task for starting download
             var task = new LongRunningTask(
@@ -185,7 +189,7 @@ namespace ShareCluster.WebInterface
 
         public PackageOperationViewModel GetPackageOrNull(Id packageId)
         {
-            if (!_packageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return null;
+            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return null;
             return new PackageOperationViewModel()
             {
                 Id = package.Id,

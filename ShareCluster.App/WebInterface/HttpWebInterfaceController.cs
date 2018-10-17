@@ -22,7 +22,7 @@ namespace ShareCluster.WebInterface
         public IActionResult StartDownloadDiscoveredPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
-            facade.TryStartDownloadDiscovered(packageId);
+            facade.TryStartDownloadRemotePackage(packageId);
             return RedirectToAction(nameof(Index));
         }
 

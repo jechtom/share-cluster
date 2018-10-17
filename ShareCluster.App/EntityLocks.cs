@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 namespace ShareCluster
 {
     /// <summary>
-    /// Provides logic for locking package when package data is in use.
+    /// Provides logic for locking entity when is in use.
     /// </summary>
-    public class PackageLocks
+    public class EntityLocks
     {
         private readonly object _syncLock = new object();
 

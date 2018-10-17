@@ -16,14 +16,14 @@ namespace ShareCluster.Network.Http
     public class HttpApiController : IHttpApiController
     {
         private readonly PeersCluster _peersCluster;
-        private readonly IPackageRegistry _packageRegistry;
+        private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly PackageDefinitionSerializer _packageDefinitionSerializer;
         private readonly PackageDownloadManager _downloadManager;
 
-        public HttpApiController(PeersCluster peersCluster, IPackageRegistry packageRegistry, PackageDefinitionSerializer packageDefinitionSerializer, PackageDownloadManager downloadManager)
+        public HttpApiController(PeersCluster peersCluster, ILocalPackageRegistry localPackageRegistry, PackageDefinitionSerializer packageDefinitionSerializer, PackageDownloadManager downloadManager)
         {
             _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
-            _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
             _downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
         }
@@ -31,7 +31,7 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public PackageResponse Package([FromBody]PackageRequest request)
         {
-            if (!_packageRegistry.TryGetPackage(request.PackageId, out LocalPackage package) || package.Locks.IsMarkedToDelete)
+            if(!_localPackageRegistry.TryGetPackage(request.PackageId, out LocalPackage package))
             {
                 return new PackageResponse()
                 {
@@ -70,14 +70,14 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
-            if (!_packageRegistry.TryGetPackage(request.PackageHash, out LocalPackage package) || package.Locks.IsMarkedToDelete)
-            {
+            if(!_localPackageRegistry.TryGetPackage(request.PackageId, out LocalPackage package))
+            { 
                 return new ObjectResult(DataResponseFaul.CreateDataPackageNotFoundMessage());
             }
 
             // create stream
             (System.IO.Stream stream, DataResponseFaul error) = _peersCluster.CreateUploadStream(package, request.RequestedParts);
-            if(error != null) return new ObjectResult(error);
+            if (error != null) return new ObjectResult(error);
             return new FileStreamResult(stream, "application/octet-stream");
         }
 

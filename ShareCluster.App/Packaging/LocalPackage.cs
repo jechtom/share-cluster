@@ -26,7 +26,7 @@ namespace ShareCluster.Packaging
         public IPackageDataAccessor DataAccessor { get; }
 
         public PackageSplitInfo SplitInfo => Definition.PackageSplitInfo;
-        public PackageLocks Locks => DownloadStatus.Locks; // investigate - how it is used?
+        public EntityLocks Locks => DownloadStatus.Locks; // investigate - how it is used?
 
         public MeasureItem DownloadMeasure { get; }
         public MeasureItem UploadMeasure { get; }

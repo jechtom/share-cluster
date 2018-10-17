@@ -23,6 +23,13 @@ namespace ShareCluster
             return ((PeerId)obj).Equals(this);
         }
 
+        public void Validate()
+        {
+            if (Endpoint == null) throw new InvalidOperationException($"{nameof(PeerId)} validation: Endpoint is null");
+            if (Endpoint.Port == 0) throw new InvalidOperationException($"{nameof(PeerId)} validation: Port is invalid");
+            if (InstanceId.IsNullOrEmpty) throw new InvalidOperationException($"{nameof(PeerId)} validation: Instance Id is null or empty");
+        }
+
         public bool Equals(PeerId other)
         {
             if (InstanceId != other.InstanceId) return false;

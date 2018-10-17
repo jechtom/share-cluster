@@ -25,7 +25,7 @@ namespace ShareCluster.Network
         private readonly IClock _clock;
         private readonly IPeerRegistry _peerRegistry;
         private readonly HttpApiClient _client;
-        private readonly IPackageRegistry _packageRegistry;
+        private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly PackageDownloadManager _packageDownloadManager;
         private readonly ILogger<PeersCluster> _logger;
         private readonly object _clusterNodeLock = new object();
@@ -38,20 +38,20 @@ namespace ShareCluster.Network
 
         public int UploadSlotsAvailable => _uploadSlots;
 
-        public PeersCluster(AppInfo appInfo, IClock clock, IPeerRegistry peerRegistry, HttpApiClient client, IPackageRegistry packageRegistry, PackageDownloadManager packageDownloadManager)
+        public PeersCluster(AppInfo appInfo, IClock clock, IPeerRegistry peerRegistry, HttpApiClient client, ILocalPackageRegistry localPackageRegistry, PackageDownloadManager packageDownloadManager)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _client = client ?? throw new ArgumentNullException(nameof(client));
-            _packageRegistry = packageRegistry ?? throw new ArgumentNullException(nameof(packageRegistry));
+            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             _statusVersion = 1;
             _statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
             _uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             _logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
-            _packageRegistry.LocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
-            _packageRegistry.LocalPackageDeleted += PackageRegistry_LocalPackageDeleted;
+            _localPackageRegistry.LocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
+            _localPackageRegistry.LocalPackageDeleted += PackageRegistry_LocalPackageDeleted;
             _packageDownloadManager.DownloadStatusChange += PackageDownloadManager_DownloadStatusChange;
         }
 
@@ -286,7 +286,7 @@ namespace ShareCluster.Network
                 var result = new StatusUpdateMessage
                 {
                     InstanceId = _appInfo.InstanceId.Hash,
-                    KnownPackages = _packageRegistry.ImmutablePackagesStatuses,
+                    KnownPackages = _localPackageRegistry.ImmutablePackagesStatuses,
                     ServicePort = _appInfo.NetworkSettings.TcpServicePort,
                     PeerEndpoint = endpoint,
                     Clock = _appInfo.Clock.Time.Ticks

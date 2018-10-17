@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
 using ShareCluster.Packaging.IO;
@@ -128,6 +129,12 @@ namespace ShareCluster.Packaging
             _logger.LogInformation($"Created package from \"{folderToProcess}\":\nHash: {package.Id}\nSize: {SizeFormatter.ToString(package.Definition.PackageSize)}\nFiles and directories: {stats.EntriesCount}\nTime: {operationMeasure.Elapsed}");
 
             return package;
+        }
+
+        public Task DeletePackageAsync(LocalPackage package)
+        {
+            throw new NotImplementedException(); // locks?
+            package.DataAccessor.DeletePackage();
         }
     }
 }

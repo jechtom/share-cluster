@@ -12,12 +12,13 @@ namespace ShareCluster.Packaging
             PackageId = packageId;
             PackageSize = packageSize;
             Peers = peers ?? throw new ArgumentNullException(nameof(peers));
+            Name = string.Join(", ", Peers.Select(p => p.Value.Name).Distinct());
         }
 
         public Id PackageId { get; }
         public long PackageSize { get; }
-
         public IImmutableDictionary<PeerId, RemotePackageOccurence> Peers { get; }
+        public string Name { get; }
 
         public RemotePackage WithPeer(RemotePackageOccurence occurence)
         {

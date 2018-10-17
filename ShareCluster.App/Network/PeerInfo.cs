@@ -16,18 +16,26 @@ namespace ShareCluster.Network
     /// </summary>
     public class PeerInfo : IEquatable<PeerInfo>
     {
+        private readonly PeerStats _stats;
         private readonly object _syncLock = new object();
         private readonly PeerId _peerId;
 
-        public PeerInfo(PeerId peerId, PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerFlags discoveryMode)
+        public PeerInfo(PeerId peerId, IClock clock, NetworkSettings networkSettings)
         {
-            _peerId = peerId;
-            Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
-            ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
-            DiscoveryMode = discoveryMode;
-            KnownPackages = new Dictionary<Id, PackageStatus>(0);
+            if (clock == null)
+            {
+                throw new ArgumentNullException(nameof(clock));
+            }
 
-            if (endPoint.Port == 0) throw new ArgumentException("Zero port is not allowed.", nameof(endPoint));
+            if (networkSettings == null)
+            {
+                throw new ArgumentNullException(nameof(networkSettings));
+            }
+
+            peerId.Validate();
+
+            _peerId = peerId;
+            _stats = new PeerStats(clock, networkSettings);
         }
 
         // identification
@@ -40,45 +48,15 @@ namespace ShareCluster.Network
         public bool IsUdpDiscovery => (DiscoveryMode & PeerFlags.DiscoveredByUdp) > 0;
 
         public PeerFlags DiscoveryMode { get; set; }
-
-        // known packages
-        public IDictionary<Id, PackageStatus> KnownPackages { get; private set; }
-
-        public PeerClusterStatus Status { get; private set; }
         
+        public PeerStats Stats { get; }
         public PeerId PeerId => _peerId;
 
+        public PeerStats Stats1 => _stats;
+
         public event Action<PeerInfo> KnownPackageChanged;
-
-        public void ReplaceKnownPackages(IImmutableList<PackageStatus> newPackages)
-        {
-            bool changed = false;
-            lock (_syncLock)
-            {
-                if (newPackages.Count != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.PackageId)))
-                {
-                    KnownPackages = newPackages.ToDictionary(p => p.PackageId);
-                    changed = true;
-                }
-            }
-            if(changed) KnownPackageChanged?.Invoke(this);
-        }
-
-        public void RemoveKnownPackage(Id packageId)
-        {
-            lock (_syncLock)
-            {
-                if (!KnownPackages.ContainsKey(packageId)) return;
-                KnownPackages = KnownPackages.Where(p => !p.Key.Equals(packageId)).ToDictionary(p => p.Key, p => p.Value);
-            }
-
-            KnownPackageChanged?.Invoke(this);
-        }
-
-        public override int GetHashCode()
-        {
-            return PeerId.GetHashCode();
-        }
+        
+        public override int GetHashCode() => PeerId.GetHashCode();
 
         public override bool Equals(object obj) => Equals((PeerInfo)obj);
 

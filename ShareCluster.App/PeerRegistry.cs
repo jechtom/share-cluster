@@ -15,7 +15,7 @@ namespace ShareCluster
     /// Stores and updates list of peers and its statistics. 
     /// Also implements disabling inactive peers feature and immutable arrays of discovery messages (optimization).
     /// </summary>
-    public class PeerRegistry : IPeerRegistry
+    public class PeerRegistry 
     {
         private readonly AppInfo app;
         private readonly ILogger<PeerRegistry> logger;
@@ -126,31 +126,5 @@ namespace ShareCluster
             // after lock and processing notify
             if (changeArgs != null) PeersChanged?.Invoke(changeArgs);
         }
-
-        public bool TryGetPeer(IPEndPoint endpoint, out PeerInfo peerInfo)
-        {
-            if (endpoint == null)
-            {
-                throw new ArgumentNullException(nameof(endpoint));
-            }
-
-            lock (peersLock)
-            {
-                bool result = peers.TryGetValue(endpoint, out PeerInfo item);
-                if(!result)
-                {
-                    peerInfo = null;
-                    return false;
-                }
-                peerInfo = item;
-                return true;
-            }
-        }
-        
-        public DiscoveryPeerData[] ImmutablePeersDiscoveryData => immutablePeersDiscoveryDataArray;
-
-        public PeerInfo[] ImmutablePeers => immutablePeersArray;
-
-        public event Action<IEnumerable<PeerInfoChange>> PeersChanged;
     }
 }
