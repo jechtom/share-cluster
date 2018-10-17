@@ -22,7 +22,7 @@ namespace ShareCluster.Network.Messages
         /// </summary>
         public DiscoveryPeerData WithPeer(PeerInfo peer)
         {
-            this._peer = peer ?? throw new ArgumentNullException(nameof(peer));
+            _peer = peer ?? throw new ArgumentNullException(nameof(peer));
             ServiceEndpoint = peer.ServiceEndPoint;
             return this;
         }

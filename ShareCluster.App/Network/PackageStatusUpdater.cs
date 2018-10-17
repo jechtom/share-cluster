@@ -63,7 +63,7 @@ namespace ShareCluster.Network
                 {
                     if (!peer.PeerInfo.KnownPackages.TryGetValue(packageInfo.Id, out PackageStatus ps)) continue;
                     alreadyFound++;
-                    status.AddPeer(peer, isSeeder: ps.IsSeeder);
+                    status.AddPeer(peer, isSeeder: ps.IsSeeding);
                 }
             }
 
@@ -126,7 +126,7 @@ namespace ShareCluster.Network
                         {
                             if(peer.KnownPackages.TryGetValue(packageState.Key, out PackageStatus ps))
                             {
-                                packageState.Value.AddPeer(status, isSeeder: ps.IsSeeder);
+                                packageState.Value.AddPeer(status, isSeeder: ps.IsSeeding);
                             }
                             else
                             {
@@ -401,7 +401,7 @@ namespace ShareCluster.Network
                         peer.InterestedForPackagesSeederCount++;
                         newStatus.StatusDetail = new PackageStatusDetail()
                         {
-                            BytesDownloaded = _packageInfo.Metadata.PackageSize,
+                            BytesDownloaded = _packageInfo.Definition.PackageSize,
                             IsFound = true,
                             SegmentsBitmap = null
                         };

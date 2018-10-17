@@ -68,7 +68,7 @@ namespace ShareCluster.Tests
             // sample message (this caused deserialization issues)
             var message = new StatusUpdateMessage()
             {
-                InstanceHash = new Id(new byte[] { 1, 2, 3 }),
+                InstanceId = new Id(new byte[] { 1, 2, 3 }),
                 KnownPackages = ImmutableList<PackageStatus>.Empty,
                 KnownPeers = new DiscoveryPeerData[] {
                     new DiscoveryPeerData()
@@ -90,7 +90,7 @@ namespace ShareCluster.Tests
             // compare
             Assert.NotNull(des);
             Assert.Equal(message.ServicePort, des.ServicePort);
-            Assert.Equal(message.InstanceHash, des.InstanceHash);
+            Assert.Equal(message.InstanceId, des.InstanceId);
             Assert.Equal(message.PeerEndpoint, des.PeerEndpoint);
             Assert.Equal(message.Clock, des.Clock);
             Assert.NotNull(des.KnownPeers);

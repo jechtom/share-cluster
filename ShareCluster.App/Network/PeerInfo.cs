@@ -16,10 +16,12 @@ namespace ShareCluster.Network
     /// </summary>
     public class PeerInfo : IEquatable<PeerInfo>
     {
-        private readonly object syncLock = new object();
+        private readonly object _syncLock = new object();
+        private readonly PeerId _peerId;
 
-        public PeerInfo(PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerFlags discoveryMode)
+        public PeerInfo(PeerId peerId, PeerClusterStatus clusterStatus, IPEndPoint endPoint, PeerFlags discoveryMode)
         {
+            _peerId = peerId;
             Status = clusterStatus ?? throw new ArgumentNullException(nameof(clusterStatus));
             ServiceEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
             DiscoveryMode = discoveryMode;
@@ -44,23 +46,18 @@ namespace ShareCluster.Network
 
         public PeerClusterStatus Status { get; private set; }
         
-        public string StatusString => string.Join(";", new string[] {
-                        IsDirectDiscovery ? "Direct" : null,
-                        IsOtherPeerDiscovery ? "OtherPeer" : null,
-                        IsManualDiscovery ? "Manual" : null,
-                        IsUdpDiscovery ? "Udp" : null
-                    }.Where(s => s != null));
+        public PeerId PeerId => _peerId;
 
         public event Action<PeerInfo> KnownPackageChanged;
 
         public void ReplaceKnownPackages(IImmutableList<PackageStatus> newPackages)
         {
             bool changed = false;
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (newPackages.Count != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.Meta.PackageId)))
+                if (newPackages.Count != KnownPackages.Count || !newPackages.All(k => KnownPackages.ContainsKey(k.PackageId)))
                 {
-                    KnownPackages = newPackages.ToDictionary(p => p.Meta.PackageId);
+                    KnownPackages = newPackages.ToDictionary(p => p.PackageId);
                     changed = true;
                 }
             }
@@ -69,7 +66,7 @@ namespace ShareCluster.Network
 
         public void RemoveKnownPackage(Id packageId)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
                 if (!KnownPackages.ContainsKey(packageId)) return;
                 KnownPackages = KnownPackages.Where(p => !p.Key.Equals(packageId)).ToDictionary(p => p.Key, p => p.Value);
@@ -80,19 +77,15 @@ namespace ShareCluster.Network
 
         public override int GetHashCode()
         {
-            return ServiceEndPoint.GetHashCode();
+            return PeerId.GetHashCode();
         }
 
-        public override bool Equals(object obj)
-        {
-            if (obj == null) return false;
-            return ServiceEndPoint.Equals(((PeerInfo)obj).ServiceEndPoint);
-        }
+        public override bool Equals(object obj) => Equals((PeerInfo)obj);
 
         public bool Equals(PeerInfo other)
         {
             if (other == null) return false;
-            return ServiceEndPoint.Equals(other.ServiceEndPoint);
+            return PeerId.Equals(other.PeerId);
         }
     }
 }

@@ -7,38 +7,50 @@ namespace ShareCluster.Packaging
 {
     public class RemotePackage
     {
-        private RemotePackage(Id packageId, IImmutableDictionary<PeerId, RemotePackageOccurence> occurrences)
+        private RemotePackage(Id packageId, long packageSize, IImmutableDictionary<PeerId, RemotePackageOccurence> peers)
         {
             PackageId = packageId;
-            Occurrences = occurrences ?? throw new ArgumentNullException(nameof(occurrences));
+            PackageSize = packageSize;
+            Peers = peers ?? throw new ArgumentNullException(nameof(peers));
         }
 
         public Id PackageId { get; }
+        public long PackageSize { get; }
 
-        public IImmutableDictionary<PeerId, RemotePackageOccurence> Occurrences { get; }
+        public IImmutableDictionary<PeerId, RemotePackageOccurence> Peers { get; }
 
-        public RemotePackage AddOccurence(RemotePackageOccurence occurence)
+        public RemotePackage WithPeer(RemotePackageOccurence occurence)
         {
             if (occurence == null)
             {
                 throw new ArgumentNullException(nameof(occurence));
             }
-
-            if(occurence.PackageId != PackageId)
-            {
-                throw new ArgumentException("Invalid package Id");
-            }
-
+            
             return new RemotePackage(
                 PackageId,
-                Occurrences.Add(occurence.PeerId, occurence)
+                PackageSize,
+                Peers
+                    .Remove(occurence.PeerId)
+                    .Add(occurence.PeerId, occurence)
             );
         }
 
-        public static RemotePackage WithPackage(Id packageId)
+        public RemotePackage WithoutPeer(PeerId peerId)
+        {
+            if (!Peers.ContainsKey(peerId)) return this; // no need to change
+
+            return new RemotePackage(
+                PackageId,
+                PackageSize,
+                Peers.Remove(peerId)
+            );
+        }
+
+        public static RemotePackage WithPackage(Id packageId, long packageSize)
         {
             return new RemotePackage(
                 packageId,
+                packageSize,
                 ImmutableDictionary<PeerId, RemotePackageOccurence>.Empty
             );
         }

@@ -50,7 +50,6 @@ namespace ShareCluster.Network
             _statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
             _uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             _logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
-            _peerRegistry.PeersChanged += PeerRegistry_PeersChanged;
             _packageRegistry.LocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
             _packageRegistry.LocalPackageDeleted += PackageRegistry_LocalPackageDeleted;
             _packageDownloadManager.DownloadStatusChange += PackageDownloadManager_DownloadStatusChange;
@@ -75,16 +74,7 @@ namespace ShareCluster.Network
             // new local package created? announce it to peers
             PlanSendingClusterUpdate(notifyAll: true);
         }
-
-        private void PeerRegistry_PeersChanged(IEnumerable<PeerInfoChange> peers)
-        {
-            // any new peers? send update to other peers
-            if (peers.Any(p => p.IsAdded))
-            {
-                PlanSendingClusterUpdate(notifyAll: false);
-            }
-        }
-
+        
         /// <summary>
         /// Schedules sending cluster update.
         /// </summary>
@@ -197,7 +187,7 @@ namespace ShareCluster.Network
 
             // get clients that should be updated 
             IEnumerable<PeerInfo> allRemotePeers = _peerRegistry
-                .ImmutablePeers
+                .Peers.Values
                 .Where(p => 
                     // maximum time to update expired
                     p.Status.LastKnownStateUpdateAttemptTime > timeMaximum
@@ -247,7 +237,7 @@ namespace ShareCluster.Network
         public void ProcessStatusUpdateMessage(StatusUpdateMessage message, IPAddress address)
         {
             // is this request from myself?
-            bool isLoopback = _appInfo.InstanceId.Hash.Equals(message.InstanceHash);
+            bool isLoopback = _appInfo.InstanceId.Hash.Equals(message.InstanceId);
 
             var endPoint = new IPEndPoint(address, message.ServicePort);
 
@@ -295,9 +285,8 @@ namespace ShareCluster.Network
             {
                 var result = new StatusUpdateMessage
                 {
-                    InstanceHash = _appInfo.InstanceId.Hash,
+                    InstanceId = _appInfo.InstanceId.Hash,
                     KnownPackages = _packageRegistry.ImmutablePackagesStatuses,
-                    KnownPeers = _peerRegistry.ImmutablePeersDiscoveryData,
                     ServicePort = _appInfo.NetworkSettings.TcpServicePort,
                     PeerEndpoint = endpoint,
                     Clock = _appInfo.Clock.Time.Ticks

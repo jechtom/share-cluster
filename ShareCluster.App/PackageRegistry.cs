@@ -37,7 +37,6 @@ namespace ShareCluster
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<PackageRegistry>();
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
-            Init();
         }
 
         public IImmutableList<PackageStatus> ImmutablePackagesStatuses => _immutablePackagesStatus;
@@ -60,19 +59,6 @@ namespace ShareCluster
                 RemotePackageDiscovered?.Invoke(packageMetaItem);
             }
         }
-
-        public LocalPackage SaveRemotePackage(PackageDefinition definition, PackageMetadataDto meta)
-        {
-            // register
-            LocalPackage package;
-            lock (_packagesLock)
-            {
-                package = _localPackageManager.RegisterPackage(definition, meta);
-                RegisterPackageInternal(package);
-            }
-
-            return package;
-        }
         
         public bool TryGetPackage(Id packageHash, out LocalPackage package)
         {
@@ -83,28 +69,6 @@ namespace ShareCluster
                     return false;
                 }
                 return true;
-            }
-        }
-
-        public void UpdateDownloadStatus(LocalPackage packageInfo)
-        {
-            if (packageInfo == null)
-            {
-                throw new ArgumentNullException(nameof(packageInfo));
-            }
-
-            if (!packageInfo.Locks.TryLock(out object lockToken)) return; // marked to delete?
-            try
-            {
-                // update!
-                lock (_packagesLock)
-                {
-                    _localPackageManager.UpdateDownloadStatus(packageInfo.DownloadStatus);
-                }
-            }
-            finally
-            {
-                packageInfo.Locks.Unlock(lockToken);
             }
         }
 
@@ -137,6 +101,11 @@ namespace ShareCluster
 
             // notify we have deleted package (stop download)
             LocalPackageDeleted?.Invoke(packageFolder);
+        }
+
+        private void UpdateLists(object addToLocal, LocalPackage[] removeFromLocal, object addToDiscovered)
+        {
+            throw new NotImplementedException();
         }
     }
 }

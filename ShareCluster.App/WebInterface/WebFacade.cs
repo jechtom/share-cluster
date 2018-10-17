@@ -131,7 +131,7 @@ namespace ShareCluster.WebInterface
             var result = new StatusViewModel
             {
                 Packages = _packageRegistry.ImmutablePackages,
-                Peers = _peerRegistry.ImmutablePeers,
+                Peers = _peerRegistry.Peers.Values,
                 PackagesAvailableToDownload = _packageRegistry.ImmutableDiscoveredPackages,
                 Instance = _instanceHash,
                 Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),

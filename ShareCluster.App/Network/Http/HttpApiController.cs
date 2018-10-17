@@ -42,7 +42,7 @@ namespace ShareCluster.Network.Http
             return new PackageResponse()
             {
                 Found = true,
-                Hashes = _packageDefinitionSerializer.Serialize(package.Definition),
+                Hashes = _packageDefinitionSerializer.SerializeToDto(package.Definition),
                 BytesDownloaded = package.DownloadStatus.BytesDownloaded
             };
         }

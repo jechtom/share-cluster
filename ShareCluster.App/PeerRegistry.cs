@@ -51,9 +51,9 @@ namespace ShareCluster
                     if (!exists)
                     {
                         // new peer registration
-                        peer = new PeerInfo(new PeerClusterStatus(app.Clock, app.NetworkSettings), newPeer.ServiceEndpoint, newPeer.DiscoveryMode);
+                        peer = new PeerInfo(new PeerId(newPeer.InstanceId, newPeer.ServiceEndpoint),new PeerClusterStatus(app.Clock, app.NetworkSettings), newPeer.ServiceEndpoint, newPeer.DiscoveryMode);
                         peers.Add(newPeer.ServiceEndpoint, peer);
-                        logger.LogTrace("Found new peer {0}. Flags: {1}", peer.ServiceEndPoint, peer.StatusString);
+                        logger.LogTrace("Found new peer {0}", peer.PeerId);
                         immutableListNeedsRefresh = true;
                         notifyAsAdded = true;
                         peer.KnownPackageChanged += (info) => PeersChanged?.Invoke(new PeerInfoChange[] { new PeerInfoChange(info, hasKnownPackagesChanged: true) });

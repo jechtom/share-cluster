@@ -28,14 +28,7 @@ namespace ShareCluster.Packaging.IO
 
         public void Serialize(PackageDefinition value, Stream stream)
         {
-            var dto = new PackageDefinitionDto(
-                version: SerializerVersion,
-                packageId: value.PackageId,
-                packageSize: value.PackageSize,
-                packageSegmentsHashes: value.PackageSegmentsHashes,
-                segmentLength: value.PackageSplitInfo.SegmentLength,
-                dataFileLength: value.PackageSplitInfo.DataFileLength
-            );
+            var dto = SerializeToDto(value);
             _serializer.Serialize<PackageDefinitionDto>(dto, stream);
         }
 
@@ -82,6 +75,19 @@ namespace ShareCluster.Packaging.IO
             }
 
             return result;
+        }
+
+        public PackageDefinitionDto SerializeToDto(PackageDefinition value)
+        {
+            var dto = new PackageDefinitionDto(
+                version: SerializerVersion,
+                packageId: value.PackageId,
+                packageSize: value.PackageSize,
+                packageSegmentsHashes: value.PackageSegmentsHashes,
+                segmentLength: value.PackageSplitInfo.SegmentLength,
+                dataFileLength: value.PackageSplitInfo.DataFileLength
+            );
+            return dto;
         }
     }
 }

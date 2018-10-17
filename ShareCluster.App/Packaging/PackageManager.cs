@@ -14,10 +14,12 @@ namespace ShareCluster.Packaging
         private readonly ILogger<PackageManager> _logger;
         private readonly LocalPackageManager _localPackageManager;
 
-        public PackageManager(ILogger<PackageManager> logger, LocalPackageManager localPackageManager)
+        public PackageManager(ILogger<PackageManager> logger, LocalPackageManager localPackageManager, ILocalPackageRegistry localPackageRegistry, IRemotePackageRegistry remotePackageRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
+            LocalPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
+            RemotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
         }
 
         public void Init()
@@ -25,10 +27,11 @@ namespace ShareCluster.Packaging
             // load local packages
             foreach (LocalPackage localPackage in _localPackageManager.Load())
             {
-                Registry.AddLocalPackage(localPackage);
+                LocalPackageRegistry.AddLocalPackage(localPackage);
             }
         }
 
-        public IPackageRegistry Registry { get; private set; }
+        public ILocalPackageRegistry LocalPackageRegistry { get; }
+        public IRemotePackageRegistry RemotePackageRegistry { get; }
     }
 }

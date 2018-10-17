@@ -41,5 +41,6 @@ namespace ShareCluster
         public static bool operator ==(PeerId left, PeerId right) => left.Equals(right);
         public static bool operator !=(PeerId left, PeerId right) => !left.Equals(right);
 
+        public override string ToString() => $"{Endpoint} with Id={InstanceId:s}";
     }
 }
