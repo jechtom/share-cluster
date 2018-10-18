@@ -15,7 +15,7 @@ namespace ShareCluster.Packaging
         private HashSet<int> _partsInProgress;
         private long _bytesDownloaded;
         
-        public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] segmentsBitmap, bool isDownloading)
+        public PackageDownloadStatus(PackageSplitInfo splitInfo, byte[] segmentsBitmap, bool isDownloading)
         {
             _locks = new ResourceLocks();
             _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
@@ -24,22 +24,15 @@ namespace ShareCluster.Packaging
             int lastSegmentBits = (byte)(splitInfo.SegmentsCount % 8);
             _lastByteMask = (byte)((1 << (lastSegmentBits == 0 ? 8 : lastSegmentBits)) - 1);
 
-            if (isDownloaded)
+            if (segmentsBitmap == null)
             {
-                // package downloaded
-                if (segmentsBitmap != null)
-                {
-                    throw new ArgumentException($"If {nameof(isDownloaded)} is set, then {nameof(segmentsBitmap)} must be null.", nameof(segmentsBitmap));
-                }
-
                 // can't be downloading if already downloaded
                 IsDownloading = false;
             }
             else
             {
                 // package not yet downloaded
-                SegmentsBitmap = segmentsBitmap
-                    ?? throw new ArgumentNullException($"If {nameof(isDownloaded)} is not set, then {nameof(segmentsBitmap)} can't be null.", nameof(segmentsBitmap));
+                SegmentsBitmap = segmentsBitmap;
 
                 // validate length
                 int expectedLength = GetBitmapSizeForPackage(splitInfo.SegmentsCount);
@@ -175,13 +168,13 @@ namespace ShareCluster.Packaging
 
         public static PackageDownloadStatus CreateForDownloadedPackage(PackageSplitInfo splitInfo)
         {
-            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: true, segmentsBitmap: null, isDownloading: false);
+            return new PackageDownloadStatus(splitInfo: splitInfo, segmentsBitmap: null, isDownloading: false);
         }
 
         public static PackageDownloadStatus CreateForReadyToDownload(PackageSplitInfo splitInfo)
         {
             int sizeOfBitmap = GetBitmapSizeForPackage(splitInfo.SegmentsCount);
-            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: false, segmentsBitmap: new byte[sizeOfBitmap], isDownloading: false);
+            return new PackageDownloadStatus(splitInfo: splitInfo, segmentsBitmap: new byte[sizeOfBitmap], isDownloading: false);
         }
 
         /// <summary>

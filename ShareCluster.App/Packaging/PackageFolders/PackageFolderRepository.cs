@@ -30,14 +30,26 @@ namespace ShareCluster.Packaging.PackageFolders
         private readonly PackageSerializerFacade _serializerFacade;
         private readonly PackageFolderDataAccessorBuilder _accessorBuilder;
 
-        public PackageFolderRepository(ILogger<PackageFolderRepository> logger, ILoggerFactory loggerFactory, CryptoProvider crypto, string packageRepositoryPath, PackageSerializerFacade serializerFacade, PackageFolderDataAccessorBuilder accessorBuilder)
+        public PackageFolderRepository(
+            ILogger<PackageFolderRepository> logger,
+            ILoggerFactory loggerFactory,
+            CryptoProvider crypto,
+            PackageFolderRepositorySettings settings,
+            PackageSerializerFacade serializerFacade,
+            PackageFolderDataAccessorBuilder accessorBuilder
+            )
         {
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _crypto = crypto ?? throw new ArgumentNullException(nameof(crypto));
             _serializerFacade = serializerFacade ?? throw new ArgumentNullException(nameof(serializerFacade));
             _accessorBuilder = accessorBuilder ?? throw new ArgumentNullException(nameof(accessorBuilder));
-            PackageRepositoryPath = packageRepositoryPath ?? throw new ArgumentNullException(nameof(packageRepositoryPath));
+            PackageRepositoryPath = settings.Path;
         }
 
         public string PackageRepositoryPath { get; }
@@ -105,7 +117,7 @@ namespace ShareCluster.Packaging.PackageFolders
                     definition: packageDefinition,
                     downloadStatus: packageDownload,
                     metadata: packageMatadata,
-                    dataAccessor: _accessorBuilder.BuildFor(reference, packageDefinition)
+                    dataAccessor: _accessorBuilder.BuildFor(this, reference, packageDefinition)
                 );
         }
     
@@ -131,16 +143,17 @@ namespace ShareCluster.Packaging.PackageFolders
             var computeHashBehavior = new HashStreamComputeBehavior(_loggerFactory, defaultSplitInfo.SegmentLength);
 
             using (var dataFilesController = new CreatePackageFolderController(_loggerFactory, defaultSplitInfo, buildDirectory.FullName))
-            using (var dataFilesStream = new ControlledStream(_loggerFactory, dataFilesController) { Measure = measure })
             {
-                using (var hashStreamController = new HashStreamController(_loggerFactory, _crypto, computeHashBehavior, dataFilesStream))
-                using (var hashStream = new ControlledStream(_loggerFactory, hashStreamController))
+                using (var dataFilesStream = new ControlledStream(_loggerFactory, dataFilesController) { Measure = measure })
                 {
-                    writeToStreamAction.Invoke(hashStream);
+                    using (var hashStreamController = new HashStreamController(_loggerFactory, _crypto, computeHashBehavior, dataFilesStream))
+                    using (var hashStream = new ControlledStream(_loggerFactory, hashStreamController))
+                    {
+                        writeToStreamAction.Invoke(hashStream);
+                    }
                 }
                 packageDefinition = PackageDefinition.Build(_crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
             }
-
             var buildPathReference = new PackageFolderReference(packageDefinition.PackageId, buildDirectory.FullName);
 
             // store package hashes
@@ -172,7 +185,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 definition: packageDefinition,
                 downloadStatus: downloadStatus,
                 metadata: metadata,
-                dataAccessor: _accessorBuilder.BuildFor(outputPathReference, packageDefinition)
+                dataAccessor: _accessorBuilder.BuildFor(this, outputPathReference, packageDefinition)
             );
         }
 
@@ -245,14 +258,14 @@ namespace ShareCluster.Packaging.PackageFolders
         public PackageDownloadStatus ReadPackageDownloadStatus(IPackageFolderReference reference, PackageDefinition packageDefinition) =>
             ReadPackageFile<PackageDownloadStatus>(
                 reference,
-                PackageDefinitionFileName,
+                PackageDownloadFileName,
                 stream => _serializerFacade.DownloadStatusSerializer.Deserialize(stream, packageDefinition)
             );
 
         public PackageMetadata ReadPackageMetadata(IPackageFolderReference reference, PackageDefinition packageDefinition) =>
             ReadPackageFile<PackageMetadata>(
                 reference,
-                PackageDefinitionFileName,
+                PackageMetaFileName,
                 stream => _serializerFacade.MetadataSerializer.Deserialize(stream, packageDefinition)
             );
 
@@ -330,7 +343,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 definition: packageDefinition,
                 downloadStatus: downloadStatus,
                 metadata: metadata,
-                dataAccessor: _accessorBuilder.BuildFor(pathReference, packageDefinition)
+                dataAccessor: _accessorBuilder.BuildFor(this, pathReference, packageDefinition)
             );
         }
     }

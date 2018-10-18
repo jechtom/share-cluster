@@ -22,7 +22,7 @@ namespace ShareCluster
 {
     class Program
     {
-        static List<AppInstance> instances = new List<AppInstance>();
+        static List<AppInstance> _instances = new List<AppInstance>();
 
         static void Main(string[] args)
         {
@@ -47,7 +47,7 @@ namespace ShareCluster
                 };
 
                 var instance = new AppInstance(appInfo);
-                instances.Add(instance);
+                _instances.Add(instance);
                 AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
             }
 
@@ -60,7 +60,7 @@ namespace ShareCluster
         private static void Stop()
         {
             Console.WriteLine("Stopping.");
-            foreach (AppInstance instance in instances)
+            foreach (AppInstance instance in _instances)
             {
                 instance.Dispose();
             }
@@ -81,7 +81,7 @@ namespace ShareCluster
             };
 
             var instance = new AppInstance(appInfo);
-            instances.Add(instance);
+            _instances.Add(instance);
             AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
         }
     }

@@ -23,7 +23,8 @@ namespace ShareCluster
             ILocalPackageRegistry localPackageRegistry,
             PackageFolderRepository localPackageManager,
             PeersManager peersManager,
-            PeerCatalogUpdater peerCatalogUpdater
+            PeerCatalogUpdater peerCatalogUpdater,
+            PackageManager packageManager
         )
         {
             PackageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -34,6 +35,7 @@ namespace ShareCluster
             LocalPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             PeersManager = peersManager ?? throw new ArgumentNullException(nameof(peersManager));
             PeerCatalogUpdater = peerCatalogUpdater ?? throw new ArgumentNullException(nameof(peerCatalogUpdater));
+            PackageManager = packageManager ?? throw new ArgumentNullException(nameof(packageManager));
         }
 
         public PackageDownloadManager PackageDownloadManager { get; }
@@ -44,7 +46,8 @@ namespace ShareCluster
         public ILocalPackageRegistry LocalPackageRegistry { get; }
         public IRemotePackageRegistry RemotePackageRegistry { get; }
         public PackageFolderRepository LocalPackageManager { get; }
-        public PeerCatalogUpdater PeerCatalogUpdater { get; set; }
+        public PeerCatalogUpdater PeerCatalogUpdater { get; }
+        public PackageManager PackageManager { get; }
 
         public void Start(AppInstanceSettings settings)
         {
@@ -65,6 +68,9 @@ namespace ShareCluster
 
             // continue with unfinished download
             PackageDownloadManager.RestoreUnfinishedDownloads();
+
+            // load packages
+            PackageManager.Init();
         }
     }
 }

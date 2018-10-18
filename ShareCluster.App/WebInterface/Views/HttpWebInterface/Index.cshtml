@@ -1,6 +1,6 @@
 ﻿@model ShareCluster.WebInterface.StatusViewModel
 
-<p>Instance <tt>@Model.Instance.Hash</tt></p>
+<p>Instance <tt>@Model.Instance.Value</tt></p>
 <p>Download slots / upload slots: <strong>@Model.DownloadSlotsAvailable / @Model.UploadSlotsAvailable</strong></p>
 <div class="pull-right">
     <a href="@Url.Action(nameof(HttpWebInterfaceController.CreatePackage))" class="btn btn-default">
@@ -22,7 +22,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var package in Model.Packages)
+        @foreach (var package in Model.Packages.Values)
         {
             string css_class = package.DownloadStatus.IsDownloaded ? "success" : (package.DownloadStatus.IsDownloading ? "info" : "warning");
                         
@@ -30,7 +30,7 @@
                 <td><tt>@($"{package.Id:s}")</tt></td>
                 <td>@package.Metadata.Name</td>
                 <td>@package.Metadata.Created.ToString("f")</td>
-                <td>@ShareCluster.SizeFormatter.ToString(package.Metadata.PackageSize)</td>
+                <td>@ShareCluster.SizeFormatter.ToString(package.Definition.PackageSize)</td>
                 <td>
                     @if(package.DownloadStatus.IsDownloading) {
                         @:Down: @(package.DownloadMeasure.ValueFormatted)<br/>
@@ -85,13 +85,13 @@
                 </td>
             </tr>
         }
-        @foreach (var package in Model.PackagesAvailableToDownload)
+        @foreach (var package in Model.PackagesAvailableToDownload.Values)
         {
             <tr>
                 <td><tt>@($"{package.PackageId:s}")</tt></td>
                 <td>@package.Name</td>
-                <td>@package.Meta.Created.ToString("f")</td>
-                <td>@ShareCluster.SizeFormatter.ToString(package.Meta.PackageSize)</td>
+                <td>@package.Created.ToString("f")</td>
+                <td>@ShareCluster.SizeFormatter.ToString(package.PackageSize)</td>
                 <td colspan="3">Not downloaded</td>
                 <td>
                     <ul class="simple-list">
@@ -124,7 +124,6 @@
             <thead>
                 <tr>
                     <th>Endpoint</th>
-                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -132,9 +131,6 @@
                 {
                     <tr>
                         <td>@peer.ServiceEndPoint</td>
-                        <td class="@(peer.IsDirectDiscovery ? "success" : "")">
-                            @peer.StatusString
-                        </td>
                     </tr>
                 }
             </tbody>

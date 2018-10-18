@@ -9,8 +9,7 @@ namespace ShareCluster.Packaging
     {
         VersionNumber Version { get; }
         IImmutableDictionary<Id, LocalPackage> LocalPackages { get; }
-        void AddLocalPackage(LocalPackage loccalPackage);
-        void RemoveLocalPackage(LocalPackage loccalPackage);
-        bool TryGetPackage(Id packageId, out LocalPackage package);
+        void AddLocalPackage(LocalPackage localPackage);
+        void RemoveLocalPackage(LocalPackage localPackage);
     }
 }

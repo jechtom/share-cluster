@@ -118,7 +118,7 @@ namespace ShareCluster.WebInterface
 
             // start
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            var taskCreate = Task.Run(new Action(() => _localPackageManager.CreatePackageFromFolder(folder, name, measureItem)));
+            var taskCreate = Task.Run(new Action(() => _packageManger.CreateAndRegisterPackageFromFolder(folder, name, measureItem)));
 
             // create and register task for starting download
             var task = new LongRunningTask(
@@ -152,7 +152,7 @@ namespace ShareCluster.WebInterface
             if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // run
-            var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(package, folder, validate: validate)));
+            var extractTask = Task.Run(new Action(() => _packageManger.ExtractPackage(package, folder, validate: validate)));
 
             // create and register task for starting download
             var task = new LongRunningTask(

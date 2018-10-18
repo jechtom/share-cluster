@@ -10,18 +10,21 @@ namespace ShareCluster.Packaging.PackageFolders
     public class PackageFolderDataAccessorBuilder
     {
         private readonly ILoggerFactory _loggerFactory;
-        private readonly PackageFolderRepository _packageFolderManager;
         private readonly PackageFolderDataValidator _packageFolderDataValidator;
 
-        public PackageFolderDataAccessorBuilder(ILoggerFactory loggerFactory, PackageFolderRepository packageFolderManager, PackageFolderDataValidator packageFolderDataValidator)
+        public PackageFolderDataAccessorBuilder(ILoggerFactory loggerFactory, PackageFolderDataValidator packageFolderDataValidator)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _packageFolderManager = packageFolderManager ?? throw new ArgumentNullException(nameof(packageFolderManager));
             _packageFolderDataValidator = packageFolderDataValidator ?? throw new ArgumentNullException(nameof(packageFolderDataValidator));
         }
 
-        public PackageFolderDataAccessor BuildFor(IPackageFolderReference reference, PackageDefinition packageDefinition)
+        public PackageFolderDataAccessor BuildFor(PackageFolderRepository packageFolderRepository, IPackageFolderReference reference, PackageDefinition packageDefinition)
         {
+            if (packageFolderRepository == null)
+            {
+                throw new ArgumentNullException(nameof(packageFolderRepository));
+            }
+
             if (reference == null)
             {
                 throw new ArgumentNullException(nameof(reference));
@@ -32,7 +35,8 @@ namespace ShareCluster.Packaging.PackageFolders
                 throw new ArgumentNullException(nameof(packageDefinition));
             }
 
-            throw new NotImplementedException();
+            var result = new PackageFolderDataAccessor(_loggerFactory, packageFolderRepository, packageDefinition, reference, _packageFolderDataValidator);
+            return result;
         }
     }
 }

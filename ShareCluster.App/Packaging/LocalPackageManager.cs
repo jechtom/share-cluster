@@ -58,48 +58,6 @@ namespace ShareCluster.Packaging
             return result;
         }
 
-        public void ExtractPackage(LocalPackage package, string targetFolder, bool validate)
-        {
-            if (package == null)
-            {
-                throw new ArgumentNullException(nameof(package));
-            }
-
-            // rent package lock
-            if (!package.Locks.TryLock(out object lockToken))
-            {
-                throw new InvalidOperationException("Package is marked to delete, can't extract it.");
-            }
-
-            try
-            {
-                if (validate)
-                {
-                    // validate
-                    PackageDataValidatorResult result = package.DataAccessor.ValidatePackageDataAsync(package, measureItem: null).Result;
-                    if (!result.IsValid)
-                    {
-                        throw new InvalidOperationException($"Validation failed for package {package}:\n{string.Join("\n", result.Errors)}");
-                    }
-                }
-
-                _logger.LogInformation($"Extracting package {package} to folder: {targetFolder}");
-
-                // read all and extract
-                using (IStreamController readAllController = package.DataAccessor.CreateReadAllPackageData())
-                using (ControlledStream readAllStream = readAllController.CreateStream(_loggerFactory))
-                {
-                    _folderStreamSerializer.DeserializeStreamToFolder(readAllStream, targetFolder);
-                }
-
-                _logger.LogInformation($"Package {package} has been extracted.");
-            }
-            finally
-            {
-                package.Locks.Unlock(lockToken);
-            }
-        }
-
         public LocalPackage CreateForDownload(PackageDefinition definition, PackageMetadata metadata)
         {
             LocalPackage result = _packageFolderRepository.AllocatePackageForDownload(definition, metadata);

@@ -73,6 +73,11 @@ namespace ShareCluster.Packaging.PackageFolders
                             throw new InvalidOperationException();
                     }
                 }
+                else
+                {
+                    // use existing part
+                    _currentPart.FileStream = oldPart.FileStream;
+                }
 
                 // seek to correct position
                 _currentPart.FileStream.Seek(newPart.Part.SegmentOffsetInDataFile, SeekOrigin.Begin);
