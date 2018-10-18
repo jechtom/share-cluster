@@ -65,7 +65,7 @@ namespace ShareCluster.Network
                 int alreadyFound = 0;
                 if(_remotePackageRegistry.RemotePackages.TryGetValue(package.Id, out RemotePackage remotePackage))
                 {
-                    foreach (var peerOccurence in remotePackage.Peers)
+                    foreach (KeyValuePair<PeerId, RemotePackageOccurence> peerOccurence in remotePackage.Peers)
                     {
                         if (!_peerRegistry.Peers.TryGetValue(peerOccurence.Key, out PeerInfo peerInfo)) continue;
 
@@ -99,50 +99,7 @@ namespace ShareCluster.Network
 
             lock(_syncLock)
             {
-                foreach (PeerInfoChange peerChange in peersChanges)
-                {
-                    PeerInfo peer = peerChange.PeerInfo;
-
-                    if (peerChange.IsRemoved)
-                    {
-                        // exists in local cache?
-                        if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) continue;
-
-                        // remove peer from package statuses and peers list
-                        foreach (PackagePeersStatus packageState in _packageStates.Values)
-                        {
-                            packageState.RemovePeer(status);
-                        }
-
-                        _peers.Remove(peer.ServiceEndPoint);
-
-                        continue;
-                    }
-
-                    if(peerChange.IsAdded | peerChange.HasKnownPackagesChanged)
-                    {
-                        refreshStatus = true;
-
-                        // create?
-                        if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status))
-                        {
-                            _peers.Add(peer.ServiceEndPoint, (status = new PeerOverallStatus(peer)));
-                        }
-
-                        // update and add to peers list
-                        foreach (KeyValuePair<Id, PackagePeersStatus> packageState in _packageStates)
-                        {
-                            if(peer.KnownPackages.TryGetValue(packageState.Key, out PackageStatus ps))
-                            {
-                                packageState.Value.AddPeer(status, isSeeder: ps.IsSeeding);
-                            }
-                            else
-                            {
-                                packageState.Value.RemovePeer(status);
-                            }
-                        }
-                    }
-                }
+               // shit removed
             }
 
             if (refreshStatus)

@@ -23,7 +23,7 @@ namespace ShareCluster.Network
         private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly IPeerRegistry _peerRegistry;
         private readonly HttpApiClient _apiClient;
-        private readonly Dictionary<PeerId, CatalogUpdateStatus> _status;
+        private readonly Dictionary<PeerId, CatalogUpdateStatus> _statuses;
 
         public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, ILoggerFactory loggerFactory, IRemotePackageRegistry remotePackageRegistry, IPeerRegistry peerRegistry, HttpApiClient apiClient)
         {
@@ -32,6 +32,7 @@ namespace ShareCluster.Network
             _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _statuses = new Dictionary<PeerId, CatalogUpdateStatus>();
         }
 
         public void Start()
@@ -83,10 +84,10 @@ namespace ShareCluster.Network
                     continue;
                 }
 
-                if(!_status.TryGetValue(peer.PeerId, out CatalogUpdateStatus status))
+                if(!_statuses.TryGetValue(peer.PeerId, out CatalogUpdateStatus status))
                 {
                     status = new CatalogUpdateStatus(peer, _apiClient, _remotePackageRegistry, _loggerFactory.CreateLogger<CatalogUpdateStatus>());
-                    _status.Add(peer.PeerId, status);
+                    _statuses.Add(peer.PeerId, status);
                 }
 
                 status.Check();

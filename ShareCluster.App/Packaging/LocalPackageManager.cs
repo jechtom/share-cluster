@@ -130,12 +130,6 @@ namespace ShareCluster.Packaging
 
             return package;
         }
-
-        public Task DeletePackageAsync(LocalPackage package)
-        {
-            throw new NotImplementedException(); // locks?
-            package.DataAccessor.DeletePackage();
-        }
     }
 }
 

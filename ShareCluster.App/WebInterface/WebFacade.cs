@@ -21,10 +21,11 @@ namespace ShareCluster.WebInterface
         private readonly InstanceId _instanceHash;
         private readonly LongRunningTasksManager _tasks;
         private readonly NetworkThrottling _networkThrottling;
+        private readonly PackageManager _packageManger;
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling, PackageManager packageManger)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -35,6 +36,7 @@ namespace ShareCluster.WebInterface
             _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
             _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
+            _packageManger = packageManger ?? throw new ArgumentNullException(nameof(packageManger));
         }
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
@@ -169,7 +171,7 @@ namespace ShareCluster.WebInterface
             if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // start
-            Task deleteTask = _localPackageManager.DeletePackageAsync(package);
+            Task deleteTask = _packageManger.DeletePackageAsync(package);
 
             // create and register task for starting download
             var task = new LongRunningTask(

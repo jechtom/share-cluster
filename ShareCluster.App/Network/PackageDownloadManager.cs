@@ -48,7 +48,8 @@ namespace ShareCluster.Network
             IPeerRegistry peerRegistry,
             LocalPackageManager localPackageManager,
             PackageDefinitionSerializer packageDefinitionSerializer,
-            NetworkThrottling networkThrottling
+            NetworkThrottling networkThrottling,
+            PackageStatusUpdater packageStatusUpdater
             )
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
@@ -60,6 +61,7 @@ namespace ShareCluster.Network
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
+            _packageStatusUpdater = packageStatusUpdater ?? throw new ArgumentNullException(nameof(packageStatusUpdater));
             _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
             _downloadSlots = new List<PackageDownloadSlot>();
             _packagesDownloading = new Dictionary<Id, LocalPackage>();
@@ -541,7 +543,7 @@ namespace ShareCluster.Network
                 // - streamValidate validates data and writes it to nested streamWrite
                 // - streamWrite writes data to data files
 
-                IStreamController controllerWriter = package.PackageData.CreateWriteSpecificPackageData(parts);
+                IStreamController controllerWriter = package.DataAccessor.CreateWriteSpecificPackageData(parts);
                 var hashValidateBehavior = new HashStreamVerifyBehavior(_parent._appInfo.LoggerFactory, package.Definition, parts);
 
                 Stream streamWrite = null;
@@ -552,13 +554,13 @@ namespace ShareCluster.Network
                 Stream createStream()
                 {
                     var sequencer = new PackageFolderPartsSequencer();
-                    streamWrite = new ControlledStream(_parent._appInfo.LoggerFactory, controllerWriter)
+                    streamWrite = new ControlledStream(_parent._appInfo.LoggerFactory, controllerWriter);
+                    
+                    controllerValidate = new HashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, hashValidateBehavior, streamWrite);
+                    streamValidate = new ControlledStream(_parent._appInfo.LoggerFactory, controllerValidate)
                     {
                         Measure = package.DownloadMeasure
                     };
-
-                    controllerValidate = new HashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, hashValidateBehavior, streamWrite);
-                    streamValidate = new ControlledStream(_parent._appInfo.LoggerFactory, controllerValidate);
 
                     return streamValidate;
                 }
@@ -600,7 +602,6 @@ namespace ShareCluster.Network
                     return result;
                 }
 
-
                 if (errorResponse != null)
                 {
                     // choked response?
@@ -614,7 +615,7 @@ namespace ShareCluster.Network
                     if (errorResponse.PackageNotFound || errorResponse.PackageSegmentsNotFound)
                     {
                         _parent._logger.LogTrace($"Received not found data message from {peer.ServiceEndPoint}.");
-                        peer.RemoveKnownPackage(package.Id);
+                        _parent._remotePackageRegistry.ForgetPeersPackage(peer.PeerId, package.Id);
                         return result;
                     }
 

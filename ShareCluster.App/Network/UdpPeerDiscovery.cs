@@ -23,12 +23,13 @@ namespace ShareCluster.Network
         private readonly ILogger<UdpPeerDiscovery> _logger;
         private bool _allowAnnouncer, _allowListener;
 
-        public UdpPeerDiscovery(AppInfo app, IPeerRegistry peerRegistry, UdpPeerDiscoverySender udpAnnouncer, UdpPeerDiscoveryListener udpListener)
+        public UdpPeerDiscovery(AppInfo app, IPeerRegistry peerRegistry, UdpPeerDiscoverySender udpAnnouncer, UdpPeerDiscoveryListener udpListener, UdpPeerDiscoverySerializer discoverySerializer)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _udpAnnouncer = udpAnnouncer ?? throw new ArgumentNullException(nameof(udpAnnouncer));
             _udpListener = udpListener ?? throw new ArgumentNullException(nameof(udpListener));
+            _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
             _logger = app.LoggerFactory.CreateLogger<UdpPeerDiscovery>();
         }
 
