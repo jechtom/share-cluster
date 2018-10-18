@@ -52,7 +52,7 @@ namespace ShareCluster
 
             result.CompatibilityChecker = new CompatibilityChecker(loggerFactory.CreateLogger<CompatibilityChecker>(),
                 requiredNetworkVersion: result.NetworkVersion);
-            result.InstanceId = new InstanceHash(result.Crypto);
+            result.InstanceId = new InstanceId(result.Crypto);
 
             return result;
         }
@@ -105,7 +105,7 @@ namespace ShareCluster
         public IClock Clock { get; private set; }
         public ILoggerFactory LoggerFactory { get; set; }
         public CompatibilityChecker CompatibilityChecker { get; private set; }
-        public InstanceHash InstanceId { get; private set; }
+        public InstanceId InstanceId { get; private set; }
         public PackageDefinitionSerializer PackageDefinitionSerializer { get; private set; }
         public PackageSplitBaseInfo PackageSplitBaseInfo { get; private set; }
     }

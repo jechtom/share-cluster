@@ -18,6 +18,6 @@ namespace ShareCluster.Network.Messages
         public virtual ushort ServicePort { get; set; }
 
         [ProtoMember(3)]
-        public virtual VersionNumber IndexRevision { get; set; }
+        public virtual VersionNumber CatalogVersion { get; set; }
     }
 }

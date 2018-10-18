@@ -245,7 +245,7 @@ namespace ShareCluster.Network
                 for (int i = 0; i < requestMessage.PackageIds.Length; i++)
                 {
                     Id packageId = requestMessage.PackageIds[i];
-                    PackageStatusDetail result = input.result.Packages[i];
+                    PackageStatusItem result = input.result.Packages[i];
 
                     // download state (are we still interested in packages?)
                     if (!_packageStates.TryGetValue(packageId, out PackagePeersStatus state)) continue;
@@ -399,7 +399,7 @@ namespace ShareCluster.Network
                     {
                         // mark as seeder
                         peer.InterestedForPackagesSeederCount++;
-                        newStatus.StatusDetail = new PackageStatusDetail()
+                        newStatus.StatusDetail = new PackageStatusItem()
                         {
                             BytesDownloaded = _packageInfo.Definition.PackageSize,
                             IsFound = true,
@@ -409,7 +409,7 @@ namespace ShareCluster.Network
                 }
             }
 
-            public void Update(PeerOverallStatus peer, PackageStatusDetail detail)
+            public void Update(PeerOverallStatus peer, PackageStatusItem detail)
             {
                 // did peer added known package from update?
                 if(!_peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
@@ -491,7 +491,7 @@ namespace ShareCluster.Network
             }
 
             public PeerOverallStatus Peer { get; set; }
-            public PackageStatusDetail StatusDetail { get; set; }
+            public PackageStatusItem StatusDetail { get; set; }
             public bool IsSeeder => StatusDetail != null && StatusDetail.SegmentsBitmap == null; // null bitmap == all downloaded
             public bool CanDownload => StatusDetail != null && StatusDetail.BytesDownloaded > 0 && !IsPostponedPackageOrPeer;
             public PostponeTimer PostponeTimer { get; set; }

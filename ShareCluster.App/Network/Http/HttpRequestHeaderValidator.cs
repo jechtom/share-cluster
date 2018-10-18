@@ -17,7 +17,7 @@ namespace ShareCluster.Network.Http
 
         private readonly ILogger<HttpRequestHeaderValidator> logger;
 
-        public HttpRequestHeaderValidator(ILogger<HttpRequestHeaderValidator> logger, CompatibilityChecker compatibilityChecker, InstanceHash instanceHash)
+        public HttpRequestHeaderValidator(ILogger<HttpRequestHeaderValidator> logger, CompatibilityChecker compatibilityChecker, InstanceId instanceHash)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             CompatibilityChecker = compatibilityChecker ?? throw new System.ArgumentNullException(nameof(compatibilityChecker));
@@ -25,7 +25,7 @@ namespace ShareCluster.Network.Http
         }
 
         public CompatibilityChecker CompatibilityChecker { get; }
-        public InstanceHash InstanceHash { get; }
+        public InstanceId InstanceHash { get; }
 
         public void OnActionExecuted(ActionExecutedContext context)
         {

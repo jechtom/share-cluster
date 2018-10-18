@@ -8,9 +8,9 @@ using System.Text;
 namespace ShareCluster.Network.Messages
 {
     [ProtoContract]
-    public class PackageStatus
+    public class CatalogPackage
     {
-        public PackageStatus(LocalPackage packageInfo)
+        public CatalogPackage(LocalPackage packageInfo)
         {
             if (packageInfo == null)
             {
@@ -18,13 +18,17 @@ namespace ShareCluster.Network.Messages
             }
 
             PackageId = packageInfo.Id;
-            IsSeeding = packageInfo.DownloadStatus.IsDownloaded;
+            PackageName = packageInfo.Metadata.Name;
+            PackageSize = packageInfo.Definition.PackageSize;
         }
         
         [ProtoMember(1)]
         public virtual Id PackageId { get; set; }
 
         [ProtoMember(2)]
-        public virtual bool IsSeeding { get; set; }
+        public virtual string PackageName { get; set; }
+
+        [ProtoMember(3)]
+        public virtual long PackageSize { get; set; }
     }
 }

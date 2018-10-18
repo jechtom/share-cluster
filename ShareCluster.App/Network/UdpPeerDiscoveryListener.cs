@@ -78,11 +78,11 @@ namespace ShareCluster.Network
                     ValidateMessage(announceMessage);
 
                     // publish message
+                    var peerId = new PeerId(announceMessage.PeerId, new IPEndPoint(receiveResult.RemoteEndPoint.Address, announceMessage.ServicePort));
                     var info = new UdpPeerDiscoveryInfo()
                     {
-                        EndPoint = new IPEndPoint(receiveResult.RemoteEndPoint.Address, announceMessage.ServicePort),
-                        PeerId = announceMessage.PeerId,
-                        IndexRevision = announceMessage.IndexRevision
+                        PeerId = peerId,
+                        CatalogVersion = announceMessage.CatalogVersion
                     };
 
                     Discovery?.Invoke(this, info);
@@ -113,7 +113,7 @@ namespace ShareCluster.Network
                 throw new InvalidOperationException("Invalid port 0");
             }
 
-            if (announceMessage.IndexRevision.Version == 0)
+            if (announceMessage.CatalogVersion.Version == 0)
             {
                 throw new InvalidOperationException("Invalid revision 0");
             }

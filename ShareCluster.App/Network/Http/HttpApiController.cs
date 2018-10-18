@@ -15,42 +15,29 @@ namespace ShareCluster.Network.Http
     [ServiceFilter(typeof(HttpRequestHeaderValidator))]
     public class HttpApiController : IHttpApiController
     {
-        private readonly PeersCluster _peersCluster;
-        private readonly ILocalPackageRegistry _localPackageRegistry;
-        private readonly PackageDefinitionSerializer _packageDefinitionSerializer;
-        private readonly PackageDownloadManager _downloadManager;
+        private readonly PeerController _peerController;
 
-        public HttpApiController(PeersCluster peersCluster, ILocalPackageRegistry localPackageRegistry, PackageDefinitionSerializer packageDefinitionSerializer, PackageDownloadManager downloadManager)
+        public HttpApiController(PeerController peerController)
         {
-            _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
-            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
-            _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
-            _downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
+            _peerController = peerController ?? throw new ArgumentNullException(nameof(peerController));
         }
 
         [HttpPost]
-        public PackageResponse Package([FromBody]PackageRequest request)
+        public CatalogDataResponse GetCatalog([FromBody]CatalogDataRequest request)
         {
-            if(!_localPackageRegistry.TryGetPackage(request.PackageId, out LocalPackage package))
-            {
-                return new PackageResponse()
-                {
-                    Found = false
-                };
-            }
+            return _peerController.GetCatalog(request);
+        }
 
-            return new PackageResponse()
-            {
-                Found = true,
-                Hashes = _packageDefinitionSerializer.SerializeToDto(package.Definition),
-                BytesDownloaded = package.DownloadStatus.BytesDownloaded
-            };
+        [HttpPost]
+        public PackageResponse GetPackage([FromBody]PackageRequest request)
+        {
+            return _peerController.GetPackage(request);
         }
 
         [HttpPost]
         public PackageStatusResponse PackageStatus([FromBody]PackageStatusRequest request)
         {
-            PackageStatusResponse result = _downloadManager.GetPackageStatusResponse(request.PackageIds);
+            PackageStatusResponse result = _peerController.GetPackageStatus(request);
             return result;
         }
 
@@ -70,7 +57,7 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
-            if(!_localPackageRegistry.TryGetPackage(request.PackageId, out LocalPackage package))
+            if(!_localPackageRegistry.LocalPackages.TryGetValue(request.PackageId, out LocalPackage package))
             { 
                 return new ObjectResult(DataResponseFaul.CreateDataPackageNotFoundMessage());
             }

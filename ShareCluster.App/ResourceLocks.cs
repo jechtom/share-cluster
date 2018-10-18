@@ -9,7 +9,7 @@ namespace ShareCluster
     /// <summary>
     /// Provides logic for locking entity when is in use.
     /// </summary>
-    public class EntityLocks
+    public class ResourceLocks
     {
         private readonly object _syncLock = new object();
 

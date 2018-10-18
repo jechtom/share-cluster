@@ -18,13 +18,13 @@ namespace ShareCluster.WebInterface
         private readonly IPeerRegistry _peerRegistry;
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly IRemotePackageRegistry _remotePackageRegistry;
-        private readonly InstanceHash _instanceHash;
+        private readonly InstanceId _instanceHash;
         private readonly LongRunningTasksManager _tasks;
         private readonly PeersCluster _peersCluster;
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceHash instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -39,7 +39,7 @@ namespace ShareCluster.WebInterface
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {
-            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
             if (start)
             {
                 _packageDownloadManager.StartDownloadPackage(package);
@@ -52,7 +52,7 @@ namespace ShareCluster.WebInterface
 
         public void TryVerifyPackage(Id packageId)
         {
-            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // create lock
             lock(_syncLock)
@@ -134,9 +134,9 @@ namespace ShareCluster.WebInterface
         {
             var result = new StatusViewModel
             {
-                Packages = _localPackageRegistry.ImmutablePackages,
+                Packages = _localPackageRegistry.LocalPackages,
                 Peers = _peerRegistry.Peers.Values,
-                PackagesAvailableToDownload = _localPackageRegistry.ImmutableDiscoveredPackages,
+                PackagesAvailableToDownload = _remotePackageRegistry.RemotePackages,
                 Instance = _instanceHash,
                 Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
                 UploadSlotsAvailable = _peersCluster.UploadSlotsAvailable,
@@ -147,7 +147,7 @@ namespace ShareCluster.WebInterface
 
         public void ExtractPackage(Id packageId, string folder, bool validate)
         {
-            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // run
             var extractTask = Task.Run(new Action(() => _localPackageManager.ExtractPackage(package, folder, validate: validate)));
@@ -166,7 +166,7 @@ namespace ShareCluster.WebInterface
 
         public void DeletePackage(Id packageId)
         {
-            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
+            if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
 
             // start
             Task deleteTask = _localPackageManager.DeletePackageAsync(package);
@@ -189,7 +189,7 @@ namespace ShareCluster.WebInterface
 
         public PackageOperationViewModel GetPackageOrNull(Id packageId)
         {
-            if (!_localPackageRegistry.TryGetPackage(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return null;
+            if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return null;
             return new PackageOperationViewModel()
             {
                 Id = package.Id,

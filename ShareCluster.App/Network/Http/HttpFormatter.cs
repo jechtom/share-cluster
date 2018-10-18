@@ -51,7 +51,7 @@ namespace ShareCluster.Network.Http
         {
             IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
             CompatibilityChecker compatibilityChecker = context.HttpContext.RequestServices.GetRequiredService<CompatibilityChecker>();
-            InstanceHash instanceHash = context.HttpContext.RequestServices.GetRequiredService<InstanceHash>();
+            InstanceId instanceHash = context.HttpContext.RequestServices.GetRequiredService<InstanceId>();
 
             // add headers
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);

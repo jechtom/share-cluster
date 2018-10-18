@@ -105,7 +105,7 @@ namespace ShareCluster.Network
                 }
 
                 // already in progress, exit
-                if (_localPackageRegistry.TryGetPackage(packageToDownload.PackageId, out LocalPackage _))
+                if (_localPackageRegistry.LocalPackages.TryGetValue(packageToDownload.PackageId, out LocalPackage _))
                 {
                     startDownloadTask = null;
                     return false;
@@ -216,10 +216,10 @@ namespace ShareCluster.Network
 
         public PackageStatusResponse GetPackageStatusResponse(Id[] packageIds)
         {
-            var packages = new PackageStatusDetail[packageIds.Length];
+            var packages = new PackageStatusItem[packageIds.Length];
             for (int i = 0; i < packageIds.Length; i++)
             {
-                var detail = new PackageStatusDetail();
+                var detail = new PackageStatusItem();
                 Id id = packageIds[i];
                 packages[i] = detail;
                 if (!_remotePackageRegistry.TryGetPackage(id, out LocalPackage info) || info.Locks.IsMarkedToDelete)

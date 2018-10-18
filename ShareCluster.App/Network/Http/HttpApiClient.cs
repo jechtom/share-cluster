@@ -13,21 +13,21 @@ namespace ShareCluster.Network.Http
 {
     public class HttpApiClient
     {
-        private readonly HttpClient appClient = new HttpClient();
-        private readonly IMessageSerializer serializer;
-        private readonly CompatibilityChecker compatibility;
-        private readonly InstanceHash instanceHash;
+        private readonly HttpClient _appClient = new HttpClient();
+        private readonly IMessageSerializer _serializer;
+        private readonly CompatibilityChecker _compatibility;
+        private readonly InstanceId _instanceHash;
 
         //enable to use Fiddler @ localhost: 
         //string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
 
         string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
 
-        public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceHash instanceHash)
+        public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceId instanceHash)
         {
-            this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-            this.compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
-            this.instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
+            _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
+            _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
         }
 
         public Task<Messages.PackageStatusResponse> GetPackageStatusAsync(IPEndPoint endpoint, Messages.PackageStatusRequest message)
@@ -62,7 +62,17 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return SendRequestAndGetRespone<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.Package), message);
+            return SendRequestAndGetRespone<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.GetPackage), message);
+        }
+
+        public Messages.CatalogDataResponse GetCatalog(IPEndPoint endpoint, Messages.CatalogDataRequest message)
+        {
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            return SendRequestAndGetRespone<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiController.GetCatalog), message);
         }
 
         public async Task<Messages.DataResponseFaul> DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Lazy<Stream> streamToWriteLazy)
@@ -79,7 +89,7 @@ namespace ShareCluster.Network.Http
                     // unexpected response (expected stream) == fault 
                     if(resultMessage.Headers.TryGetValues(HttpRequestHeaderValidator.TypeHeaderName, out IEnumerable<string> typeHeaderValues))
                     {
-                        return serializer.Deserialize<Messages.DataResponseFaul>(stream);
+                        return _serializer.Deserialize<Messages.DataResponseFaul>(stream);
                     }
 
                     // write to target stream
@@ -93,7 +103,7 @@ namespace ShareCluster.Network.Http
         private async Task<HttpResponseMessage> SendRequestAsync<TReq>(IPEndPoint endpoint, string apiName, TReq req, bool stream = false)
         {
             string uri = BuildUrl(endpoint, apiName);
-            byte[] requestBytes = serializer.Serialize(req);
+            byte[] requestBytes = _serializer.Serialize(req);
 
             if(requestBytes == null)
             {
@@ -101,9 +111,9 @@ namespace ShareCluster.Network.Http
             }
 
             var requestContent = new ByteArrayContent(requestBytes);
-            requestContent.Headers.ContentType = new MediaTypeHeaderValue(serializer.MimeType);
-            requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibility.NetworkProtocolVersion.ToString());
-            requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());
+            requestContent.Headers.ContentType = new MediaTypeHeaderValue(_serializer.MimeType);
+            requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, _compatibility.NetworkProtocolVersion.ToString());
+            requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, _instanceHash.Hash.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, typeof(TReq).Name);
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, uri))
@@ -112,7 +122,7 @@ namespace ShareCluster.Network.Http
                 HttpResponseMessage resultMessage = null;
                 try
                 {
-                    resultMessage = await appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
+                    resultMessage = await _appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
                     resultMessage.EnsureSuccessStatusCode();
                 }
                 catch
@@ -138,7 +148,7 @@ namespace ShareCluster.Network.Http
             {
                 using (Stream stream = await resultMessage.Content.ReadAsStreamAsync())
                 {
-                    return serializer.Deserialize<TRes>(stream);
+                    return _serializer.Deserialize<TRes>(stream);
                 }
             }
         }

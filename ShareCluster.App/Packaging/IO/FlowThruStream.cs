@@ -4,7 +4,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ShareCluster.Repository.DataFiles
+namespace ShareCluster.Repository.IO
 {
     /// <summary>
     /// Used as decorator stream between two <see cref="CryptoStream"/> classes. It is doing nothing.

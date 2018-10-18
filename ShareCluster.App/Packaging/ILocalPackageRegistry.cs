@@ -7,6 +7,7 @@ namespace ShareCluster.Packaging
 {
     public interface ILocalPackageRegistry
     {
+        VersionNumber Version { get; }
         IImmutableDictionary<Id, LocalPackage> LocalPackages { get; }
         void AddLocalPackage(LocalPackage loccalPackage);
         void RemoveLocalPackage(LocalPackage loccalPackage);

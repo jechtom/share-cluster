@@ -11,6 +11,8 @@ namespace ShareCluster
         [ProtoMember(1)]
         public int Version;
 
+        public static VersionNumber Zero => new VersionNumber(0);
+
         public VersionNumber(int version)
         {
             Version = version;
@@ -60,5 +62,9 @@ namespace ShareCluster
 
         public static bool operator ==(VersionNumber left, VersionNumber right) => left.Equals(right);
         public static bool operator !=(VersionNumber left, VersionNumber right) => !left.Equals(right);
+        public static bool operator >(VersionNumber left, VersionNumber right) => left.Version > right.Version;
+        public static bool operator >=(VersionNumber left, VersionNumber right) => left.Version >= right.Version;
+        public static bool operator <(VersionNumber left, VersionNumber right) => left.Version < right.Version;
+        public static bool operator <=(VersionNumber left, VersionNumber right) => left.Version <= right.Version;
     }
 }

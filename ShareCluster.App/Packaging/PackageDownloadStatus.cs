@@ -8,7 +8,7 @@ namespace ShareCluster.Packaging
     public class PackageDownloadStatus
     {
         private readonly object _syncLock = new object();
-        private readonly EntityLocks _locks;
+        private readonly ResourceLocks _locks;
         private readonly PackageSplitInfo _splitInfo;
         private readonly byte _lastByteMask;
         private byte[] _segmentsBitmap;
@@ -19,7 +19,7 @@ namespace ShareCluster.Packaging
 
         public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] segmentsBitmap)
         {
-            _locks = new EntityLocks();
+            _locks = new ResourceLocks();
             _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
             _partsInProgress = new HashSet<int>();
 
@@ -49,7 +49,7 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public EntityLocks Locks => _locks;
+        public ResourceLocks Locks => _locks;
         public long BytesDownloaded => _bytesDownloaded;
         public long BytesTotal => _splitInfo.PackageSize;
         public bool IsDownloaded => _segmentsBitmap == null;
@@ -101,7 +101,7 @@ namespace ShareCluster.Packaging
 
         /// <summary>
         /// Returns segments indexes available to read from <paramref name="remote"/> up to <paramref name="count"/>.
-        /// Make sure segment is validated with <see cref="ValidateStatusUpdateFromPeer(PackageStatusDetail)"/>
+        /// Make sure segment is validated with <see cref="ValidateStatusUpdateFromPeer(PackageStatusItem)"/>
         /// </summary>
         /// <param name="remote">Remote bitmap or null if remote is fully downloaded.</param>
         /// <param name="count">Maximum number of segments to return.</param>
@@ -183,7 +183,7 @@ namespace ShareCluster.Packaging
         /// <summary>
         /// Throws exception if given status detail is invalid for package represented by this instance. This can happen only if data has been manipulated.
         /// </summary>
-        public void ValidateStatusUpdateFromPeer(PackageStatusDetail detail)
+        public void ValidateStatusUpdateFromPeer(PackageStatusItem detail)
         {
             if (detail == null)
             {
