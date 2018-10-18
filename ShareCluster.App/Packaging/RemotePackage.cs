@@ -55,5 +55,7 @@ namespace ShareCluster.Packaging
                 ImmutableDictionary<PeerId, RemotePackageOccurence>.Empty
             );
         }
+
+        public override string ToString() => $"{PackageId:s} ({SizeFormatter.ToString(PackageSize)})";
     }
 }

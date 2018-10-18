@@ -21,7 +21,7 @@ namespace ShareCluster.Network
         public void PeerDiscovered(PeerId peerId, VersionNumber catalogVersion)
         {
             PeerInfo peerInfo = _peerRegistry.GetOrAddPeer(() => _peerFactory.Create(peerId));
-            peerInfo.Stats.UpdateCatalogVersion(catalogVersion);
+            peerInfo.Stats.UpdateCatalogKnownVersion(catalogVersion);
         }
     }
 }

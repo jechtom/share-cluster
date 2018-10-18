@@ -20,6 +20,8 @@ namespace ShareCluster.Network
         private readonly object _syncLock = new object();
         private readonly PeerId _peerId;
 
+        public override string ToString() => PeerId.ToString();
+
         public PeerInfo(PeerId peerId, IClock clock, NetworkSettings networkSettings)
         {
             if (clock == null)

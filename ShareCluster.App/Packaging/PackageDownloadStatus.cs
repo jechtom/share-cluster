@@ -11,13 +11,11 @@ namespace ShareCluster.Packaging
         private readonly ResourceLocks _locks;
         private readonly PackageSplitInfo _splitInfo;
         private readonly byte _lastByteMask;
-        private byte[] _segmentsBitmap;
         private long _progressBytesReserved;
         private HashSet<int> _partsInProgress;
         private long _bytesDownloaded;
-        private bool _isDownloading;
-
-        public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] segmentsBitmap)
+        
+        public PackageDownloadStatus(PackageSplitInfo splitInfo, bool isDownloaded, byte[] segmentsBitmap, bool isDownloading)
         {
             _locks = new ResourceLocks();
             _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
@@ -33,11 +31,14 @@ namespace ShareCluster.Packaging
                 {
                     throw new ArgumentException($"If {nameof(isDownloaded)} is set, then {nameof(segmentsBitmap)} must be null.", nameof(segmentsBitmap));
                 }
+
+                // can't be downloading if already downloaded
+                IsDownloading = false;
             }
             else
             {
                 // package not yet downloaded
-                _segmentsBitmap = segmentsBitmap
+                SegmentsBitmap = segmentsBitmap
                     ?? throw new ArgumentNullException($"If {nameof(isDownloaded)} is not set, then {nameof(segmentsBitmap)} can't be null.", nameof(segmentsBitmap));
 
                 // validate length
@@ -46,15 +47,18 @@ namespace ShareCluster.Packaging
                 {
                     throw new ArgumentException($"Invalid length of bitmap. Expected {expectedLength}B but actual is {segmentsBitmap.Length}B.", nameof(segmentsBitmap));
                 }
+
+                // downloading/stopped?
+                IsDownloading = isDownloading;
             }
         }
 
         public ResourceLocks Locks => _locks;
         public long BytesDownloaded => _bytesDownloaded;
         public long BytesTotal => _splitInfo.PackageSize;
-        public bool IsDownloaded => _segmentsBitmap == null;
-        public byte[] SegmentsBitmap => _segmentsBitmap;
-        public bool IsDownloading => _isDownloading;
+        public bool IsDownloaded => SegmentsBitmap == null;
+        public byte[] SegmentsBitmap { get; set; }
+        public bool IsDownloading { get; set; }
         public bool IsMoreToDownload => BytesDownloaded + _progressBytesReserved < BytesTotal;
 
         private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
@@ -83,7 +87,7 @@ namespace ShareCluster.Packaging
                     if (areDownloaded)
                     {
                         // mark as downloaded
-                        _segmentsBitmap[segmentIndex / 8] |= (byte)(1 << (segmentIndex % 8));
+                        SegmentsBitmap[segmentIndex / 8] |= (byte)(1 << (segmentIndex % 8));
                         _bytesDownloaded += segmentSize;
                     }
 
@@ -93,8 +97,8 @@ namespace ShareCluster.Packaging
 
                 if (BytesDownloaded == BytesTotal)
                 {
-                    _segmentsBitmap = null;
-                    _isDownloading = false;
+                    SegmentsBitmap = null;
+                    IsDownloading = false;
                 }
             }
         }
@@ -112,7 +116,7 @@ namespace ShareCluster.Packaging
             if (!IsDownloading) throw new InvalidOperationException("Not downloading at this moment.");
 
             bool isRemoteFull = remote == null;
-            if (!isRemoteFull && remote.Length != _segmentsBitmap.Length)
+            if (!isRemoteFull && remote.Length != SegmentsBitmap.Length)
             {
                 throw new InvalidOperationException("Unexpected length of bitmaps. Bitmaps must have same length.");
             }
@@ -120,13 +124,13 @@ namespace ShareCluster.Packaging
             var result = new List<int>(capacity: count);
             lock (_syncLock)
             {
-                int segments = _segmentsBitmap.Length;
+                int segments = SegmentsBitmap.Length;
                 int startSegmentByte = ThreadSafeRandom.Next(0, segments);
                 int currentSegmentByte = startSegmentByte;
                 while (true)
                 {
                     // if our segment is NOT downloaded AND remote segment is ready to be downloaded
-                    int needed = (~_segmentsBitmap[currentSegmentByte]);
+                    int needed = (~SegmentsBitmap[currentSegmentByte]);
                     if (isRemoteFull)
                     {
                         // remote server have all segments
@@ -154,7 +158,7 @@ namespace ShareCluster.Packaging
                     if (result.Count == count) break;
 
                     // move next
-                    currentSegmentByte = (currentSegmentByte + 1) % _segmentsBitmap.Length;
+                    currentSegmentByte = (currentSegmentByte + 1) % SegmentsBitmap.Length;
                     if (currentSegmentByte == startSegmentByte) break;
                 }
 
@@ -171,13 +175,13 @@ namespace ShareCluster.Packaging
 
         public static PackageDownloadStatus CreateForDownloadedPackage(PackageSplitInfo splitInfo)
         {
-            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: true, segmentsBitmap: null);
+            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: true, segmentsBitmap: null, isDownloading: false);
         }
 
         public static PackageDownloadStatus CreateForReadyToDownload(PackageSplitInfo splitInfo)
         {
             int sizeOfBitmap = GetBitmapSizeForPackage(splitInfo.SegmentsCount);
-            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: false, segmentsBitmap: new byte[sizeOfBitmap]);
+            return new PackageDownloadStatus(splitInfo: splitInfo, isDownloaded: false, segmentsBitmap: new byte[sizeOfBitmap], isDownloading: false);
         }
 
         /// <summary>
@@ -210,7 +214,7 @@ namespace ShareCluster.Packaging
                 throw new InvalidOperationException("Invalid bitmap. Bitmap should NOT be NULL if package is not yet downloaded.");
             }
 
-            if (detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length != _segmentsBitmap.Length)
+            if (detail.SegmentsBitmap != null && detail.SegmentsBitmap.Length != SegmentsBitmap.Length)
             {
                 throw new InvalidOperationException("Invalid bitmap. Invalid bitmap length.");
             }
@@ -237,7 +241,7 @@ namespace ShareCluster.Packaging
                     if (IsDownloaded) continue;
 
                     // is specific segment downloaded?
-                    bool isSegmentDownloaded = (_segmentsBitmap[segmentIndex / 8] & (1 << (segmentIndex % 8))) != 0;
+                    bool isSegmentDownloaded = (SegmentsBitmap[segmentIndex / 8] & (1 << (segmentIndex % 8))) != 0;
                     if (!isSegmentDownloaded) return false;
                 }
             }

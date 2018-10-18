@@ -56,6 +56,8 @@ namespace ShareCluster.Network
             // for short period of time when trying to allocate new slot if there are no more
             // the value will be greater than limit for short time - better limit then result
             public int Used => Math.Min(Limit, _count);
+
+            public int Free => Limit - Used;
         }
     }
 }

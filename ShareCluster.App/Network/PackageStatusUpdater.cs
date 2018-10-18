@@ -33,8 +33,10 @@ namespace ShareCluster.Network
         private readonly ILoggerFactory _loggerFactory;
         private readonly NetworkSettings _settings;
         private readonly HttpApiClient _client;
+        private readonly IPeerRegistry _peerRegistry;
+        private readonly IRemotePackageRegistry _remotePackageRegistry;
 
-        public PackageStatusUpdater(ILoggerFactory loggerFactory, NetworkSettings settings, HttpApiClient client)
+        public PackageStatusUpdater(ILoggerFactory loggerFactory, NetworkSettings settings, HttpApiClient client, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
@@ -44,26 +46,32 @@ namespace ShareCluster.Network
             _statusTimer = new Timer(StatusTimeoutCallback, null, _statusTimerInterval, Timeout.InfiniteTimeSpan);
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _client = client ?? throw new ArgumentNullException(nameof(client));
+            _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
         }
 
         public event Action NewDataAvailable;
         
-        public void InterestedInPackage(LocalPackage packageInfo)
+        public void InterestedInPackage(LocalPackage package)
         {
-            _logger.LogDebug("Started looking for peers having: {0}", packageInfo);
+            _logger.LogDebug("Started looking for peers having: {0}", package);
             lock(_syncLock)
             {
-                if (_packageStates.ContainsKey(packageInfo.Id)) return; // already there
-                var status = new PackagePeersStatus(_loggerFactory.CreateLogger<PackagePeersStatus>(), packageInfo);
-                _packageStates.Add(packageInfo.Id, status);
+                if (_packageStates.ContainsKey(package.Id)) return; // already there
+                var status = new PackagePeersStatus(_loggerFactory.CreateLogger<PackagePeersStatus>(), package);
+                _packageStates.Add(package.Id, status);
 
                 // add status for each peer that knows package
                 int alreadyFound = 0;
-                foreach (PeerOverallStatus peer in _peers.Values)
+                if(_remotePackageRegistry.RemotePackages.TryGetValue(package.Id, out RemotePackage remotePackage))
                 {
-                    if (!peer.PeerInfo.KnownPackages.TryGetValue(packageInfo.Id, out PackageStatus ps)) continue;
-                    alreadyFound++;
-                    status.AddPeer(peer, isSeeder: ps.IsSeeding);
+                    foreach (var peerOccurence in remotePackage.Peers)
+                    {
+                        if (!_peerRegistry.Peers.TryGetValue(peerOccurence.Key, out PeerInfo peerInfo)) continue;
+
+                        alreadyFound++;
+                        status.AddPeer(new PeerOverallStatus(peerInfo), peerOccurence.Value.IsSeeder);
+                    }
                 }
             }
 
@@ -271,12 +279,12 @@ namespace ShareCluster.Network
             {
                 // send request
                 statusResult = await _client.GetPackageStatusAsync(peer.PeerInfo.ServiceEndPoint, requestMessage);
-                peer.PeerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null);
+                peer.PeerInfo.Stats.MarkStatusUpdateSuccess(statusVersion: null);
                 success = true;
             }
             catch (Exception e)
             {
-                peer.PeerInfo.Status.MarkStatusUpdateFail();
+                peer.PeerInfo.Stats.MarkStatusUpdateFail();
                 _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
             }
             return (peer, result: statusResult, success);
@@ -426,7 +434,7 @@ namespace ShareCluster.Network
                 catch(Exception e)
                 {
                     _logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.ServiceEndPoint, _packageInfo, e.Message);
-                    peer.PeerInfo.Status.MarkStatusUpdateFail();
+                    peer.PeerInfo.Stats.MarkStatusUpdateFail();
                 }
 
                 _logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);

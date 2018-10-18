@@ -22,6 +22,7 @@ namespace ShareCluster.Network.Messages
             PackageId = packageInfo.Id;
             PackageName = packageInfo.Metadata.Name;
             PackageSize = packageInfo.Definition.PackageSize;
+            IsSeeder = packageInfo.DownloadStatus.IsDownloaded;
         }
         
         [ProtoMember(1)]
@@ -32,5 +33,8 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(3)]
         public virtual long PackageSize { get; set; }
+
+        [ProtoMember(4)]
+        public bool IsSeeder { get; set; }
     }
 }

@@ -97,9 +97,8 @@ namespace ShareCluster
             services.AddSingleton<NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<PackageFolderRepository>();
-            services.AddSingleton<PackageRegistry>();
+            services.AddSingleton<PeerCatalogUpdater>();
             services.AddSingleton<PackageDownloadManager>();
-            services.AddSingleton<PeersCluster>();
             services.AddSingleton<AppInstanceBootstrapper>();
             services.AddSingleton<WebFacade>();
             services.AddSingleton<LongRunningTasksManager>();

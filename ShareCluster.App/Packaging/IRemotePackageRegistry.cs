@@ -20,5 +20,6 @@ namespace ShareCluster.Packaging
         /// </summary>
         /// <param name="package">Package with occurences to merge.</param>
         void MergePackage(RemotePackage package);
+        void ForgetPeersPackage(PeerId peerId, Id packageId);
     }
 }

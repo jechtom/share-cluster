@@ -47,17 +47,17 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return SendRequestAndGetRespone<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.GetPackage), message);
+            return SendRequestAndGetResponse<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.GetPackage), message);
         }
 
-        public Messages.CatalogDataResponse GetCatalog(IPEndPoint endpoint, Messages.CatalogDataRequest message)
+        public async Task<Messages.CatalogDataResponse> GetCatalogAsync(IPEndPoint endpoint, Messages.CatalogDataRequest message)
         {
             if (message == null)
             {
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return SendRequestAndGetRespone<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiController.GetCatalog), message);
+            return await SendRequestAndGetResponeAsync<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiController.GetCatalog), message);
         }
 
         public async Task<Messages.DataResponseFault> DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Lazy<Stream> streamToWriteLazy)
@@ -122,7 +122,7 @@ namespace ShareCluster.Network.Http
             }
         }
 
-        private TRes SendRequestAndGetRespone<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
+        private TRes SendRequestAndGetResponse<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
         {
             return SendRequestAndGetResponeAsync<TReq, TRes>(endpoint, apiName, req).Result;
         }

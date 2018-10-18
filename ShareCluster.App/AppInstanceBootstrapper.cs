@@ -22,8 +22,8 @@ namespace ShareCluster
             IPeerRegistry peerRegistry,
             ILocalPackageRegistry localPackageRegistry,
             PackageFolderRepository localPackageManager,
-            PeersCluster peersCluster,
-            PeersManager peersManager
+            PeersManager peersManager,
+            PeerCatalogUpdater peerCatalogUpdater
         )
         {
             PackageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -32,8 +32,8 @@ namespace ShareCluster
             PeerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             LocalPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             LocalPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
-            PeersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
             PeersManager = peersManager ?? throw new ArgumentNullException(nameof(peersManager));
+            PeerCatalogUpdater = peerCatalogUpdater ?? throw new ArgumentNullException(nameof(peerCatalogUpdater));
         }
 
         public PackageDownloadManager PackageDownloadManager { get; }
@@ -44,7 +44,7 @@ namespace ShareCluster
         public ILocalPackageRegistry LocalPackageRegistry { get; }
         public IRemotePackageRegistry RemotePackageRegistry { get; }
         public PackageFolderRepository LocalPackageManager { get; }
-        public PeersCluster PeersCluster { get; }
+        public PeerCatalogUpdater PeerCatalogUpdater { get; set; }
 
         public void Start(AppInstanceSettings settings)
         {
@@ -59,6 +59,9 @@ namespace ShareCluster
 
             // send announce on network change
             NetworkChangeNotifier.Change += (s, e) => UdpPeerDiscovery.AnnounceNow();
+
+            // update remote package registry
+            PeerCatalogUpdater.Start();
 
             // continue with unfinished download
             PackageDownloadManager.RestoreUnfinishedDownloads();

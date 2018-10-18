@@ -10,7 +10,8 @@ namespace ShareCluster.Network
         private readonly NetworkSettings _settings;
         private readonly object _syncLock = new object();
         private TimeSpan _disabledSince;
-        private VersionNumber _catalogVersion = VersionNumber.Zero;
+        private VersionNumber _catalogAppliedVersion = VersionNumber.Zero;
+        private VersionNumber _catalogKnownVersion = VersionNumber.Zero;
 
         public PeerStats(IClock clock, NetworkSettings settings)
         {
@@ -81,13 +82,23 @@ namespace ShareCluster.Network
             }
         }
 
-        public void UpdateCatalogVersion(VersionNumber catalogVersion)
+        public void UpdateCatalogKnownVersion(VersionNumber catalogVersion)
         {
-            if (catalogVersion <= _catalogVersion) return;
+            if (catalogVersion <= _catalogKnownVersion) return;
             lock (_syncLock)
             {
-                if (catalogVersion <= _catalogVersion) return;
-                _catalogVersion = catalogVersion;
+                if (catalogVersion <= _catalogKnownVersion) return;
+                _catalogKnownVersion = catalogVersion;
+            }
+        }
+
+        public void UpdateCatalogAppliedVersion(VersionNumber catalogVersion)
+        {
+            if (catalogVersion <= _catalogAppliedVersion) return;
+            lock (_syncLock)
+            {
+                if (catalogVersion <= _catalogAppliedVersion) return;
+                _catalogAppliedVersion = catalogVersion;
             }
         }
 
@@ -125,7 +136,8 @@ namespace ShareCluster.Network
             }
         }
 
-        public VersionNumber CatalogVersion => _catalogVersion;
+        public VersionNumber CatalogAppliedVersion => _catalogAppliedVersion;
+        public VersionNumber CatalogKnownVersion => _catalogKnownVersion;
 
         public event Action IsEnabledChanged;
     }

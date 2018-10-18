@@ -60,7 +60,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // create result
-            var result = new PackageDownloadStatus(packageDefinition.PackageSplitInfo, dto.IsDownloading, dto.SegmentsBitmap);
+            var result = new PackageDownloadStatus(packageDefinition.PackageSplitInfo, dto.IsDownloading, dto.SegmentsBitmap, dto.IsDownloading);
             
             return result;
         }

@@ -27,16 +27,29 @@ namespace ShareCluster.Network
         private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly IPeerRegistry _peerRegistry;
-        private readonly List<LocalPackage> _downloads;
+        private readonly LocalPackageManager _localPackageManager;
+        private readonly Dictionary<Id, LocalPackage> _packagesDownloading;
+        private readonly HashSet<Id> _definitionsDownloading = new HashSet<Id>();
         private List<PackageDownloadSlot> _downloadSlots;
-        private readonly HashSet<Id> _packageDataDownloads = new HashSet<Id>();
         private readonly object _syncLock = new object();
         private readonly PackageStatusUpdater _packageStatusUpdater;
         private readonly Dictionary<Id, PostponeTimer> _postPoneUpdateDownloadFile;
         private readonly TimeSpan _postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
         private bool _isNextTryScheduled = false;
 
-        public PackageDownloadManager(AppInfo appInfo, HttpApiClient client, ILocalPackageRegistry localPackageRegistry, IRemotePackageRegistry remotePackageRegistry, IPeerRegistry peerRegistry)
+        public PackageDefinitionSerializer _packageDefinitionSerializer;
+        private readonly NetworkThrottling _networkThrottling;
+
+        public PackageDownloadManager(
+            AppInfo appInfo,
+            HttpApiClient client,
+            ILocalPackageRegistry localPackageRegistry,
+            IRemotePackageRegistry remotePackageRegistry,
+            IPeerRegistry peerRegistry,
+            LocalPackageManager localPackageManager,
+            PackageDefinitionSerializer packageDefinitionSerializer,
+            NetworkThrottling networkThrottling
+            )
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _logger = appInfo.LoggerFactory.CreateLogger<PackageDownloadManager>();
@@ -44,26 +57,14 @@ namespace ShareCluster.Network
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
+            _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
+            _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
             _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
-            _downloadSlots = new List<PackageDownloadSlot>(MaximumDownloadSlots);
-            _downloads = new List<LocalPackage>();
-            _packageStatusUpdater = new PackageStatusUpdater(appInfo.LoggerFactory, appInfo.NetworkSettings, client);
-            peerRegistry.PeersChanged += _packageStatusUpdater.UpdatePeers;
+            _downloadSlots = new List<PackageDownloadSlot>();
+            _packagesDownloading = new Dictionary<Id, LocalPackage>();
+            _definitionsDownloading = new HashSet<Id>();
             _packageStatusUpdater.NewDataAvailable += TryScheduleNextDownload;
-            packageRegistry.LocalPackageDeleting += PackageRegistry_LocalPackageDeleting;
-        }
-
-        public int MaximumDownloadSlots => _appInfo.NetworkSettings.MaximumDownloadSlots;
-
-        public int DownloadStotsAvailable
-        {
-            get
-            {
-                lock(_syncLock)
-                {
-                    return MaximumDownloadSlots - _downloadSlots.Count;
-                }
-            }
         }
 
         public void RestoreUnfinishedDownloads()
@@ -72,7 +73,7 @@ namespace ShareCluster.Network
             {
                 foreach (LocalPackage item in _localPackageRegistry.LocalPackages.Values.Where(p => p.DownloadStatus.IsDownloading))
                 {
-                    StartDownloadPackage(item);
+                    StartDownloadLocalPackage(item);
                 }
             }
         }
@@ -87,25 +88,25 @@ namespace ShareCluster.Network
         /// <summary>
         /// Downloads discovered package hashes and starts download.
         /// </summary>
-        /// <param name="packageToDownload">Discovered package to download.</param>
+        /// <param name="remotePackage">Discovered package to download.</param>
         /// <param name="startDownloadTask">Task that completed when download is started/failed.</param>
         /// <returns>
         /// Return true if download has started. False if it was already in progress. 
         /// Throws en exception if failed to download hashes or start download.
         /// </returns>
-        public bool GetDiscoveredPackageAndStartDownloadPackage(RemotePackage packageToDownload, out Task startDownloadTask)
+        public bool StartDownloadRemotePackage(RemotePackage remotePackage, out Task startDownloadTask)
         {
             lock (_syncLock)
             {
-                // ignore already in progress
-                if (!_packageDataDownloads.Add(packageToDownload.PackageId))
+                // download definition already in progress
+                if (!_definitionsDownloading.Add(remotePackage.PackageId))
                 {
                     startDownloadTask = null;
                     return false;
                 }
 
-                // already in progress, exit
-                if (_localPackageRegistry.LocalPackages.TryGetValue(packageToDownload.PackageId, out LocalPackage _))
+                // already in repository, exit
+                if (_localPackageRegistry.LocalPackages.TryGetValue(remotePackage.PackageId, out LocalPackage _))
                 {
                     startDownloadTask = null;
                     return false;
@@ -117,49 +118,72 @@ namespace ShareCluster.Network
                 try
                 {
                     PackageResponse response = null;
+                    PackageMetadata packageMeta = null;
 
                     // download package segments
                     while (true)
                     {
-                        PeerInfo[] peers = _remotePackageRegistry. _peerRegistry.Peers.Values.ImmutablePeers.Where(p => p.KnownPackages.ContainsKey(packageToDownload.PackageId)).ToArray();
-
-                        if (!peers.Any())
+                        RemotePackageOccurence[] occurences = remotePackage.Peers.Values.ToArray();
+                        
+                        if (!occurences.Any())
                         {
                             throw new InvalidOperationException("No peers left to download package data.");
                         }
 
-                        PeerInfo peer = peers[ThreadSafeRandom.Next(0, peers.Length)];
+                        RemotePackageOccurence occurence = occurences[ThreadSafeRandom.Next(0, occurences.Length)];
+
+                        // peer not found - forget his package occurence
+                        if(!_peerRegistry.Peers.TryGetValue(occurence.PeerId, out PeerInfo peerInfo))
+                        {
+                            _remotePackageRegistry.ForgetPeersPackage(occurence.PeerId, remotePackage.PackageId);
+                            continue;
+                        }
 
                         // download package
-                        _logger.LogInformation($"Downloading hashes of package \"{packageToDownload.Name}\" {packageToDownload.PackageId:s} from peer {peer.ServiceEndPoint}.");
+                        _logger.LogInformation($"Downloading definition of package \"{remotePackage.Name}\" {remotePackage.PackageId:s} from peer {peerInfo.ServiceEndPoint}.");
                         try
                         {
-                            response = _client.GetPackage(peer.ServiceEndPoint, new PackageRequest(packageToDownload.PackageId));
-                            peer.Status.MarkStatusUpdateSuccess(statusVersion: null); // responded = working
-                            if (response.Found) break; // found
-                            peer.RemoveKnownPackage(packageToDownload.PackageId); // don't have it anymore
+                            response = _client.GetPackage(peerInfo.ServiceEndPoint, new PackageRequest(remotePackage.PackageId));
+                            peerInfo.Stats.MarkStatusUpdateSuccess(statusVersion: null); // responded = working
+                            if (response.Found)
+                            {
+                                packageMeta = new PackageMetadata()
+                                {
+                                    Created = occurence.Created,
+                                    Name = occurence.Name
+                                };
+                                _logger.LogDebug($"Peer {peerInfo} don't know about catalog package {remotePackage}");
+                                break; // found
+                            }
+
+                            // package not found on peer - forget his package occurence
+                            _remotePackageRegistry.ForgetPeersPackage(occurence.PeerId, remotePackage.PackageId);
+                            continue;
                         }
                         catch (Exception e)
                         {
-                            peer.Status.MarkStatusUpdateFail(); // mark as failed - this will remove peer from peer list if hit fail limit
-                            _logger.LogTrace(e, $"Error contacting client {peer.ServiceEndPoint}");
+                            peerInfo.Stats.MarkStatusUpdateFail(); // mark as failed - this will remove peer from peer list if hit fail limit
+                            _logger.LogTrace(e, $"Error contacting client {peerInfo.ServiceEndPoint}");
                         }
                     }
 
                     // save to local storage
-                    LocalPackage package = _remotePackageRegistry.SaveRemotePackage(response.Hashes, packageToDownload.Meta);
-                    StartDownloadPackage(package);
+                    PackageDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition, remotePackage.PackageId);
+                    
+                    LocalPackage package = _localPackageManager.CreateForDownload(packageDefinition, packageMeta);
+                    _localPackageRegistry.AddLocalPackage(package);
+                    StartDownloadLocalPackage(package);
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "Can't download package data of \"{0}\" {1:s}", packageToDownload.Name, packageToDownload.PackageId);
+                    _logger.LogError(e, "Can't download package data of \"{0}\" {1:s}", remotePackage.Name, remotePackage.PackageId);
                     throw;
                 }
                 finally
                 {
                     lock (_syncLock)
                     {
-                        _packageDataDownloads.Remove(packageToDownload.PackageId);
+                        _definitionsDownloading.Remove(remotePackage.PackageId);
                     }
                 }
             });
@@ -167,12 +191,12 @@ namespace ShareCluster.Network
             return true;
         }
 
-        public void StartDownloadPackage(LocalPackage package)
+        public void StartDownloadLocalPackage(LocalPackage package)
         {
             lock(_syncLock)
             {
                 // already downloading? ignore
-                if (_downloads.Contains(package)) return;
+                if (_packagesDownloading.ContainsKey(package.Id)) return;
 
                 // marked for delete? ignore
                 if (package.Locks.IsMarkedToDelete) return;
@@ -184,7 +208,7 @@ namespace ShareCluster.Network
                 if(!package.DownloadStatus.IsDownloading)
                 {
                     package.DownloadStatus.IsDownloading = true;
-                    _remotePackageRegistry.UpdateDownloadStatus(package);
+                    package.DataAccessor.UpdatePackageDownloadStatus(package.DownloadStatus);
                 }
 
                 // start download
@@ -199,13 +223,13 @@ namespace ShareCluster.Network
             lock (_syncLock)
             {
                 // is really downloading?
-                if (!_downloads.Contains(package)) return;
+                if (!_packagesDownloading.ContainsKey(package.Id)) return;
 
                 // update status
                 if (package.DownloadStatus.IsDownloaded) package.DownloadStatus.SegmentsBitmap = null;
                 // mark as "don't resume download"
                 package.DownloadStatus.IsDownloading = false;
-                _remotePackageRegistry.UpdateDownloadStatus(package);
+                package.DataAccessor.UpdatePackageDownloadStatus(package.DownloadStatus);
 
                 // stop
                 UpdateQueue(package, isInterested: false);
@@ -222,7 +246,7 @@ namespace ShareCluster.Network
                 var detail = new PackageStatusItem();
                 Id id = packageIds[i];
                 packages[i] = detail;
-                if (!_remotePackageRegistry.TryGetPackage(id, out LocalPackage info) || info.Locks.IsMarkedToDelete)
+                if (!_localPackageRegistry.LocalPackages.TryGetValue(id, out LocalPackage info) || info.Locks.IsMarkedToDelete)
                 {
                     detail.IsFound = false;
                     continue;
@@ -250,12 +274,12 @@ namespace ShareCluster.Network
                 // add/remove
                 if (isInterested)
                 {
-                    _downloads.Add(package);
+                    _packagesDownloading.Add(package.Id, package);
                     _packageStatusUpdater.InterestedInPackage(package);
                 }
                 else
                 {
-                    _downloads.Remove(package);
+                    _packagesDownloading.Remove(package.Id);
                     _packageStatusUpdater.NotInterestedInPackage(package);
                 }
             }
@@ -269,22 +293,24 @@ namespace ShareCluster.Network
             {
                 _isNextTryScheduled = false;
 
-                LocalPackage package = _downloads.FirstOrDefault();
-                if (package == null)
-                {
-                    // no package for download? exit - this method will be called when new package is added
-                    return;
-                }
-
-                if (_downloadSlots.Count >= MaximumDownloadSlots)
+                if (_downloadSlots.Count >= _networkThrottling.DownloadSlots.Limit)
                 {
                     // no slots? exit - this method will be called when slot is returned
                     return;
                 }
 
+                if (_packagesDownloading.Count == 0)
+                {
+                    // no package for download? exit - this method will be called when new package is added
+                    return;
+                }
+
+                int packageRandomIndex = ThreadSafeRandom.Next(0, _packagesDownloading.Count);
+                LocalPackage package = _packagesDownloading.ElementAt(packageRandomIndex).Value;
+
                 List<PeerInfo> tmpPeers = _packageStatusUpdater.GetClientListForPackage(package);
 
-                while (_downloadSlots.Count < MaximumDownloadSlots && tmpPeers.Any())
+                while (_downloadSlots.Count < _networkThrottling.DownloadSlots.Limit && tmpPeers.Any())
                 {
                     // pick random peer
                     int peerIndex = ThreadSafeRandom.Next(0, tmpPeers.Count);
@@ -313,7 +339,7 @@ namespace ShareCluster.Network
                     return; // already scheduled, exit
                 }
 
-                if (_downloadSlots.Count >= MaximumDownloadSlots)
+                if (_downloadSlots.Count >= _networkThrottling.DownloadSlots.Limit)
                 {
                     // no slots? exit - this method will be called when any slot is returned
                     return;
@@ -486,7 +512,7 @@ namespace ShareCluster.Network
                         // - worst scenario is that we would loose track about few segments that has been downloaded if app crashes
                         if (_parent.CanUpdateDownloadStatusForPackage(_package))
                         {
-                            _parent._remotePackageRegistry.UpdateDownloadStatus(_package);
+                            _package.DataAccessor.UpdatePackageDownloadStatus(_package.DownloadStatus);
                         }
                     }
                 }
@@ -564,13 +590,13 @@ namespace ShareCluster.Network
                 catch (HashMismatchException e)
                 {
                     _parent._logger.LogError($"Client {peer.ServiceEndPoint} failed to provide valid data segment: {e.Message}");
-                    peer.Status.MarkStatusUpdateFail();
+                    peer.Stats.MarkStatusUpdateFail();
                     return result;
                 }
                 catch (Exception e)
                 {
                     _parent._logger.LogError(e, $"Failed to download data segment from {peer.ServiceEndPoint}.");
-                    peer.Status.MarkStatusUpdateFail();
+                    peer.Stats.MarkStatusUpdateFail();
                     return result;
                 }
 
@@ -600,7 +626,7 @@ namespace ShareCluster.Network
                 if (totalSizeOfParts != bytes)
                 {
                     _parent._logger.LogWarning($"Stream ended too soon from {peer.ServiceEndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.");
-                    peer.Status.MarkStatusUpdateFail();
+                    peer.Stats.MarkStatusUpdateFail();
                     return result;
                 }
 

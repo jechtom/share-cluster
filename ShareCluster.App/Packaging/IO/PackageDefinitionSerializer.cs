@@ -48,6 +48,13 @@ namespace ShareCluster.Packaging.IO
 
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
 
+            PackageDefinition result = DeserializeDto(dto, packageId);
+            
+            return result;
+        }
+
+        public PackageDefinition DeserializeDto(PackageDefinitionDto dto, Id packageId)
+        {
             var splitInfo = new PackageSplitInfo(
                 baseInfo: new PackageSplitBaseInfo(
                     dataFileLength: dto.DataFileLength,
@@ -64,7 +71,7 @@ namespace ShareCluster.Packaging.IO
 
             // verify
             Id expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
-            if(expectedId != result.PackageId)
+            if (expectedId != result.PackageId)
             {
                 throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);
             }

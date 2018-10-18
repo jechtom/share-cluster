@@ -34,7 +34,14 @@ namespace ShareCluster
             double convertedValue = bytes;
             if (baseIndex > 0) convertedValue /= _sizeLimits[baseIndex - 1];
 
-            return $"{convertedValue:0.0} {_sizesLabels[baseIndex]}";
+            if (baseIndex == 0)
+            {
+                return $"{convertedValue:0} {_sizesLabels[baseIndex]}";
+            }
+            else
+            {
+                return $"{convertedValue:0.0} {_sizesLabels[baseIndex]}";
+            }
         }
     }
 }

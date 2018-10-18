@@ -20,11 +20,11 @@ namespace ShareCluster.WebInterface
         private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly InstanceId _instanceHash;
         private readonly LongRunningTasksManager _tasks;
-        private readonly PeersCluster _peersCluster;
+        private readonly NetworkThrottling _networkThrottling;
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, PeersCluster peersCluster)
+        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling)
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -34,7 +34,7 @@ namespace ShareCluster.WebInterface
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
             _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
-            _peersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
+            _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
         }
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
@@ -42,7 +42,7 @@ namespace ShareCluster.WebInterface
             if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
             if (start)
             {
-                _packageDownloadManager.StartDownloadPackage(package);
+                _packageDownloadManager.StartDownloadLocalPackage(package);
             }
             else
             {
@@ -94,7 +94,7 @@ namespace ShareCluster.WebInterface
             }
 
             // try start download
-            if (!_packageDownloadManager.GetDiscoveredPackageAndStartDownloadPackage(remotePackage, out Task startDownloadTask))
+            if (!_packageDownloadManager.StartDownloadRemotePackage(remotePackage, out Task startDownloadTask))
             {
                 return;
             }
@@ -139,8 +139,8 @@ namespace ShareCluster.WebInterface
                 PackagesAvailableToDownload = _remotePackageRegistry.RemotePackages,
                 Instance = _instanceHash,
                 Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
-                UploadSlotsAvailable = _peersCluster.UploadSlotsAvailable,
-                DownloadSlotsAvailable = _packageDownloadManager.DownloadStotsAvailable
+                UploadSlotsAvailable = _networkThrottling.UploadSlots.Free,
+                DownloadSlotsAvailable = _networkThrottling.DownloadSlots.Free
             };
             return result;
         }
