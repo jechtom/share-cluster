@@ -39,7 +39,7 @@ namespace ShareCluster.Network
         }
 
         // identification
-        public IPEndPoint ServiceEndPoint { get; set; }
+        public IPEndPoint ServiceEndPoint => PeerId.Endpoint;
 
         // how it was discovered?
         public bool IsDirectDiscovery => (DiscoveryMode & PeerFlags.DirectDiscovery) > 0;
@@ -48,14 +48,10 @@ namespace ShareCluster.Network
         public bool IsUdpDiscovery => (DiscoveryMode & PeerFlags.DiscoveredByUdp) > 0;
 
         public PeerFlags DiscoveryMode { get; set; }
-        
-        public PeerStats Stats { get; }
+
+        public PeerStats Stats => _stats;
         public PeerId PeerId => _peerId;
 
-        public PeerStats Stats1 => _stats;
-
-        public event Action<PeerInfo> KnownPackageChanged;
-        
         public override int GetHashCode() => PeerId.GetHashCode();
 
         public override bool Equals(object obj) => Equals((PeerInfo)obj);

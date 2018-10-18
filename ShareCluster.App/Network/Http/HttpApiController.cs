@@ -5,6 +5,7 @@ using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -25,51 +26,39 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public CatalogDataResponse GetCatalog([FromBody]CatalogDataRequest request)
         {
+            _peerController.UpdatePeer(PeerId, PeerCatalogVersion);
             return _peerController.GetCatalog(request);
         }
 
         [HttpPost]
         public PackageResponse GetPackage([FromBody]PackageRequest request)
         {
+            _peerController.UpdatePeer(PeerId, PeerCatalogVersion);
             return _peerController.GetPackage(request);
         }
 
         [HttpPost]
-        public PackageStatusResponse PackageStatus([FromBody]PackageStatusRequest request)
+        public PackageStatusResponse GetPackageStatus([FromBody]PackageStatusRequest request)
         {
+            _peerController.UpdatePeer(PeerId, PeerCatalogVersion);
             PackageStatusResponse result = _peerController.GetPackageStatus(request);
             return result;
         }
 
         [HttpPost]
-        public StatusUpdateMessage StatusUpdate([FromBody]StatusUpdateMessage request)
-        {
-            if(request == null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-            IPAddress address = RemoteIpAddress;
-            _peersCluster.ProcessStatusUpdateMessage(request, address);
-            StatusUpdateMessage response = _peersCluster.CreateStatusUpdateMessage(new IPEndPoint(address, request.ServicePort));
-            return response;
-        }
-
-        [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
-            if(!_localPackageRegistry.LocalPackages.TryGetValue(request.PackageId, out LocalPackage package))
-            { 
-                return new ObjectResult(DataResponseFaul.CreateDataPackageNotFoundMessage());
-            }
+            _peerController.UpdatePeer(PeerId, PeerCatalogVersion);
 
             // create stream
-            (System.IO.Stream stream, DataResponseFaul error) = _peersCluster.CreateUploadStream(package, request.RequestedParts);
-            if (error != null) return new ObjectResult(error);
+            (Stream stream, DataResponseFault fault) = _peerController.GetDataStream(request);
+
+            if (fault != null) return new ObjectResult(fault);
             return new FileStreamResult(stream, "application/octet-stream");
         }
 
-        public IPAddress RemoteIpAddress { get; set; }
-        public Id PeerId { get; set; }
+        public PeerId PeerId { get; set; }
         public bool IsLoopback { get; set; }
+        public VersionNumber PeerCatalogVersion { get; set; }
     }
 }

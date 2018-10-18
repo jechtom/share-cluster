@@ -10,6 +10,8 @@ namespace ShareCluster.Network.Messages
     [ProtoContract]
     public class CatalogPackage
     {
+        public CatalogPackage() { }
+
         public CatalogPackage(LocalPackage packageInfo)
         {
             if (packageInfo == null)

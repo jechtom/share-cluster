@@ -22,7 +22,8 @@ namespace ShareCluster
             IPeerRegistry peerRegistry,
             ILocalPackageRegistry localPackageRegistry,
             PackageFolderRepository localPackageManager,
-            PeersCluster peersCluster
+            PeersCluster peersCluster,
+            PeersManager peersManager
         )
         {
             PackageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
@@ -32,12 +33,14 @@ namespace ShareCluster
             LocalPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             LocalPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             PeersCluster = peersCluster ?? throw new ArgumentNullException(nameof(peersCluster));
+            PeersManager = peersManager ?? throw new ArgumentNullException(nameof(peersManager));
         }
 
         public PackageDownloadManager PackageDownloadManager { get; }
         public UdpPeerDiscovery UdpPeerDiscovery { get; }
         public NetworkChangeNotifier NetworkChangeNotifier { get; }
         public IPeerRegistry PeerRegistry { get; }
+        public PeersManager PeersManager { get; }
         public ILocalPackageRegistry LocalPackageRegistry { get; }
         public IRemotePackageRegistry RemotePackageRegistry { get; }
         public PackageFolderRepository LocalPackageManager { get; }
@@ -45,6 +48,9 @@ namespace ShareCluster
 
         public void Start(AppInstanceSettings settings)
         {
+            // announce to peers manager
+            UdpPeerDiscovery.OnPeerDiscovery += (s, e) => PeersManager.PeerDiscovered(e.PeerId, e.CatalogVersion);
+
             // start UDP announcer/listener
             UdpPeerDiscovery.Start(
                 allowListener: settings.EnableUdpDiscoveryListener,

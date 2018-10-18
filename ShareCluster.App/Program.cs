@@ -43,8 +43,7 @@ namespace ShareCluster
                 var appSettings = new AppInstanceSettings()
                 {
                     EnableUdpDiscoveryListener = true,
-                    EnableUdpDiscoveryClient = true,
-                    DownloadEverything = false
+                    EnableUdpDiscoveryClient = true
                 };
 
                 var instance = new AppInstance(appInfo);
@@ -78,8 +77,7 @@ namespace ShareCluster
             var appSettings = new AppInstanceSettings()
             {
                 EnableUdpDiscoveryListener = (index == 0),
-                EnableUdpDiscoveryClient = true,
-                DownloadEverything = false
+                EnableUdpDiscoveryClient = true
             };
 
             var instance = new AppInstance(appInfo);

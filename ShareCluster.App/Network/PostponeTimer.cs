@@ -8,29 +8,29 @@ namespace ShareCluster.Network
     public class PostponeTimer
     {
 
-        static Stopwatch stopwatch = Stopwatch.StartNew();
+        static Stopwatch _stopwatch = Stopwatch.StartNew();
 
         public static PostponeTimer NoPostpone { get; } = new PostponeTimer();
 
-        private TimeSpan? postponedUntil;
+        private TimeSpan? _postponedUntil;
 
         public PostponeTimer()
         {
-            postponedUntil = null;
+            _postponedUntil = null;
         }
 
         public PostponeTimer(TimeSpan interval)
         {
-            postponedUntil = stopwatch.Elapsed.Add(interval);
+            _postponedUntil = _stopwatch.Elapsed.Add(interval);
         }
 
         public bool IsPostponed
         {
             get
             {
-                if (postponedUntil == null) return false;
-                if (postponedUntil.Value > stopwatch.Elapsed) return true;
-                postponedUntil = null;
+                if (_postponedUntil == null) return false;
+                if (_postponedUntil.Value > _stopwatch.Elapsed) return true;
+                _postponedUntil = null;
                 return false;
             }
         }

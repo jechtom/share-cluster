@@ -30,7 +30,6 @@ namespace ShareCluster.Packaging
 
         public MeasureItem DownloadMeasure { get; }
         public MeasureItem UploadMeasure { get; }
-        public IPackageDataAccessor PackageDataAccessor => throw new NotImplementedException();
         public override string ToString() => $"\"{Metadata.Name}\" {Id:s} ({SizeFormatter.ToString(SplitInfo.PackageSize)})";
     }
 }

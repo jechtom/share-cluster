@@ -33,10 +33,7 @@ namespace ShareCluster.Network
         private readonly TimeSpan _scheduleInterval = TimeSpan.FromSeconds(3);
         private bool _isStatusUpdateScheduled;
         private bool _isStatusUpdateInProgress;
-        private int _uploadSlots;
-        private int _statusVersion;
 
-        public int UploadSlotsAvailable => _uploadSlots;
 
         public PeersCluster(AppInfo appInfo, IClock clock, IPeerRegistry peerRegistry, HttpApiClient client, ILocalPackageRegistry localPackageRegistry, PackageDownloadManager packageDownloadManager)
         {
@@ -46,9 +43,7 @@ namespace ShareCluster.Network
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
-            _statusVersion = 1;
             _statusUpdateTimer = new Timer(StatusUpdateTimerCallback, null, TimeSpan.Zero, TimeSpan.Zero);
-            _uploadSlots = appInfo.NetworkSettings.MaximumUploadsSlots;
             _logger = appInfo.LoggerFactory.CreateLogger<PeersCluster>();
             _localPackageRegistry.LocalPackageCreated += PackageRegistry_NewLocalPackageCreated;
             _localPackageRegistry.LocalPackageDeleted += PackageRegistry_LocalPackageDeleted;
@@ -97,55 +92,6 @@ namespace ShareCluster.Network
                     _statusUpdateTimer.Change(_scheduleInterval, TimeSpan.Zero);
                 }
             }
-        }
-        
-        public (Stream stream, DataResponseFaul error) CreateUploadStream(LocalPackage package, int[] requestedSegments)
-        {
-            if (package == null)
-            {
-                throw new ArgumentNullException(nameof(package));
-            }
-
-            if (requestedSegments == null)
-            {
-                throw new ArgumentNullException(nameof(requestedSegments));
-            }
-
-            // packages ok?
-            if(!package.DownloadStatus.ValidateRequestedParts(requestedSegments))
-            {
-                _logger.LogTrace($"Requested segments not valid for {package}: {requestedSegments.Format()}");
-                return (null, DataResponseFaul.CreateDataPackageSegmentsNotFoundMessage());
-            }
-
-            // allocate slot
-            int newUploadSlotsCount = Interlocked.Decrement(ref _uploadSlots);
-            if(newUploadSlotsCount <= 0)
-            {
-                // not enough slots
-                Interlocked.Increment(ref _uploadSlots);
-                _logger.LogTrace($"Peer choked when requested {package} segments: {requestedSegments.Format()}");
-                return (null, DataResponseFaul.CreateChokeMessage());
-            }
-
-            // obtain lock
-            if (!package.Locks.TryLock(out object lockToken))
-            {
-                return (null, DataResponseFaul.CreateDataPackageNotFoundMessage());
-            }
-
-            // create reader stream
-            _logger.LogTrace($"Uploading for {package} segments: {requestedSegments.Format()}");
-            IStreamController readPartsController = package.PackageDataAccessor.CreateReadSpecificPackageData(requestedSegments);
-            var stream = new ControlledStream(_appInfo.LoggerFactory, readPartsController)
-            {
-                Measure = package.UploadMeasure
-            };
-            stream.Disposing += () => {
-                int currentSlots = Interlocked.Increment(ref _uploadSlots);
-                package.Locks.Unlock(lockToken);
-            };
-            return (stream, null);
         }
         
         private void StatusUpdateTimerCallback(object state)
@@ -232,74 +178,6 @@ namespace ShareCluster.Network
                     _logger.LogError(t.Exception, "Peer update status failed.");
                 }
             });
-        }
-
-        public void ProcessStatusUpdateMessage(StatusUpdateMessage message, IPAddress address)
-        {
-            // is this request from myself?
-            bool isLoopback = _appInfo.InstanceId.Hash.Equals(message.InstanceId);
-
-            var endPoint = new IPEndPoint(address, message.ServicePort);
-
-            // register peers
-            throw new NotImplementedException();
-            //IEnumerable<PeerUpdateInfo> discoveredPeers = (message.KnownPeers ?? new DiscoveryPeerData[0])
-            //    .Select(kp => new PeerUpdateInfo(kp.ServiceEndpoint, PeerFlags.OtherPeerDiscovery, clock.ConvertToLocal(message.Clock, kp.LastSuccessCommunication))) // peers known to peer we're communicating with
-            //    .Concat(new[] { new PeerUpdateInfo(endPoint, PeerFlags.DirectDiscovery, clock.Time) }); // direct peer we're communicating with
-
-            //peerRegistry.UpdatePeers(discoveredPeers);
-            //if(!peerRegistry.TryGetPeer(endPoint, out PeerInfo peer))
-            //{
-            //    throw new InvalidOperationException($"Can't find peer in internal registry: {endPoint}");
-            //}
-
-            //// don't process requests from myself
-            //if (peer.IsLoopback) return;
-
-            //// update known packages if different
-            //peer.ReplaceKnownPackages(message.KnownPackages ?? ImmutableList<PackageStatus>.Empty);
-
-            //// register discovered packages
-            //if (message.KnownPackages?.Any() == true)
-            //{
-            //    packageRegistry.RegisterDiscoveredPackages(message.KnownPackages.Select(kp => new DiscoveredPackage(endPoint, kp.Meta)));
-            //}
-
-            //// mark peer have new information
-            //OnPeerStatusUpdateSuccess(peer);
-        }
-
-        private void OnPeerStatusUpdateSuccess(PeerInfo peer)
-        {
-            peer.Status.MarkStatusUpdateSuccess(statusVersion: _statusVersion);
-        }
-
-        private void OnPeerStatusUpdateFail(PeerInfo peer)
-        {
-            peer.Status.MarkStatusUpdateFail();
-        }
-        
-        public StatusUpdateMessage CreateStatusUpdateMessage(IPEndPoint endpoint)
-        {
-            lock (_clusterNodeLock)
-            {
-                var result = new StatusUpdateMessage
-                {
-                    InstanceId = _appInfo.InstanceId.Hash,
-                    KnownPackages = _localPackageRegistry.ImmutablePackagesStatuses,
-                    ServicePort = _appInfo.NetworkSettings.TcpServicePort,
-                    PeerEndpoint = endpoint,
-                    Clock = _appInfo.Clock.Time.Ticks
-                };
-                return result;
-            }
-        }
-
-        public void AddManualPeer(IPEndPoint endpoint)
-        {
-            _logger.LogInformation($"Adding manual peer {endpoint}");
-            StatusUpdateMessage status = _client.GetStatus(endpoint, CreateStatusUpdateMessage(endpoint));
-            ProcessStatusUpdateMessage(status, endpoint.Address);
         }
     }
 }

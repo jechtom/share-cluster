@@ -8,7 +8,7 @@ namespace ShareCluster.Network
     public interface IPeerRegistry
     {
         IImmutableDictionary<PeerId, PeerInfo> Peers { get; }
-        void AddPeer(PeerInfo peer);
+        PeerInfo GetOrAddPeer(Func<PeerInfo> createFunc);
         void RemovePeer(PeerInfo peer);
     }
 }

@@ -4,9 +4,8 @@ namespace ShareCluster.Network.Http
 {
     public interface IHttpApiController
     {
-        IPAddress RemoteIpAddress { get; set; }
-
-        Id PeerId { get; set; }
+        PeerId PeerId { get; set; }
         bool IsLoopback { get; set; }
+        VersionNumber PeerCatalogVersion { get; set; }
     }
 }

@@ -37,22 +37,7 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return SendRequestAndGetResponeAsync<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.PackageStatus), message);
-        }
-
-        public Messages.StatusUpdateMessage GetStatus(IPEndPoint endpoint, Messages.StatusUpdateMessage message)
-        {
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
-
-            if(message.ServicePort == 0)
-            {
-                throw new ArgumentException("Service port can't be 0.", nameof(message));
-            }
-
-            return SendRequestAndGetRespone<Messages.StatusUpdateMessage, Messages.StatusUpdateMessage>(endpoint, nameof(HttpApiController.StatusUpdate), message);
+            return SendRequestAndGetResponeAsync<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.GetPackageStatus), message);
         }
 
         public Messages.PackageResponse GetPackage(IPEndPoint endpoint, Messages.PackageRequest message)
@@ -75,7 +60,7 @@ namespace ShareCluster.Network.Http
             return SendRequestAndGetRespone<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiController.GetCatalog), message);
         }
 
-        public async Task<Messages.DataResponseFaul> DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Lazy<Stream> streamToWriteLazy)
+        public async Task<Messages.DataResponseFault> DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Lazy<Stream> streamToWriteLazy)
         {
             if (message == null)
             {
@@ -89,7 +74,7 @@ namespace ShareCluster.Network.Http
                     // unexpected response (expected stream) == fault 
                     if(resultMessage.Headers.TryGetValues(HttpRequestHeaderValidator.TypeHeaderName, out IEnumerable<string> typeHeaderValues))
                     {
-                        return _serializer.Deserialize<Messages.DataResponseFaul>(stream);
+                        return _serializer.Deserialize<Messages.DataResponseFault>(stream);
                     }
 
                     // write to target stream
@@ -113,7 +98,7 @@ namespace ShareCluster.Network.Http
             var requestContent = new ByteArrayContent(requestBytes);
             requestContent.Headers.ContentType = new MediaTypeHeaderValue(_serializer.MimeType);
             requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, _compatibility.NetworkProtocolVersion.ToString());
-            requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, _instanceHash.Hash.ToString());
+            requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, _instanceHash.Value.ToString());
             requestContent.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, typeof(TReq).Name);
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, uri))

@@ -66,35 +66,36 @@ namespace ShareCluster.Tests
         public void StatusUpdateTest()
         {
             // sample message (this caused deserialization issues)
-            var message = new StatusUpdateMessage()
+            var message = new CatalogDataResponse()
             {
-                InstanceId = new Id(new byte[] { 1, 2, 3 }),
-                KnownPackages = ImmutableList<PackageStatus>.Empty,
-                KnownPeers = new DiscoveryPeerData[] {
-                    new DiscoveryPeerData()
+                CatalogVersion = new VersionNumber(123),
+                IsUpToDate = true,
+                Packages = new CatalogPackage[]
+                {
+                    new CatalogPackage()
                     {
-                        ServiceEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.110"), 1234),
-                        LastSuccessCommunication = TimeSpan.FromMilliseconds(1234).Ticks
+                        PackageId = new Id(new byte[] { 1, 2, 3 }),
+                        PackageName = "abc",
+                        PackageSize = 456
                     }
-                },
-                ServicePort = 5432,
-                PeerEndpoint = new IPEndPoint(IPAddress.Parse("192.168.0.109"), 5678),
-                Clock = TimeSpan.FromMilliseconds(12345).Ticks
+                }
             };
             
             // serialize/deserialize
             IMessageSerializer serializer = new ProtoBufMessageSerializer();
-            byte[] bytes = serializer.Serialize((object)message, typeof(StatusUpdateMessage));
-            StatusUpdateMessage des = serializer.Deserialize<StatusUpdateMessage>(bytes);
+            byte[] bytes = serializer.Serialize(message, typeof(CatalogDataResponse));
+            CatalogDataResponse des = serializer.Deserialize<CatalogDataResponse>(bytes);
 
             // compare
             Assert.NotNull(des);
-            Assert.Equal(message.ServicePort, des.ServicePort);
-            Assert.Equal(message.InstanceId, des.InstanceId);
-            Assert.Equal(message.PeerEndpoint, des.PeerEndpoint);
-            Assert.Equal(message.Clock, des.Clock);
-            Assert.NotNull(des.KnownPeers);
-            Assert.Equal(message.KnownPeers, des.KnownPeers, DiscoveryPeerData.Comparer);
+            Assert.Equal(message.CatalogVersion, des.CatalogVersion);
+            Assert.Equal(message.IsUpToDate, des.IsUpToDate);
+
+            Assert.Equal(message.Packages.Length, message.Packages.Length);
+            
+            Assert.Equal(message.Packages[0].PackageId, message.Packages[0].PackageId);
+            Assert.Equal(message.Packages[0].PackageName, message.Packages[0].PackageName);
+            Assert.Equal(message.Packages[0].PackageSize, message.Packages[0].PackageSize);
         }
     }
 }

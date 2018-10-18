@@ -17,7 +17,8 @@ namespace ShareCluster.Network.Http
     {
         bool IInputFormatter.CanRead(InputFormatterContext context)
         {
-            IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
+            IServiceProvider serviceProvider = context.HttpContext.RequestServices;
+            IMessageSerializer serializer = serviceProvider.GetRequiredService<IMessageSerializer>();
 
             if (!(context.HttpContext.Request.ContentType ?? "").Equals(serializer.MimeType, StringComparison.OrdinalIgnoreCase))
                 return false;
@@ -41,7 +42,8 @@ namespace ShareCluster.Network.Http
 
         Task<InputFormatterResult> IInputFormatter.ReadAsync(InputFormatterContext context)
         {
-            IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
+            IServiceProvider serviceProvider = context.HttpContext.RequestServices;
+            IMessageSerializer serializer = serviceProvider.GetRequiredService<IMessageSerializer>();
 
             object result = serializer.Deserialize(context.HttpContext.Request.Body, context.ModelType);
             return InputFormatterResult.SuccessAsync(result);
@@ -49,14 +51,17 @@ namespace ShareCluster.Network.Http
 
         Task IOutputFormatter.WriteAsync(OutputFormatterWriteContext context)
         {
-            IMessageSerializer serializer = context.HttpContext.RequestServices.GetRequiredService<IMessageSerializer>();
-            CompatibilityChecker compatibilityChecker = context.HttpContext.RequestServices.GetRequiredService<CompatibilityChecker>();
-            InstanceId instanceHash = context.HttpContext.RequestServices.GetRequiredService<InstanceId>();
+            IServiceProvider serviceProvider = context.HttpContext.RequestServices;
+            IMessageSerializer serializer = serviceProvider.GetRequiredService<IMessageSerializer>();
+            CompatibilityChecker compatibilityChecker = serviceProvider.GetRequiredService<CompatibilityChecker>();
+            InstanceId instanceHash = serviceProvider.GetRequiredService<InstanceId>();
+            NetworkSettings networkSettings = serviceProvider.GetRequiredService<NetworkSettings>();
 
             // add headers
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibilityChecker.NetworkProtocolVersion.ToString());
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Hash.ToString());
+            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Value.ToString());
+            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.ServicePortHeaderName, networkSettings.TcpServicePort.ToString());
             context.ContentType = serializer.MimeType;
 
             // serialize

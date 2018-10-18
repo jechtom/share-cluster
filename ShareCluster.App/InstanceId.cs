@@ -16,9 +16,9 @@ namespace ShareCluster
                 throw new ArgumentNullException(nameof(crypto));
             }
 
-            Hash = crypto.CreateRandom();
+            Value = crypto.CreateRandom();
         }
 
-        public Id Hash { get; }
+        public Id Value { get; }
     }
 }

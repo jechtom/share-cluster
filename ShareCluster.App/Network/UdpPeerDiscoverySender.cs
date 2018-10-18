@@ -9,6 +9,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Messages;
 using System.Diagnostics;
+using ShareCluster.Packaging;
 
 namespace ShareCluster.Network
 {
@@ -19,18 +20,22 @@ namespace ShareCluster.Network
     {
         private readonly ILogger<UdpPeerDiscoverySender> _logger;
         private readonly NetworkSettings _settings;
-        private readonly IAnnounceMessageProvider _announceMessageProvider;
+        private readonly UdpPeerDiscoverySerializer _discoverySerializer;
+        private readonly ILocalPackageRegistry _localPackageRegistry;
+        private readonly InstanceId _instance;
 
-        public UdpPeerDiscoverySender(ILoggerFactory loggerFactory, NetworkSettings settings, IAnnounceMessageProvider announceMessageProvider)
+        public UdpPeerDiscoverySender(ILoggerFactory loggerFactory, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer, ILocalPackageRegistry localPackageRegistry, InstanceId instance)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoverySender>();
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _announceMessageProvider = announceMessageProvider ?? throw new ArgumentNullException(nameof(announceMessageProvider));
+            _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
+            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
+            _instance = instance ?? throw new ArgumentNullException(nameof(instance));
         }
         
         public async Task SendAnnouncement()
         {
-            byte[] announceMessageBytes = _announceMessageProvider.GetCurrentMessage();
+            byte[] announceMessageBytes = _discoverySerializer.Serialize(GetMessage());
 
             _logger.LogDebug("Sending discovery message on UDP port {0}", _settings.UdpAnnouncePort);
 
@@ -45,6 +50,17 @@ namespace ShareCluster.Network
                     throw new InvalidOperationException("Cannot send discovery datagram.");
                 }
             }
+        }
+
+        private DiscoveryAnnounceMessage GetMessage()
+        {
+            var message = new DiscoveryAnnounceMessage()
+            {
+                ServicePort = _settings.TcpServicePort,
+                CatalogVersion =_localPackageRegistry.Version,
+                PeerId = _instance.Value
+            };
+            return message;
         }
     }
 }

@@ -515,7 +515,7 @@ namespace ShareCluster.Network
                 // - streamValidate validates data and writes it to nested streamWrite
                 // - streamWrite writes data to data files
 
-                IStreamController controllerWriter = package.PackageDataAccessor.CreateWriteSpecificPackageData(parts);
+                IStreamController controllerWriter = package.PackageData.CreateWriteSpecificPackageData(parts);
                 var hashValidateBehavior = new HashStreamVerifyBehavior(_parent._appInfo.LoggerFactory, package.Definition, parts);
 
                 Stream streamWrite = null;
@@ -543,7 +543,7 @@ namespace ShareCluster.Network
                     IsSuccess = false
                 };
 
-                DataResponseFaul errorResponse = null;
+                DataResponseFault errorResponse = null;
                 long bytes = -1;
 
                 try

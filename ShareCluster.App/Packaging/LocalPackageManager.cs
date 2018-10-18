@@ -76,7 +76,7 @@ namespace ShareCluster.Packaging
                 if (validate)
                 {
                     // validate
-                    PackageDataValidatorResult result = package.PackageDataAccessor.ValidatePackageDataAsync(package, measureItem: null).Result;
+                    PackageDataValidatorResult result = package.DataAccessor.ValidatePackageDataAsync(package, measureItem: null).Result;
                     if (!result.IsValid)
                     {
                         throw new InvalidOperationException($"Validation failed for package {package}:\n{string.Join("\n", result.Errors)}");
@@ -86,7 +86,7 @@ namespace ShareCluster.Packaging
                 _logger.LogInformation($"Extracting package {package} to folder: {targetFolder}");
 
                 // read all and extract
-                using (IStreamController readAllController = package.PackageDataAccessor.CreateReadAllPackageData())
+                using (IStreamController readAllController = package.DataAccessor.CreateReadAllPackageData())
                 using (ControlledStream readAllStream = readAllController.CreateStream(_loggerFactory))
                 {
                     _folderStreamSerializer.DeserializeStreamToFolder(readAllStream, targetFolder);

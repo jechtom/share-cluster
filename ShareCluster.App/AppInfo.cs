@@ -65,7 +65,7 @@ namespace ShareCluster
         public void LogStart()
         {
             ILogger<AppInfo> logger = LoggerFactory.CreateLogger<AppInfo>();
-            logger.LogInformation($"Starting app {AppVersion}. Instance {InstanceId.Hash:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
+            logger.LogInformation($"Starting app {AppVersion}. Instance {InstanceId.Value:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
             logger.LogDebug($"Repository path: {DataRootPathPackageRepository}");
             logger.LogInformation($"Start browser http://localhost:{NetworkSettings.TcpServicePort}");
         }

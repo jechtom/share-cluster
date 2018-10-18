@@ -24,7 +24,7 @@ namespace ShareCluster.Network.Http
             {
                 c.InputFormatters.Clear();
                 c.OutputFormatters.Clear();
-                HttpFormatter httpFormatter = new HttpFormatter();
+                var httpFormatter = new HttpFormatter();
                 c.InputFormatters.Add(httpFormatter);
                 c.OutputFormatters.Add(httpFormatter);
                 

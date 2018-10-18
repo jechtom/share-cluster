@@ -10,6 +10,7 @@ namespace ShareCluster.Network
         private readonly NetworkSettings _settings;
         private readonly object _syncLock = new object();
         private TimeSpan _disabledSince;
+        private VersionNumber _catalogVersion = VersionNumber.Zero;
 
         public PeerStats(IClock clock, NetworkSettings settings)
         {
@@ -80,6 +81,16 @@ namespace ShareCluster.Network
             }
         }
 
+        public void UpdateCatalogVersion(VersionNumber catalogVersion)
+        {
+            if (catalogVersion <= _catalogVersion) return;
+            lock (_syncLock)
+            {
+                if (catalogVersion <= _catalogVersion) return;
+                _catalogVersion = catalogVersion;
+            }
+        }
+
         public void MarkStatusUpdateFail()
         {
             lock (_syncLock)
@@ -113,6 +124,8 @@ namespace ShareCluster.Network
                 DisabledSince = TimeSpan.Zero;
             }
         }
+
+        public VersionNumber CatalogVersion => _catalogVersion;
 
         public event Action IsEnabledChanged;
     }

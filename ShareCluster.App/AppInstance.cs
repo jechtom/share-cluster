@@ -86,7 +86,9 @@ namespace ShareCluster
             services.AddSingleton(_appInfo.InstanceId);
             services.AddSingleton(_appInfo.PackageSplitBaseInfo);
             services.AddSingleton<IClock>(_appInfo.Clock);
-            services.AddSingleton<IPeerRegistry, PeerRegistry>();
+            services.AddSingleton<NetworkThrottling>();
+            services.AddSingleton<PeerController>();
+            services.AddSingleton<PeerInfoFactory>();
             services.AddSingleton<UdpPeerDiscovery>();
             services.AddSingleton<PackageDefinitionSerializer>();
             services.AddSingleton<PackageDownloadStatusSerializer>();

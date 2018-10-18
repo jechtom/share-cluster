@@ -62,7 +62,7 @@ namespace ShareCluster.WebInterface
 
             // run
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            Task extractTask = package.PackageDataAccessor.ValidatePackageDataAsync(package, measureItem).ContinueWith(t => {
+            Task extractTask = package.DataAccessor.ValidatePackageDataAsync(package, measureItem).ContinueWith(t => {
                 if (t.IsFaulted && !t.Result.IsValid) throw new Exception(string.Join("; ", t.Result.Errors));
             });
 

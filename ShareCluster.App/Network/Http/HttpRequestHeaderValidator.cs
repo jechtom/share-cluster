@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace ShareCluster.Network.Http
 {
@@ -14,12 +15,14 @@ namespace ShareCluster.Network.Http
         public const string VersionHeaderName = "X-ShareClusterVersion";
         public const string InstanceHeaderName = "X-ShareClusterInstance";
         public const string TypeHeaderName = "X-ShareClusterType";
+        public const string ServicePortHeaderName = "X-ShareClusterPort";
+        public const string CatalogVersionHeaderName = "X-ShareClusterCatalog";
 
-        private readonly ILogger<HttpRequestHeaderValidator> logger;
+        private readonly ILogger<HttpRequestHeaderValidator> _logger;
 
         public HttpRequestHeaderValidator(ILogger<HttpRequestHeaderValidator> logger, CompatibilityChecker compatibilityChecker, InstanceId instanceHash)
         {
-            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             CompatibilityChecker = compatibilityChecker ?? throw new System.ArgumentNullException(nameof(compatibilityChecker));
             InstanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
         }
@@ -34,13 +37,14 @@ namespace ShareCluster.Network.Http
 
         public void OnActionExecuting(ActionExecutingContext context)
         {
-            if(!context.HttpContext.Request.Headers.TryGetValue(VersionHeaderName, out StringValues valueString))
+            // validate version
+            if(!context.HttpContext.Request.Headers.TryGetValue(VersionHeaderName, out StringValues valueStringInstance))
             {
                 ProcessInvalidVersion(context, $"Missing header {VersionHeaderName}");
                 return;
             }
 
-            if(!VersionNumber.TryParse(valueString, out VersionNumber version))
+            if(!VersionNumber.TryParse(valueStringInstance, out VersionNumber version))
             {
                 ProcessInvalidVersion(context, $"Invalid value of header {VersionHeaderName}");
                 return;
@@ -52,14 +56,14 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
-            // validate if this is not request from myself
-            if (!context.HttpContext.Request.Headers.TryGetValue(InstanceHeaderName, out valueString))
+            // validate instance type header
+            if (!context.HttpContext.Request.Headers.TryGetValue(InstanceHeaderName, out valueStringInstance))
             {
                 ProcessInvalidVersion(context, $"Missing header {InstanceHeaderName}");
                 return;
             }
 
-            if (!Id.TryParse(valueString, out Id hash))
+            if (!Id.TryParse(valueStringInstance, out Id instanceId))
             {
                 ProcessInvalidVersion(context, $"Invalid value of header {InstanceHeaderName}");
                 return;
@@ -72,15 +76,43 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
+            // validate service port header
+            if (!context.HttpContext.Request.Headers.TryGetValue(ServicePortHeaderName, out StringValues valueStringPort))
+            {
+                ProcessInvalidVersion(context, $"Missing header {ServicePortHeaderName}");
+                return;
+            }
+
+            if (!ushort.TryParse(valueStringPort, out ushort servicePort))
+            {
+                ProcessInvalidVersion(context, $"Invalid value of header {ServicePortHeaderName}");
+                return;
+            }
+
+            // validate catalog version header
+            if (!context.HttpContext.Request.Headers.TryGetValue(CatalogVersionHeaderName, out StringValues valueStringCatalog))
+            {
+                ProcessInvalidVersion(context, $"Missing header {CatalogVersionHeaderName}");
+                return;
+            }
+
+            if (!VersionNumber.TryParse(valueStringCatalog, out VersionNumber catalogVersion))
+            {
+                ProcessInvalidVersion(context, $"Invalid value of header {CatalogVersionHeaderName}");
+                return;
+            }
+
+            var serviceEndpoint = new IPEndPoint(context.HttpContext.Connection.RemoteIpAddress, servicePort);
+
             var controller = (IHttpApiController)context.Controller;
-            controller.RemoteIpAddress = context.HttpContext.Connection.RemoteIpAddress;
-            controller.PeerId = hash;
-            controller.IsLoopback = hash.Equals(InstanceHash.Hash);
+            controller.PeerId = new PeerId(instanceId, serviceEndpoint);
+            controller.IsLoopback = instanceId == InstanceHash.Value;
+            controller.PeerCatalogVersion = catalogVersion;
         }
 
         private void ProcessInvalidVersion(ActionExecutingContext context, string message)
         {
-            logger.LogTrace($"{context.HttpContext.Connection.RemoteIpAddress}: {message}");
+            _logger.LogTrace($"{context.HttpContext.Connection.RemoteIpAddress}: {message}");
             context.Result = new ContentResult()
             {
                 Content = message,

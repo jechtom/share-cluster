@@ -19,17 +19,17 @@ namespace ShareCluster.Network
     public class UdpPeerDiscoveryListener : IDisposable
     {
         private readonly ILogger<UdpPeerDiscoveryListener> _logger;
-        private readonly CompatibilityChecker _compatibilityChecker;
         private readonly NetworkSettings _settings;
+        private readonly UdpPeerDiscoverySerializer _discoverySerializer;
         private UdpClient _client;
         private CancellationTokenSource _cancel;
         private Task _task;
 
-        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, CompatibilityChecker compatibilityChecker, NetworkSettings settings)
+        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory,NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
-            _compatibilityChecker = compatibilityChecker ?? throw new ArgumentNullException(nameof(compatibilityChecker));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
         }
 
         public void Dispose()
@@ -63,19 +63,10 @@ namespace ShareCluster.Network
                     DiscoveryAnnounceMessage announceMessage;
                     using (var memStream = new MemoryStream(receiveResult.Buffer, index: 0, count: receiveResult.Buffer.Length, writable: false))
                     {
-                        // deserialize network protocol version and ignore if incompatible
-                        VersionNumber protocolVersion = _settings.MessageSerializer.Deserialize<VersionNumber>(memStream);
-                        if(!_compatibilityChecker.IsNetworkProtocolCompatibleWith(receiveResult.RemoteEndPoint, protocolVersion))
-                        {
-                            continue;
-                        }
-
                         // deserialize following message
-                        announceMessage = _settings.MessageSerializer.Deserialize<DiscoveryAnnounceMessage>(memStream);
+                        announceMessage = _discoverySerializer.Deserialize(memStream);
+                        if (announceMessage == null) continue; // maybe valid but incompatible
                     }
-
-                    // validate
-                    ValidateMessage(announceMessage);
 
                     // publish message
                     var peerId = new PeerId(announceMessage.PeerId, new IPEndPoint(receiveResult.RemoteEndPoint.Address, announceMessage.ServicePort));
@@ -98,24 +89,6 @@ namespace ShareCluster.Network
                     _logger.LogWarning(e, $"Cannot read message from {receiveResult.RemoteEndPoint}. Reason: {e.Message}");
                     continue;
                 }
-            }
-        }
-
-        private void ValidateMessage(DiscoveryAnnounceMessage announceMessage)
-        {
-            if(announceMessage.PeerId.IsNullOrEmpty)
-            {
-                throw new InvalidOperationException($"Id is null or empty.");
-            }
-
-            if(announceMessage.ServicePort == 0)
-            {
-                throw new InvalidOperationException("Invalid port 0");
-            }
-
-            if (announceMessage.CatalogVersion.Version == 0)
-            {
-                throw new InvalidOperationException("Invalid revision 0");
             }
         }
 
