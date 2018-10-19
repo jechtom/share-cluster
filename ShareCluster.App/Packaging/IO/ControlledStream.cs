@@ -117,7 +117,7 @@ namespace ShareCluster.Packaging.IO
             int bytesProcessedTotal = 0;
 
             // verify we are not trying to exceed stream size if defined
-            if(_length != null  && _position + count > _length)
+            if(_length != null && write && _position + count > _length)
             {
                 throw new EndOfStreamException($"Can't process more than {_length}B. Stream size is limited for this stream.");
             }

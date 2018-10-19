@@ -2,17 +2,20 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace ShareCluster.Network
 {
     public class PeerRegistry : IPeerRegistry
     {
-        public PeerRegistry()
+        public PeerRegistry(ILogger<PeerRegistry> logger)
         {
             Peers = ImmutableDictionary<PeerId, PeerInfo>.Empty;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         private readonly object _syncLock = new object();
+        private readonly ILogger<PeerRegistry> _logger;
 
         public IImmutableDictionary<PeerId, PeerInfo> Peers { get; private set; }
 
@@ -30,6 +33,8 @@ namespace ShareCluster.Network
                     return result;
                 }
 
+                _logger.LogDebug($"Adding peer {peerId}");
+
                 result = createFunc();
                 Peers = Peers.Add(peerId, result);
                 return result;
@@ -42,6 +47,8 @@ namespace ShareCluster.Network
 
             lock(_syncLock)
             {
+                _logger.LogDebug($"Removing peer {peer.PeerId}");
+
                 Peers = Peers.Remove(peer.PeerId);
             }
         }

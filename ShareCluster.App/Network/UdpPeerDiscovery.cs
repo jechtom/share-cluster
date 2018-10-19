@@ -54,7 +54,7 @@ namespace ShareCluster.Network
 
             if (_allowAnnouncer)
             {
-                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
             }
         }
 
@@ -92,7 +92,7 @@ namespace ShareCluster.Network
 
         private void HandleDiscovery(object sender, UdpPeerDiscoveryInfo e)
         {
-            if(e.PeerId.Equals(_app.InstanceId))
+            if(e.PeerId.InstanceId.Equals(_app.InstanceId.Value))
             {
                 return; // loopback
             }

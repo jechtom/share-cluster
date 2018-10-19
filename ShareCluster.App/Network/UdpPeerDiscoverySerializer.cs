@@ -25,9 +25,8 @@ namespace ShareCluster.Network
             ValidateMessage(message);
             using (var memStream = new MemoryStream())
             {
-                _messageSerializer.Serialize(SerializerVersion);
-                _messageSerializer.Serialize(message);
-
+                _messageSerializer.Serialize(SerializerVersion, memStream);
+                _messageSerializer.Serialize(message, memStream);
                 return memStream.ToArray();
             }
         }
