@@ -120,7 +120,7 @@ namespace ShareCluster.Network
                     _updateTask = UpdateAsync().ContinueWith((t) =>
                     {
                         if (t.IsCompletedSuccessfully) _logger.LogDebug($"Updated catalog from {_peer.PeerId}");
-                        if (t.IsFaulted) _logger.LogWarning($"Failed to update catalog from {_peer.PeerId}");
+                        if (t.IsFaulted) _logger.LogWarning(t.Exception, $"Failed to update catalog from {_peer.PeerId}");
                         _updateTask = null;
                     });
                 }
@@ -130,7 +130,7 @@ namespace ShareCluster.Network
             {
                 var request = new Messages.CatalogDataRequest()
                 {
-                    KnownCatalogVersion = _peer.Stats.CatalogKnownVersion
+                    KnownCatalogVersion = _peer.Stats.CatalogAppliedVersion
                 };
 
                 Messages.CatalogDataResponse catalogResult = await _client.GetCatalogAsync(_peer.ServiceEndPoint, request);

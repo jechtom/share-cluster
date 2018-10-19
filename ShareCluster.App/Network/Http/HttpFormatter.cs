@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using ShareCluster.Network.Messages;
+using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -56,12 +57,14 @@ namespace ShareCluster.Network.Http
             CompatibilityChecker compatibilityChecker = serviceProvider.GetRequiredService<CompatibilityChecker>();
             InstanceId instanceHash = serviceProvider.GetRequiredService<InstanceId>();
             NetworkSettings networkSettings = serviceProvider.GetRequiredService<NetworkSettings>();
+            ILocalPackageRegistry localPackageRegistry = serviceProvider.GetRequiredService<ILocalPackageRegistry>();
 
             // add headers
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibilityChecker.NetworkProtocolVersion.ToString());
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Value.ToString());
             context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.ServicePortHeaderName, networkSettings.TcpServicePort.ToString());
+            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.CatalogVersionHeaderName, localPackageRegistry.Version.ToString());
             context.ContentType = serializer.MimeType;
 
             // serialize

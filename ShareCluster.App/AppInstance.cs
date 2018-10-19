@@ -51,17 +51,16 @@ namespace ShareCluster
             _appInfo.Validate();
 
             // configure services
-            string urls = $"http://*:{_appInfo.NetworkSettings.TcpServicePort}";
             string exeFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             _webHost = new WebHostBuilder()
                 .UseKestrel(c =>
                 {
                     // extend grace period so server don't kick peer waiting for opening file etc.
                     c.Limits.MinResponseDataRate = new MinDataRate(240, TimeSpan.FromSeconds(20));
+                    c.ListenAnyIP(_appInfo.NetworkSettings.TcpServicePort);
                 })
                 .UseEnvironment("Development")
                 .UseContentRoot(Path.Combine(exeFolder, "WebInterface"))
-                .UseUrls(urls)
                 .ConfigureServices(ConfigureService)
                 .UseStartup<HttpStartup>()
                 .Build();

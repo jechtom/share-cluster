@@ -63,7 +63,7 @@ namespace ShareCluster.Packaging.IO
                 throw new HashMismatchException(message, expetedHash, blockHash);
             }
 
-            _logger.LogDebug("Hash OK for segment {0}. Hash {1:s}", segmentIndex, expetedHash);
+            _logger.LogTrace("Hash OK for segment {0}. Hash {1:s}", segmentIndex, expetedHash);
         }
 
         private int GetSegmentIndexFromBlockIndex(int blockIndex)

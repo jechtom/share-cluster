@@ -15,13 +15,13 @@ namespace ShareCluster
     {
         public static CryptoProvider CreateDefaultCryptoProvider() => new CryptoProvider(() => new SHA256Managed());
 
-        public static AppInfo CreateCurrent()
+        public static AppInfo CreateCurrent(LogLevel logLevel)
         {
             ILoggerFactory loggerFactory = new LoggerFactory().AddConsole(new ConsoleLoggerSettings()
             {
                 Switches = new Dictionary<string, LogLevel>()
                     {
-                        { "Default", LogLevel.Trace },
+                        { "Default", logLevel },
                         { "System", LogLevel.Warning },
                         { "Microsoft", LogLevel.Warning },
                         //{ "Microsoft.AspNetCore", LogLevel.Debug },

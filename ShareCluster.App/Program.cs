@@ -26,19 +26,30 @@ namespace ShareCluster
 
         static void Main(string[] args)
         {
+            LogLevel level = LogLevel.Information;
+
+            if(args.Length >= 1 && args[0] == "trace")
+            {
+                level = LogLevel.Trace;
+            }
+
+            if (args.Length >= 1 && args[0] == "debug")
+            {
+                level = LogLevel.Debug;
+            }
+
             if (args.Length >= 2)
             {
-                args[0] = "dev";
                 var count = int.Parse(args[1]);
                 for (int i = 0; i < count; i++)
                 {
-                    Task.Factory.StartNew((iobj) => { CreateInstance((int)iobj); }, state: (object)i);
+                    Task.Factory.StartNew((iobj) => { CreateInstance((int)iobj, level); }, state: (object)i);
                 }
             }
             else
             {
                 // instance 1
-                var appInfo = AppInfo.CreateCurrent();
+                var appInfo = AppInfo.CreateCurrent(level);
                 
                 var appSettings = new AppInstanceSettings()
                 {
@@ -65,10 +76,10 @@ namespace ShareCluster
             Console.WriteLine("Stopped.");
         }
 
-        private static void CreateInstance(int index)
+        private static void CreateInstance(int index, LogLevel logLevel)
         {
             // instance n
-            var appInfo = AppInfo.CreateCurrent();
+            var appInfo = AppInfo.CreateCurrent(logLevel);
             appInfo.NetworkSettings.TcpServicePort += (ushort)(index);
             appInfo.DataRootPath = @"c:\temp\temp" + index;
 

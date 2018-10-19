@@ -214,7 +214,6 @@ namespace ShareCluster.Network
                 .CreateStream(_loggerFactory, package.UploadMeasure);
 
             stream.Disposing += () => {
-                _throttling.UploadSlots.ReleaseSlot();
                 package.Locks.Unlock(lockToken);
             };
             return (stream, null);

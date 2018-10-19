@@ -102,7 +102,11 @@ namespace ShareCluster.Network.Http
                 return;
             }
 
-            var serviceEndpoint = new IPEndPoint(context.HttpContext.Connection.RemoteIpAddress, servicePort);
+            // convert ::ffff:192.168.1.1 format to IPv4 (this happened to me on localhost, not sure why)
+            IPAddress remoteAddress = context.HttpContext.Connection.RemoteIpAddress;
+            if (remoteAddress.IsIPv4MappedToIPv6) remoteAddress = remoteAddress.MapToIPv4();
+
+            var serviceEndpoint = new IPEndPoint(remoteAddress, servicePort);
 
             var controller = (IHttpApiController)context.Controller;
             controller.PeerId = new PeerId(instanceId, serviceEndpoint);

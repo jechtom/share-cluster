@@ -130,7 +130,7 @@
                 @foreach (var peer in Model.Peers)
                 {
                     <tr>
-                        <td>@peer.ServiceEndPoint</td>
+                        <td>@peer.ToString()</td>
                     </tr>
                 }
             </tbody>
