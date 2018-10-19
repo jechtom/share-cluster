@@ -19,7 +19,7 @@ namespace ShareCluster
             if (task == null) throw new ArgumentNullException(nameof(task));
 
             Title = title;
-            this._progressFunc = progressFunc ?? ((t) => "Running");
+            _progressFunc = progressFunc ?? ((t) => "Running");
             _stopwatch = Stopwatch.StartNew();
 
             try
@@ -39,12 +39,12 @@ namespace ShareCluster
                     // extract exception if single exception
                     AggregateException flattenExc = t.Exception.Flatten();
                     Exception exc = (flattenExc.InnerExceptions.Count == 1 ? flattenExc.InnerExceptions.First(): flattenExc);
-                    this._progressFunc = ((_) => $"Error: {exc}");
+                    _progressFunc = ((_) => $"Error: {exc}");
                     FaultException = exc;
                 }
                 else
                 {
-                    this._progressFunc = ((_) => $"{successProgress ?? "Success"}");
+                    _progressFunc = ((_) => $"{successProgress ?? "Success"}");
                 }
 
                 IsCompleted = true;

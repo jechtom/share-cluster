@@ -13,7 +13,7 @@ namespace ShareCluster.Packaging
             PackageSize = packageSize;
             Peers = peers ?? throw new ArgumentNullException(nameof(peers));
             Name = string.Join(", ", Peers.Select(p => p.Value.Name).Distinct());
-            Created = Peers.First().Value.Created;
+            Created = Peers.Any() ? Peers.First().Value.Created : DateTimeOffset.MinValue;
         }
 
         public Id PackageId { get; }

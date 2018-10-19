@@ -246,5 +246,13 @@ namespace ShareCluster.Packaging
             int percents = (int)(BytesDownloaded * 100 / _splitInfo.PackageSize);
             return $"{percents}% {(IsDownloaded ? "Completed" : "Unfinished")} {(IsDownloading ? "Downloading" : "Stopped")}";
         }
+
+        public void UpdateIsDownloaded()
+        {
+            if(BytesDownloaded >= BytesTotal)
+            {
+                SegmentsBitmap = null; // downloaded
+            }
+        }
     }
 }

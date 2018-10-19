@@ -137,7 +137,7 @@ namespace ShareCluster.Network
                         // peer not found - forget his package occurence
                         if(!_peerRegistry.Peers.TryGetValue(occurence.PeerId, out PeerInfo peerInfo))
                         {
-                            _remotePackageRegistry.ForgetPeersPackage(occurence.PeerId, remotePackage.PackageId);
+                            _remotePackageRegistry.RemovePackageFromPeer(occurence.PeerId, remotePackage.PackageId);
                             continue;
                         }
 
@@ -159,7 +159,7 @@ namespace ShareCluster.Network
                             }
 
                             // package not found on peer - forget his package occurence
-                            _remotePackageRegistry.ForgetPeersPackage(occurence.PeerId, remotePackage.PackageId);
+                            _remotePackageRegistry.RemovePackageFromPeer(occurence.PeerId, remotePackage.PackageId);
                             continue;
                         }
                         catch (Exception e)
@@ -228,10 +228,17 @@ namespace ShareCluster.Network
                 if (!_packagesDownloading.ContainsKey(package.Id)) return;
 
                 // update status
-                if (package.DownloadStatus.IsDownloaded) package.DownloadStatus.SegmentsBitmap = null;
+                package.DownloadStatus.UpdateIsDownloaded();
+
                 // mark as "don't resume download"
                 package.DownloadStatus.IsDownloading = false;
                 package.DataAccessor.UpdatePackageDownloadStatus(package.DownloadStatus);
+
+                // update version
+                if (package.DownloadStatus.IsDownloaded)
+                {
+                    _localPackageRegistry.IncreaseVersion();
+                }
 
                 // stop
                 UpdateQueue(package, isInterested: false);
@@ -615,7 +622,7 @@ namespace ShareCluster.Network
                     if (errorResponse.PackageNotFound || errorResponse.PackageSegmentsNotFound)
                     {
                         _parent._logger.LogTrace($"Received not found data message from {peer.ServiceEndPoint}.");
-                        _parent._remotePackageRegistry.ForgetPeersPackage(peer.PeerId, package.Id);
+                        _parent._remotePackageRegistry.RemovePackageFromPeer(peer.PeerId, package.Id);
                         return result;
                     }
 

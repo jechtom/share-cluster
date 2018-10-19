@@ -17,7 +17,7 @@ namespace ShareCluster.Packaging
 
         public IImmutableDictionary<Id, RemotePackage> RemotePackages { get; private set; }
 
-        public void ForgetPeer(PeerId peer)
+        public void RemovePeer(PeerId peer)
         {
             lock (_syncLock)
             {
@@ -29,23 +29,61 @@ namespace ShareCluster.Packaging
                 }
                 if (toReplace.Any())
                 {
-                    RemotePackages = RemotePackages.SetItems(toReplace);
+                    // update packages with at leason one remaining peer and delete additional ones
+                    RemotePackages = RemotePackages.SetItems(toReplace.Where(r => r.Value.Peers.Any()));
+                    RemotePackages = RemotePackages.RemoveRange(toReplace.Where(r => !r.Value.Peers.Any()).Select(r => r.Key));
                 }
             }
         }
 
-        public void ForgetPeersPackage(PeerId peerId, Id packageId)
+        public void RemovePackageFromPeer(PeerId peerId, Id packageId)
         {
             lock (_syncLock)
             {
                 if (!RemotePackages.TryGetValue(packageId, out RemotePackage package)) return;
-                RemotePackages = RemotePackages.SetItem(packageId, package.WithoutPeer(peerId));
+                RemotePackage newPackage = package.WithoutPeer(peerId);
+
+                if (newPackage.Peers.Any())
+                {
+                    RemotePackages = RemotePackages.SetItem(packageId, newPackage);
+                }
+                else
+                {
+                    RemotePackages = RemotePackages.Remove(packageId);
+                }
             }
         }
 
-        public void MergePackage(RemotePackage package)
+        public void MergePackage(RemotePackage remotePackageToMerge)
         {
-            throw new NotImplementedException();
+            if (remotePackageToMerge == null)
+            {
+                throw new ArgumentNullException(nameof(remotePackageToMerge));
+            }
+
+            if (!remotePackageToMerge.Peers.Any())
+            {
+                throw new ArgumentException("No peers found in given package", nameof(remotePackageToMerge));
+            }
+
+            lock (_syncLock)
+            {
+                if (!RemotePackages.TryGetValue(remotePackageToMerge.PackageId, out RemotePackage package))
+                {
+                    // package doesn't exist? just add it
+                    RemotePackages = RemotePackages.Add(remotePackageToMerge.PackageId, remotePackageToMerge);
+                }
+                else
+                {
+                    // merge
+                    foreach (RemotePackageOccurence itemToMerge in remotePackageToMerge.Peers.Values)
+                    {
+                        // if peer is missing, then add it
+                        package = package.WithPeer(itemToMerge);
+                    }
+                    RemotePackages = RemotePackages.SetItem(package.PackageId, package);
+                }
+            }
         }
     }
 }

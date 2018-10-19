@@ -18,6 +18,14 @@ namespace ShareCluster.Packaging
 
         public IImmutableDictionary<Id, LocalPackage> LocalPackages { get; private set; }
 
+        public void IncreaseVersion()
+        {
+            lock (_syncLock)
+            {
+                Version = new VersionNumber(Version.Version + 1);
+            }
+        }
+
         public void AddLocalPackage(LocalPackage localPackage)
         {
             if (localPackage == null)

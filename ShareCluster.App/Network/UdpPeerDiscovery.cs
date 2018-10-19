@@ -1,9 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Messages;
+using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ShareCluster.Network
 {
@@ -19,14 +22,18 @@ namespace ShareCluster.Network
         private Timer _udpAnnouncerTimer;
         private readonly AppInfo _app;
         private readonly IPeerRegistry _peerRegistry;
+        private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly UdpPeerDiscoverySerializer _discoverySerializer;
         private readonly ILogger<UdpPeerDiscovery> _logger;
         private bool _allowAnnouncer, _allowListener;
+        private Stopwatch _lastSent;
+        private VersionNumber _lastSentVersion;
 
-        public UdpPeerDiscovery(AppInfo app, IPeerRegistry peerRegistry, UdpPeerDiscoverySender udpAnnouncer, UdpPeerDiscoveryListener udpListener, UdpPeerDiscoverySerializer discoverySerializer)
+        public UdpPeerDiscovery(AppInfo app, IPeerRegistry peerRegistry, ILocalPackageRegistry localPackageRegistry, UdpPeerDiscoverySender udpAnnouncer, UdpPeerDiscoveryListener udpListener, UdpPeerDiscoverySerializer discoverySerializer)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _udpAnnouncer = udpAnnouncer ?? throw new ArgumentNullException(nameof(udpAnnouncer));
             _udpListener = udpListener ?? throw new ArgumentNullException(nameof(udpListener));
             _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
@@ -54,7 +61,7 @@ namespace ShareCluster.Network
 
             if (_allowAnnouncer)
             {
-                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.FromSeconds(0.1), Timeout.InfiniteTimeSpan);
             }
         }
 
@@ -67,11 +74,44 @@ namespace ShareCluster.Network
 
         private void SendAnnouncementIteration()
         {
-            _logger.LogDebug("Sending UDP announcement");
-            _udpAnnouncer.SendAnnouncement().ContinueWith(d =>
+            VersionNumber currentCatalogVersion = _localPackageRegistry.Version;
+
+            bool send = false;
+
+            if (_lastSent == null)
+            {
+                // first round
+                send = true;
+            }
+            else if(_lastSent.Elapsed > _app.NetworkSettings.UdpDiscoveryTimer)
+            {
+                // timer elapsed
+                send = true;
+            }
+            else if(_lastSent.Elapsed > TimeSpan.FromSeconds(5) && currentCatalogVersion > _lastSentVersion)
+            {
+                // timer not elapsed but catalog changed and we didn't sent any announce in short time
+                send = true;
+            }
+
+            // send or skip
+            Task sendTask;
+            if(send)
+            {
+                _logger.LogTrace($"Sending UDP info. Last announced version {_lastSentVersion}, current is {currentCatalogVersion}");
+                (_lastSent = _lastSent ?? Stopwatch.StartNew()).Restart();
+                _lastSentVersion = currentCatalogVersion;
+                sendTask = _udpAnnouncer.SendAnnouncement();
+            }
+            else
+            {
+                sendTask = Task.CompletedTask;
+            }
+
+            sendTask.ContinueWith(d =>
             {
                 // plan next round
-                try { _udpAnnouncerTimer?.Change(_app.NetworkSettings.UdpDiscoveryTimer, Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
+                try { _udpAnnouncerTimer?.Change(TimeSpan.FromSeconds(3), Timeout.InfiniteTimeSpan); } catch (ObjectDisposedException) { }
             });
         }
 

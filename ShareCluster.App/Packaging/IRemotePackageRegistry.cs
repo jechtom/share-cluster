@@ -10,16 +10,22 @@ namespace ShareCluster.Packaging
         IImmutableDictionary<Id, RemotePackage> RemotePackages { get; }
 
         /// <summary>
-        /// Forgets given peer from registry. All packages referenced only by this peer will be removed.
+        /// Forgets given peer from registry. All packages without peers after this operation will be removed.
         /// </summary>
         /// <param name="peer">Peer to forget</param>
-        void ForgetPeer(PeerId peer);
+        void RemovePeer(PeerId peer);
 
         /// <summary>
         /// Merges given package to registry. If packages already known, then peers are merged.
         /// </summary>
         /// <param name="package">Package with occurences to merge.</param>
         void MergePackage(RemotePackage package);
-        void ForgetPeersPackage(PeerId peerId, Id packageId);
+
+        /// <summary>
+        /// Removes one peer from given package. All packages without peers after this operation will be removed.
+        /// </summary>
+        /// <param name="peerId"></param>
+        /// <param name="packageId"></param>
+        void RemovePackageFromPeer(PeerId peerId, Id packageId);
     }
 }

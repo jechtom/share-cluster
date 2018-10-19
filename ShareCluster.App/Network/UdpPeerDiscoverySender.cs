@@ -57,7 +57,7 @@ namespace ShareCluster.Network
             var message = new DiscoveryAnnounceMessage()
             {
                 ServicePort = _settings.TcpServicePort,
-                CatalogVersion =_localPackageRegistry.Version,
+                CatalogVersion = _localPackageRegistry.Version,
                 PeerId = _instance.Value
             };
             return message;
