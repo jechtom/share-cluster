@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ShareCluster": {
+      "commandName": "Project",
+      "commandLineArgs": "dev 2"
+    }
+  }
+}

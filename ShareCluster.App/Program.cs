@@ -26,13 +26,13 @@ namespace ShareCluster
 
         static void Main(string[] args)
         {
-            if (args.Length > 2)
+            if (args.Length >= 2)
             {
                 args[0] = "dev";
                 var count = int.Parse(args[1]);
                 for (int i = 0; i < count; i++)
                 {
-                    Task.Run(() => { CreateInstance(i); });
+                    Task.Factory.StartNew((iobj) => { CreateInstance((int)iobj); }, state: (object)i);
                 }
             }
             else
@@ -43,15 +43,13 @@ namespace ShareCluster
                 var appSettings = new AppInstanceSettings()
                 {
                     EnableUdpDiscoveryListener = true,
-                    EnableUdpDiscoveryClient = true
+                    EnableUdpDiscoveryAnnouncer = true
                 };
 
                 var instance = new AppInstance(appInfo);
                 _instances.Add(instance);
                 AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
             }
-
-            //Task.Run(() => { CreateInstance(1); });
 
             Console.ReadLine();
             Stop();
@@ -77,7 +75,7 @@ namespace ShareCluster
             var appSettings = new AppInstanceSettings()
             {
                 EnableUdpDiscoveryListener = (index == 0),
-                EnableUdpDiscoveryClient = true
+                EnableUdpDiscoveryAnnouncer = true
             };
 
             var instance = new AppInstance(appInfo);

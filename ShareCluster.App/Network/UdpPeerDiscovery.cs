@@ -54,7 +54,7 @@ namespace ShareCluster.Network
 
             if (_allowAnnouncer)
             {
-                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
+                _udpAnnouncerTimer = new Timer((_) => SendAnnouncementIteration(), null, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
             }
         }
 

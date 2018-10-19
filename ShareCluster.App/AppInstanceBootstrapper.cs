@@ -57,7 +57,7 @@ namespace ShareCluster
             // start UDP announcer/listener
             UdpPeerDiscovery.Start(
                 allowListener: settings.EnableUdpDiscoveryListener,
-                allowAnnouncer: settings.EnableUdpDiscoveryClient
+                allowAnnouncer: settings.EnableUdpDiscoveryAnnouncer
             );
 
             // send announce on network change

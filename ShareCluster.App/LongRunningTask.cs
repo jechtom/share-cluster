@@ -10,8 +10,8 @@ namespace ShareCluster
     /// </summary>
     public class LongRunningTask
     {
-        Stopwatch stopwatch;
-        Func<LongRunningTask, string> progressFunc;
+        Stopwatch _stopwatch;
+        Func<LongRunningTask, string> _progressFunc;
 
         public LongRunningTask(string title, Task task, string successProgress = null, Func<LongRunningTask, string> progressFunc = null)
         {
@@ -19,8 +19,8 @@ namespace ShareCluster
             if (task == null) throw new ArgumentNullException(nameof(task));
 
             Title = title;
-            this.progressFunc = progressFunc ?? ((t) => "Running");
-            stopwatch = Stopwatch.StartNew();
+            this._progressFunc = progressFunc ?? ((t) => "Running");
+            _stopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -33,18 +33,18 @@ namespace ShareCluster
 
             CompletionTask = task.ContinueWith(t =>
             {
-                stopwatch.Stop();
+                _stopwatch.Stop();
                 if (t.IsFaulted)
                 {
                     // extract exception if single exception
                     AggregateException flattenExc = t.Exception.Flatten();
                     Exception exc = (flattenExc.InnerExceptions.Count == 1 ? flattenExc.InnerExceptions.First(): flattenExc);
-                    this.progressFunc = ((_) => $"Error: {exc}");
+                    this._progressFunc = ((_) => $"Error: {exc}");
                     FaultException = exc;
                 }
                 else
                 {
-                    this.progressFunc = ((_) => $"{successProgress ?? "Success"}");
+                    this._progressFunc = ((_) => $"{successProgress ?? "Success"}");
                 }
 
                 IsCompleted = true;
@@ -55,7 +55,7 @@ namespace ShareCluster
 
         public string Title { get; protected set; }
 
-        public virtual string ProgressText => progressFunc(this);
+        public virtual string ProgressText => _progressFunc(this);
 
         public Task<LongRunningTask> CompletionTask { get; private set; }
 
@@ -64,7 +64,7 @@ namespace ShareCluster
         public bool IsCompleted { get; private set; }
         public bool IsFaulted => FaultException != null;
         public Exception FaultException { get; private set; }
-        public TimeSpan Elapsed => stopwatch.Elapsed;
+        public TimeSpan Elapsed => _stopwatch.Elapsed;
 
         public string StatusText =>
             (IsCompletedSuccessfully) ? "Success" :

@@ -11,12 +11,12 @@ namespace ShareCluster.Network
         /// <summary>
         /// Gets or sets UDP announce port. This has to be same for all clients.
         /// </summary>
-        public UInt16 UdpAnnouncePort { get; set; } = 13977;
+        public ushort UdpAnnouncePort { get; set; } = 13977;
 
         /// <summary>
         /// Gets or sets TCP service port. This can vary by each client but predefined default is used.
         /// </summary>
-        public UInt16 TcpServicePort { get; set; } = 13978;
+        public ushort TcpServicePort { get; set; } = 13978;
 
         /// <summary>
         /// Gets or sets how often UPD broadcast is send.
