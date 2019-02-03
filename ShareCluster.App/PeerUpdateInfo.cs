@@ -6,15 +6,13 @@ namespace ShareCluster
 {
     public class PeerUpdateInfo
     {
-        public PeerUpdateInfo(IPEndPoint endpoint, PeerFlags discoveryMode, TimeSpan lastSuccessCommunication)
+        public PeerUpdateInfo(IPEndPoint endpoint, TimeSpan lastSuccessCommunication)
         {
-            ServiceEndpoint = endpoint??throw new ArgumentNullException(nameof(endpoint));
-            DiscoveryMode = discoveryMode;
+            ServiceEndpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
             LastSuccessCommunication = lastSuccessCommunication;
         }
 
         public IPEndPoint ServiceEndpoint { get; set; }
-        public PeerFlags DiscoveryMode { get; set; }
         public TimeSpan LastSuccessCommunication { get; set; }
     }
 }

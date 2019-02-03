@@ -12,13 +12,11 @@ using System.Threading;
 namespace ShareCluster.Network
 {
     /// <summary>
-    /// Represents information known about peer endpoint.
+    /// Represents immutable information known about peer endpoint.
     /// </summary>
     public class PeerInfo : IEquatable<PeerInfo>
     {
-        private readonly PeerStats _stats;
         private readonly object _syncLock = new object();
-        private readonly PeerId _peerId;
 
         public override string ToString() => PeerId.ToString();
 
@@ -36,23 +34,14 @@ namespace ShareCluster.Network
 
             peerId.Validate();
 
-            _peerId = peerId;
-            _stats = new PeerStats(clock, networkSettings);
+            PeerId = peerId;
+            Status = new PeerStatus(clock, networkSettings);
         }
 
         // identification
-        public IPEndPoint ServiceEndPoint => PeerId.Endpoint;
-
-        // how it was discovered?
-        public bool IsDirectDiscovery => (DiscoveryMode & PeerFlags.DirectDiscovery) > 0;
-        public bool IsOtherPeerDiscovery => (DiscoveryMode & PeerFlags.OtherPeerDiscovery) > 0;
-        public bool IsManualDiscovery => (DiscoveryMode & PeerFlags.ManualDiscovery) > 0;
-        public bool IsUdpDiscovery => (DiscoveryMode & PeerFlags.DiscoveredByUdp) > 0;
-
-        public PeerFlags DiscoveryMode { get; set; }
-
-        public PeerStats Stats => _stats;
-        public PeerId PeerId => _peerId;
+        public IPEndPoint EndPoint => PeerId.EndPoint;
+        public PeerStatus Status { get; }
+        public PeerId PeerId { get; }
 
         public override int GetHashCode() => PeerId.GetHashCode();
 

@@ -4,7 +4,10 @@ using System.Text;
 
 namespace ShareCluster.Network
 {
-    public class PeerStats
+    /// <summary>
+    /// Mutable peer status.
+    /// </summary>
+    public class PeerStatus
     {
         private readonly IClock _clock;
         private readonly NetworkSettings _settings;
@@ -13,7 +16,7 @@ namespace ShareCluster.Network
         private VersionNumber _catalogAppliedVersion = VersionNumber.Zero;
         private VersionNumber _catalogKnownVersion = VersionNumber.Zero;
 
-        public PeerStats(IClock clock, NetworkSettings settings)
+        public PeerStatus(IClock clock, NetworkSettings settings)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -139,6 +142,23 @@ namespace ShareCluster.Network
         public VersionNumber CatalogAppliedVersion => _catalogAppliedVersion;
         public VersionNumber CatalogKnownVersion => _catalogKnownVersion;
 
+        public bool IsDead { get; private set; }
+
         public event Action IsEnabledChanged;
+
+        public void ReportCommunicationFail(PeerCommunicationType communicationType, PeerCommunicationFault fault)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReportCommunicationSuccess(PeerCommunicationType communicationType)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReportDead()
+        {
+            IsDead = true;
+        }
     }
 }

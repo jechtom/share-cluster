@@ -118,7 +118,7 @@ namespace ShareCluster.WebInterface
 
             // start
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            var taskCreate = Task.Run(new Action(() => _packageManger.CreateAndRegisterPackageFromFolder(folder, name, measureItem)));
+            var taskCreate = Task.Run(new Action(() => _packageManger.CreateAndRegisterPackageFromFolder(folder, name, null/*TODO allow to select*/, measureItem)));
 
             // create and register task for starting download
             var task = new LongRunningTask(

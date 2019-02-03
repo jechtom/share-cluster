@@ -27,6 +27,7 @@ namespace ShareCluster
         private readonly AppInfo _appInfo;
         private bool _isStarted;
         private IWebHost _webHost;
+        private AppInstanceBootstrapper _bootstrapper;
 
         public AppInstance(AppInfo appInfo)
         {
@@ -35,6 +36,7 @@ namespace ShareCluster
 
         public void Dispose()
         {
+            _bootstrapper.Stop();
             if (_webHost != null) _webHost.Dispose();
         }
 
@@ -70,9 +72,9 @@ namespace ShareCluster
             _webHost.Start();
 
             // bootstrap
-            AppInstanceBootstrapper result = _webHost.Services.GetRequiredService<AppInstanceBootstrapper>();
-            result.Start(settings);
-            return result;
+            _bootstrapper = _webHost.Services.GetRequiredService<AppInstanceBootstrapper>();
+            _bootstrapper.Start(settings);
+            return _bootstrapper;
         }
         
         private void ConfigureService(IServiceCollection services)

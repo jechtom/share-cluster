@@ -21,7 +21,7 @@ namespace ShareCluster.Tests.Packaging
             // add
             RemotePackage remotePackage = RemotePackage
                 .WithPackage(Generator.RandomId(), 123456)
-                .WithPeer(new RemotePackageOccurence(Generator.RandomPeerId(), "abc", DateTimeOffset.Now, isSeeder: true));
+                .WithPeer(new RemotePackageOccurence(Generator.RandomPeerId(), "abc", DateTimeOffset.Now, null, isSeeder: true));
 
             registry.MergePackage(remotePackage);
 
@@ -40,11 +40,11 @@ namespace ShareCluster.Tests.Packaging
 
             RemotePackage remotePackage = RemotePackage
                 .WithPackage(Generator.RandomId(), 123456)
-                .WithPeer(new RemotePackageOccurence(Generator.RandomPeerId(), "abc", DateTimeOffset.Now, isSeeder: true));
+                .WithPeer(new RemotePackageOccurence(Generator.RandomPeerId(), "abc", DateTimeOffset.Now, null, isSeeder: true));
 
             RemotePackage remotePackage2 = RemotePackage
                 .WithPackage(remotePackage.PackageId, 123456)
-                .WithPeer(new RemotePackageOccurence(Generator.RandomPeerId(), "abc", DateTimeOffset.Now, isSeeder: true));
+                .WithPeer(new RemotePackageOccurence(Generator.RandomPeerId(), "abc", DateTimeOffset.Now, null, isSeeder: true));
 
             registry.MergePackage(remotePackage);
             registry.MergePackage(remotePackage2);
@@ -77,14 +77,14 @@ namespace ShareCluster.Tests.Packaging
             var package3 = RemotePackage.WithPackage(Generator.RandomId(), 123458);
 
             // package 1 - peer 1, 2
-            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, isSeeder: true)));
-            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, isSeeder: true)));
+            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, null, isSeeder: true)));
+            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, null, isSeeder: true)));
 
             // package 2 - peer 1
-            registry.MergePackage(package2.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, isSeeder: true)));
+            registry.MergePackage(package2.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, null, isSeeder: true)));
 
             // package 3 - peer 2
-            registry.MergePackage(package3.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, isSeeder: true)));
+            registry.MergePackage(package3.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, null, isSeeder: true)));
 
             // all packages (1,2,3) should be present
             Assert.True(registry.RemotePackages.ContainsKey(package1.PackageId));
@@ -113,12 +113,12 @@ namespace ShareCluster.Tests.Packaging
             var package2 = RemotePackage.WithPackage(Generator.RandomId(), 123457);
 
             // package 1 - peer 1, 2
-            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, isSeeder: true)));
-            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, isSeeder: true)));
+            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, null, isSeeder: true)));
+            registry.MergePackage(package1.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, null, isSeeder: true)));
 
             // package 2 - peer 1, 2
-            registry.MergePackage(package2.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, isSeeder: true)));
-            registry.MergePackage(package2.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, isSeeder: true)));
+            registry.MergePackage(package2.WithPeer(new RemotePackageOccurence(peerId1, "abc", DateTimeOffset.Now, null, isSeeder: true)));
+            registry.MergePackage(package2.WithPeer(new RemotePackageOccurence(peerId2, "abc", DateTimeOffset.Now, null, isSeeder: true)));
 
             // all packages (1,2) should be present both with all peers (1,2)
             Assert.True(registry.RemotePackages.ContainsKey(package1.PackageId));
@@ -146,11 +146,11 @@ namespace ShareCluster.Tests.Packaging
 
             RemotePackage remotePackage = RemotePackage
                 .WithPackage(Generator.RandomId(), 123456)
-                .WithPeer(new RemotePackageOccurence(peerId, "abc", DateTimeOffset.Now, isSeeder: true));
+                .WithPeer(new RemotePackageOccurence(peerId, "abc", DateTimeOffset.Now, null, isSeeder: true));
 
             RemotePackage remotePackage2 = RemotePackage
                 .WithPackage(remotePackage.PackageId, 123456)
-                .WithPeer(new RemotePackageOccurence(peerId, "cde", DateTimeOffset.Now, isSeeder: false));
+                .WithPeer(new RemotePackageOccurence(peerId, "cde", DateTimeOffset.Now, null, isSeeder: false));
 
             registry.MergePackage(remotePackage);
             registry.MergePackage(remotePackage2);

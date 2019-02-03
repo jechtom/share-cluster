@@ -9,17 +9,13 @@ namespace ShareCluster.Packaging.Dto
     public class PackageDownloadStatusDto
     {
         public PackageDownloadStatusDto() { }
-        public PackageDownloadStatusDto(VersionNumber version, Id packageId, bool isDownloading, long downloadedBytes, byte[] segmentsBitmap)
+        public PackageDownloadStatusDto(Id packageId, bool isDownloading, long downloadedBytes, byte[] segmentsBitmap)
         {
-            Version = version;
             PackageId = packageId;
             IsDownloading = isDownloading;
             DownloadedBytes = downloadedBytes;
             SegmentsBitmap = segmentsBitmap;
         }
-
-        [ProtoMember(1)]
-        public virtual VersionNumber Version { get; set; }
 
         [ProtoMember(2)]
         public virtual Id PackageId { get; set; }

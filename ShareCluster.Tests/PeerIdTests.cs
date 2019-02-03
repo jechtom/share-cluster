@@ -45,7 +45,7 @@ namespace ShareCluster.Tests
         {
             Assert.Throws<ArgumentNullException>(() =>
             {
-                new PeerId(Id.Parse("AA"), endpoint: null);
+                new PeerId(Id.Parse("AA"), endPoint: null);
             });
         }
 
@@ -54,7 +54,7 @@ namespace ShareCluster.Tests
         {
             Assert.Throws<ArgumentException>(() =>
             {
-                new PeerId(new Id(new byte[0]), endpoint: new IPEndPoint(IPAddress.Parse("10.0.0.18"), 123));
+                new PeerId(new Id(new byte[0]), endPoint: new IPEndPoint(IPAddress.Parse("10.0.0.18"), 123));
             });
         }
 

@@ -79,7 +79,7 @@ namespace ShareCluster.Network
         {
             foreach (PeerInfo peer in _peerRegistry.Peers.Values)
             {
-                if (peer.Stats.CatalogAppliedVersion >= peer.Stats.CatalogKnownVersion)
+                if (peer.Status.CatalogAppliedVersion >= peer.Status.CatalogKnownVersion)
                 {
                     continue;
                 }
@@ -130,10 +130,10 @@ namespace ShareCluster.Network
             {
                 var request = new Messages.CatalogDataRequest()
                 {
-                    KnownCatalogVersion = _peer.Stats.CatalogAppliedVersion
+                    KnownCatalogVersion = _peer.Status.CatalogAppliedVersion
                 };
 
-                Messages.CatalogDataResponse catalogResult = await _client.GetCatalogAsync(_peer.ServiceEndPoint, request);
+                Messages.CatalogDataResponse catalogResult = await _client.GetCatalogAsync(_peer.EndPoint, request);
 
                 if (catalogResult.IsUpToDate)
                 {
@@ -144,11 +144,11 @@ namespace ShareCluster.Network
                 {
                     RemotePackage newPackage = RemotePackage
                         .WithPackage(catalogItem.PackageId, catalogItem.PackageSize)
-                        .WithPeer(new RemotePackageOccurence(_peer.PeerId, catalogItem.PackageName, DateTimeOffset.Now, catalogItem.IsSeeder));
+                        .WithPeer(new RemotePackageOccurence(_peer.PeerId, catalogItem.PackageName, DateTimeOffset.Now, catalogItem.PackageParentId, catalogItem.IsSeeder));
                     _remotePackageRegistry.MergePackage(newPackage);
                 }
 
-                _peer.Stats.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
+                _peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
             }
         }
     }

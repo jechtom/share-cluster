@@ -7,16 +7,16 @@ namespace ShareCluster
 {
     public struct PeerId : IEquatable<PeerId>
     {
-        public PeerId(Id instanceId, IPEndPoint endpoint)
+        public PeerId(Id instanceId, IPEndPoint endPoint)
         {
             if (instanceId.IsNullOrEmpty) throw new ArgumentException("Can't be empty", nameof(instanceId));
 
             InstanceId = instanceId;
-            Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
+            EndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
         }
 
         public Id InstanceId { get; }
-        public IPEndPoint Endpoint { get; }
+        public IPEndPoint EndPoint { get; }
 
         public override bool Equals(object obj)
         {
@@ -25,15 +25,15 @@ namespace ShareCluster
 
         public void Validate()
         {
-            if (Endpoint == null) throw new InvalidOperationException($"{nameof(PeerId)} validation: Endpoint is null");
-            if (Endpoint.Port == 0) throw new InvalidOperationException($"{nameof(PeerId)} validation: Port is invalid");
+            if (EndPoint == null) throw new InvalidOperationException($"{nameof(PeerId)} validation: Endpoint is null");
+            if (EndPoint.Port == 0) throw new InvalidOperationException($"{nameof(PeerId)} validation: Port is invalid");
             if (InstanceId.IsNullOrEmpty) throw new InvalidOperationException($"{nameof(PeerId)} validation: Instance Id is null or empty");
         }
 
         public bool Equals(PeerId other)
         {
             if (InstanceId != other.InstanceId) return false;
-            if (!Endpoint.Equals(other.Endpoint)) return false;
+            if (!EndPoint.Equals(other.EndPoint)) return false;
             return true;
         }
 
@@ -41,13 +41,13 @@ namespace ShareCluster
         {
             // get value of first max 4 bytes
             int result = InstanceId.GetHashCode();
-            result ^= Endpoint.GetHashCode();
+            result ^= EndPoint.GetHashCode();
             return result;
         }
 
         public static bool operator ==(PeerId left, PeerId right) => left.Equals(right);
         public static bool operator !=(PeerId left, PeerId right) => !left.Equals(right);
 
-        public override string ToString() => $"{Endpoint} with Id={InstanceId:s}";
+        public override string ToString() => $"{EndPoint} with Id={InstanceId:s}";
     }
 }

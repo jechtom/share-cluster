@@ -21,15 +21,17 @@ namespace ShareCluster.Network.Udp
         private readonly ILogger<UdpPeerDiscoveryListener> _logger;
         private readonly NetworkSettings _settings;
         private readonly UdpPeerDiscoverySerializer _discoverySerializer;
+        private readonly InstanceId _localInstanceId;
         private UdpClient _client;
         private CancellationTokenSource _cancel;
         private Task _task;
 
-        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer)
+        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer, InstanceId localInstanceId)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
+            _localInstanceId = localInstanceId;
         }
 
         public void Dispose()
@@ -70,15 +72,13 @@ namespace ShareCluster.Network.Udp
 
                     // publish message
                     var peerId = new PeerId(announceMessage.PeerId, new IPEndPoint(receiveResult.RemoteEndPoint.Address, announceMessage.ServicePort));
-                    var info = new UdpPeerDiscoveryInfo()
+                    var info = new UdpPeerDiscoveryInfo(announceMessage.CatalogVersion, peerId, announceMessage.IsShuttingDown);
+                    
+                    if(IsNotLocalAnnounce(info))
                     {
-                        PeerId = peerId,
-                        CatalogVersion = announceMessage.CatalogVersion
-                    };
-
-                    Discovery?.Invoke(this, info);
-
-                    _logger.LogTrace($"Received announce from {receiveResult.RemoteEndPoint.Address}");
+                        Discovery?.Invoke(this, info);
+                        _logger.LogTrace($"Received announce from {receiveResult.RemoteEndPoint.Address}");
+                    }
                 }
                 catch(OperationCanceledException)
                 {
@@ -92,6 +92,8 @@ namespace ShareCluster.Network.Udp
             }
         }
 
+        private bool IsNotLocalAnnounce(UdpPeerDiscoveryInfo info) => _localInstanceId.Value != info.PeerId.InstanceId;
+      
         public event EventHandler<UdpPeerDiscoveryInfo> Discovery;
     }
 }

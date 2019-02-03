@@ -142,18 +142,14 @@ namespace ShareCluster.Network
                         }
 
                         // download package
-                        _logger.LogInformation($"Downloading definition of package \"{remotePackage.Name}\" {remotePackage.PackageId:s} from peer {peerInfo.ServiceEndPoint}.");
+                        _logger.LogInformation($"Downloading definition of package \"{remotePackage.Name}\" {remotePackage.PackageId:s} from peer {peerInfo.EndPoint}.");
                         try
                         {
-                            response = _client.GetPackage(peerInfo.ServiceEndPoint, new PackageRequest(remotePackage.PackageId));
-                            peerInfo.Stats.MarkStatusUpdateSuccess(statusVersion: null); // responded = working
+                            response = _client.GetPackage(peerInfo.EndPoint, new PackageRequest(remotePackage.PackageId));
+                            peerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null); // responded = working
                             if (response.Found)
                             {
-                                packageMeta = new PackageMetadata()
-                                {
-                                    Created = occurence.Created,
-                                    Name = occurence.Name
-                                };
+                                packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.ParentPackageId);
                                 _logger.LogDebug($"Peer {peerInfo} don't know about catalog package {remotePackage}");
                                 break; // found
                             }
@@ -164,8 +160,8 @@ namespace ShareCluster.Network
                         }
                         catch (Exception e)
                         {
-                            peerInfo.Stats.MarkStatusUpdateFail(); // mark as failed - this will remove peer from peer list if hit fail limit
-                            _logger.LogTrace(e, $"Error contacting client {peerInfo.ServiceEndPoint}");
+                            peerInfo.Status.MarkStatusUpdateFail(); // mark as failed - this will remove peer from peer list if hit fail limit
+                            _logger.LogTrace(e, $"Error contacting client {peerInfo.EndPoint}");
                         }
                     }
 
@@ -506,7 +502,7 @@ namespace ShareCluster.Network
 
                     // finish successful download
                     _parent._packageStatusUpdater.StatsUpdateSuccessPart(_peer, _package, result.TotalSizeDownloaded);
-                    _parent._logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", _package.Metadata.Name, _package.Id, _peer.ServiceEndPoint, _segments.Format());
+                    _parent._logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", _package.Metadata.Name, _package.Id, _peer.EndPoint, _segments.Format());
 
                     // download finished
                     if (_package.DownloadStatus.IsDownloaded)
@@ -540,7 +536,7 @@ namespace ShareCluster.Network
 
             private async Task<DownloadSegmentResult> DownloadSegmentsInternalAsync(LocalPackage package, int[] parts, PeerInfo peer)
             {
-                _parent._logger.LogTrace("Downloading \"{0}\" {1:s} - from {2} - segments {3}", package.Metadata.Name, package.Id, peer.ServiceEndPoint, parts.Format());
+                _parent._logger.LogTrace("Downloading \"{0}\" {1:s} - from {2} - segments {3}", package.Metadata.Name, package.Id, peer.EndPoint, parts.Format());
 
                 var message = new DataRequest() { PackageId = package.Id, RequestedParts = parts };
                 long totalSizeOfParts = package.SplitInfo.GetSizeOfSegments(parts);
@@ -585,7 +581,7 @@ namespace ShareCluster.Network
                 {
                     try
                     {
-                        errorResponse = await _parent._client.DownloadPartsAsync(peer.ServiceEndPoint, message, new Lazy<Stream>(createStream));
+                        errorResponse = await _parent._client.DownloadPartsAsync(peer.EndPoint, message, new Lazy<Stream>(createStream));
                         bytes = streamValidate?.Position ?? -1;
                     }
                     finally
@@ -598,14 +594,14 @@ namespace ShareCluster.Network
                 }
                 catch (HashMismatchException e)
                 {
-                    _parent._logger.LogError($"Client {peer.ServiceEndPoint} failed to provide valid data segment: {e.Message}");
-                    peer.Stats.MarkStatusUpdateFail();
+                    _parent._logger.LogError($"Client {peer.EndPoint} failed to provide valid data segment: {e.Message}");
+                    peer.Status.MarkStatusUpdateFail();
                     return result;
                 }
                 catch (Exception e)
                 {
-                    _parent._logger.LogError(e, $"Failed to download data segment from {peer.ServiceEndPoint}.");
-                    peer.Stats.MarkStatusUpdateFail();
+                    _parent._logger.LogError(e, $"Failed to download data segment from {peer.EndPoint}.");
+                    peer.Status.MarkStatusUpdateFail();
                     return result;
                 }
 
@@ -614,14 +610,14 @@ namespace ShareCluster.Network
                     // choked response?
                     if (errorResponse.IsChoked)
                     {
-                        _parent._logger.LogTrace($"Choke response from {peer.ServiceEndPoint}.");
+                        _parent._logger.LogTrace($"Choke response from {peer.EndPoint}.");
                         return result;
                     }
 
                     // not found (client probably deleted package)
                     if (errorResponse.PackageNotFound || errorResponse.PackageSegmentsNotFound)
                     {
-                        _parent._logger.LogTrace($"Received not found data message from {peer.ServiceEndPoint}.");
+                        _parent._logger.LogTrace($"Received not found data message from {peer.EndPoint}.");
                         _parent._remotePackageRegistry.RemovePackageFromPeer(peer.PeerId, package.Id);
                         return result;
                     }
@@ -633,8 +629,8 @@ namespace ShareCluster.Network
                 // received all data?
                 if (totalSizeOfParts != bytes)
                 {
-                    _parent._logger.LogWarning($"Stream ended too soon from {peer.ServiceEndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.");
-                    peer.Stats.MarkStatusUpdateFail();
+                    _parent._logger.LogWarning($"Stream ended too soon from {peer.EndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.");
+                    peer.Status.MarkStatusUpdateFail();
                     return result;
                 }
 

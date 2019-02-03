@@ -17,16 +17,19 @@ namespace ShareCluster.Network
         private readonly ILogger<NetworkChangeNotifier> _logger;
         private HashSet<IPAddress> _addresses;
         private readonly object _syncLock = new object();
+        private bool _isStarted;
 
         public NetworkChangeNotifier(ILogger<NetworkChangeNotifier> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _addresses = null;
-            Start();
         }
 
-        private void Start()
+        public void Start()
         {
+            if (_isStarted) throw new InvalidOperationException("Already started");
+            _isStarted = true;
+
             NetworkChange.NetworkAvailabilityChanged += NetworkChange_NetworkAvailabilityChanged;
             NetworkChange.NetworkAddressChanged += NetworkChange_NetworkAddressChanged;
             _checkTimer = new Timer(CheckTimer_Callback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
@@ -52,6 +55,7 @@ namespace ShareCluster.Network
 
         public void Dispose()
         {
+            if (!_isStarted) return;
             if (_isDisposed) return;
             _isDisposed = true;
 

@@ -121,7 +121,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 );
         }
     
-        public LocalPackage CreateNewPackageFromStream(PackageSplitBaseInfo defaultSplitInfo, MeasureItem measure, string name, Action<Stream> writeToStreamAction)
+        public LocalPackage CreateNewPackageFromStream(PackageSplitBaseInfo defaultSplitInfo, MeasureItem measure, string name, Id? parentPackageId, Action<Stream> writeToStreamAction)
         {
             if (defaultSplitInfo == null)
             {
@@ -164,11 +164,7 @@ namespace ShareCluster.Packaging.PackageFolders
             UpdateDownloadStatus(buildPathReference, downloadStatus, packageDefinition);
 
             // store metadata
-            var metadata = new PackageMetadata()
-            {
-                Created = DateTimeOffset.Now,
-                Name = name
-            };
+            var metadata = new PackageMetadata(name, DateTimeOffset.Now, parentPackageId);
             UpdateMetadata(buildPathReference, metadata, packageDefinition);
 
             // rename folder

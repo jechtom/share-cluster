@@ -16,7 +16,10 @@ namespace ShareCluster
     /// </summary>
     public class AppInstanceBootstrapper
     {
+        private readonly ILogger<AppInstanceBootstrapper> _logger;
+
         public AppInstanceBootstrapper(
+            ILogger<AppInstanceBootstrapper> logger,
             PackageDownloadManager packageDownloadManager,
             UdpPeerDiscovery udpPeerDiscovery,
             IPeerRegistry peerRegistry,
@@ -24,9 +27,11 @@ namespace ShareCluster
             PackageFolderRepository localPackageManager,
             PeersManager peersManager,
             PeerCatalogUpdater peerCatalogUpdater,
-            PackageManager packageManager
+            PackageManager packageManager,
+            INetworkChangeNotifier networkChangeNotifier
         )
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             PackageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             UdpPeerDiscovery = udpPeerDiscovery ?? throw new ArgumentNullException(nameof(udpPeerDiscovery));
             PeerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
@@ -35,6 +40,13 @@ namespace ShareCluster
             PeersManager = peersManager ?? throw new ArgumentNullException(nameof(peersManager));
             PeerCatalogUpdater = peerCatalogUpdater ?? throw new ArgumentNullException(nameof(peerCatalogUpdater));
             PackageManager = packageManager ?? throw new ArgumentNullException(nameof(packageManager));
+            NetworkChangeNotifier = networkChangeNotifier ?? throw new ArgumentNullException(nameof(networkChangeNotifier));
+        }
+
+        public void Stop()
+        {
+            _logger.LogInformation("Stopping application");
+            UdpPeerDiscovery.SendShutDownAsync().RunSynchronously();
         }
 
         public PackageDownloadManager PackageDownloadManager { get; }
@@ -46,15 +58,19 @@ namespace ShareCluster
         public PackageFolderRepository LocalPackageManager { get; }
         public PeerCatalogUpdater PeerCatalogUpdater { get; }
         public PackageManager PackageManager { get; }
+        public INetworkChangeNotifier NetworkChangeNotifier { get; }
+
 
         public void Start(AppInstanceSettings settings)
         {
-            // announce to peers manager
-            UdpPeerDiscovery.OnPeerDiscovery += (s, e) => PeersManager.PeerDiscovered(e.PeerId, e.CatalogVersion);
+            _logger.LogInformation("Starting application");
 
             // start UDP announcer/listener
             if (settings.EnableUdpDiscoveryListener) UdpPeerDiscovery.StartListener();
             if (settings.EnableUdpDiscoveryAnnouncer) UdpPeerDiscovery.StartAnnouncer();
+
+            // start with housekeeping of peers
+            PeersManager.StartHousekeeping();
 
             // update remote package registry
             PeerCatalogUpdater.Start();
@@ -64,6 +80,9 @@ namespace ShareCluster
 
             // load packages
             PackageManager.Init();
+
+            // watch network changes
+            NetworkChangeNotifier.Start();
         }
     }
 }

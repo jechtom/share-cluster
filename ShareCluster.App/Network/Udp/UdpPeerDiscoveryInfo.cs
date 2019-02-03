@@ -7,7 +7,15 @@ namespace ShareCluster.Network.Udp
 {
     public class UdpPeerDiscoveryInfo
     {
-        public VersionNumber CatalogVersion { get; set; }
-        public PeerId PeerId { get; set; }
+        public UdpPeerDiscoveryInfo(VersionNumber catalogVersion, PeerId peerId, bool isShuttingDown)
+        {
+            CatalogVersion = catalogVersion;
+            PeerId = peerId;
+            IsShuttingDown = isShuttingDown;
+        }
+
+        public VersionNumber CatalogVersion { get; }
+        public PeerId PeerId { get; }
+        public bool IsShuttingDown { get; }
     }
 }

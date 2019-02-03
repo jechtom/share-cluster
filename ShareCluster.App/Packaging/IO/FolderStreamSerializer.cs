@@ -127,7 +127,6 @@ namespace ShareCluster.Packaging.IO
                             PopDirectories = 0
                         }, stream);
 
-
                         // write data
                         long beoreFileWritePosition = stream.Position;
                         using (FileStream fileStream = file.OpenRead())

@@ -97,7 +97,6 @@ namespace ShareCluster
         public string DataRootPathExtractDefault { get; private set; }
         
         public CryptoProvider Crypto { get; private set; }
-        public VersionNumber PackageVersion { get; private set; }
         public VersionNumber NetworkVersion { get; private set; }
         public VersionNumber AppVersion { get; private set; }
         public IMessageSerializer MessageSerializer { get; private set; }

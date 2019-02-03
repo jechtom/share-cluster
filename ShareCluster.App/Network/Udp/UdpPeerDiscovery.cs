@@ -12,13 +12,12 @@ namespace ShareCluster.Network.Udp
 {
     /// <summary>
     /// Provides full discovery services over UDP - both listening and sending broadcasts in specific interval or when needed.
-
+    /// It also includes rules for scheduling sending - including detecting network changes and catalog changes. 
     /// </summary>
     public class UdpPeerDiscovery : IDisposable
     {
         private readonly TimeSpan _udpAnnounceIntervalMinimum = TimeSpan.FromSeconds(5); // fastest announce interval
         private readonly TimeSpan _udpAnnounceInterval = TimeSpan.FromMinutes(5); // when to announce if nothing has changed
-        private readonly InstanceId _localInstanceId;
         private readonly ILocalPackageRegistryVersionProvider _localPackageRegistryVersionProvider;
         private readonly INetworkChangeNotifier _networkChangeNotifier;
         private readonly ILogger<UdpPeerDiscovery> _logger;
@@ -33,9 +32,8 @@ namespace ShareCluster.Network.Udp
         private VersionNumber _udpAnnounceLastSentVersion;
         private bool _udpAnnounceForce = false;
         
-        public UdpPeerDiscovery(InstanceId localInstanceId, ILogger<UdpPeerDiscovery> logger, ILocalPackageRegistryVersionProvider localPackageRegistryVersionProvider, INetworkChangeNotifier networkChangeNotifier, UdpPeerDiscoverySender udpAnnouncer, UdpPeerDiscoveryListener udpListener)
+        public UdpPeerDiscovery(ILogger<UdpPeerDiscovery> logger, ILocalPackageRegistryVersionProvider localPackageRegistryVersionProvider, INetworkChangeNotifier networkChangeNotifier, UdpPeerDiscoverySender udpAnnouncer, UdpPeerDiscoveryListener udpListener)
         {
-            _localInstanceId = localInstanceId ?? throw new ArgumentNullException(nameof(localInstanceId));
             _localPackageRegistryVersionProvider = localPackageRegistryVersionProvider ?? throw new ArgumentNullException(nameof(localPackageRegistryVersionProvider));
             _networkChangeNotifier = networkChangeNotifier ?? throw new ArgumentNullException(nameof(networkChangeNotifier));
             _udpAnnouncer = udpAnnouncer ?? throw new ArgumentNullException(nameof(udpAnnouncer));
@@ -49,7 +47,6 @@ namespace ShareCluster.Network.Udp
             _isStartedListener = true;
 
             // enable announcer
-            _udpListener.Discovery += HandleDiscovery;
             _udpListener.Start();
         }
 
@@ -72,6 +69,12 @@ namespace ShareCluster.Network.Udp
                 _udpAnnounceForce = true;
                 SendOrPlanAnnouncement();
             }
+        }
+
+        public Task SendShutDownAsync()
+        {
+            _logger.LogInformation($"Sending UDP shutdown announce.");
+            return _udpAnnouncer.SendAnnouncmentAsync(_localPackageRegistryVersionProvider.Version, isShuttingDown: true);
         }
 
         private void SendOrPlanAnnouncement()
@@ -116,7 +119,7 @@ namespace ShareCluster.Network.Udp
                     (_udpAnnounceLastSent = _udpAnnounceLastSent ?? Stopwatch.StartNew()).Restart();
                     _udpAnnounceLastSentVersion = currentCatalogVersion;
                     _udpAnnounceForce = false;
-                    sendTask = _udpAnnouncer.SendAnnouncement(currentCatalogVersion);
+                    sendTask = _udpAnnouncer.SendAnnouncmentAsync(currentCatalogVersion, isShuttingDown: false);
                 }
                 else
                 {
@@ -145,17 +148,5 @@ namespace ShareCluster.Network.Udp
                 _udpAnnouncerTimer = null;
             }
         }
-
-        private void HandleDiscovery(object sender, UdpPeerDiscoveryInfo e)
-        {
-            if(e.PeerId.InstanceId.Equals(_localInstanceId.Value))
-            {
-                return; // loopback
-            }
-
-            OnPeerDiscovery?.Invoke(this, e);
-        }
-
-        public event EventHandler<UdpPeerDiscoveryInfo> OnPeerDiscovery;
     }
 }

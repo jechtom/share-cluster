@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Messages;
 using System.Diagnostics;
 using ShareCluster.Packaging;
+using System.IO;
 
 namespace ShareCluster.Network.Udp
 {
@@ -30,10 +31,10 @@ namespace ShareCluster.Network.Udp
             _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
         }
-        
-        public async Task SendAnnouncement(VersionNumber catalogVersion)
+
+        public async Task SendAnnouncmentAsync(VersionNumber catalogVersion, bool isShuttingDown)
         {
-            byte[] announceMessageBytes = _discoverySerializer.Serialize(GetMessage(catalogVersion));
+            byte[] announceMessageBytes = _discoverySerializer.Serialize(GetMessage(catalogVersion, isShuttingDown));
 
             _logger.LogDebug("Sending discovery message on UDP port {0}", _settings.UdpAnnouncePort);
 
@@ -50,13 +51,14 @@ namespace ShareCluster.Network.Udp
             }
         }
 
-        private DiscoveryAnnounceMessage GetMessage(VersionNumber catalogVersion)
+        private DiscoveryAnnounceMessage GetMessage(VersionNumber catalogVersion, bool isShuttingDown)
         {
             var message = new DiscoveryAnnounceMessage()
             {
                 ServicePort = _settings.TcpServicePort,
                 CatalogVersion = catalogVersion,
-                PeerId = _instance.Value
+                PeerId = _instance.Value,
+                IsShuttingDown = isShuttingDown
             };
             return message;
         }

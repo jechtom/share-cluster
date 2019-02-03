@@ -23,12 +23,14 @@ namespace ShareCluster.Packaging.IO
 
         public void Serialize(PackageMetadata value, PackageDefinition packageDefinition, Stream stream)
         {
+            _serializer.Serialize<VersionNumber>(SerializerVersion);
+
             var dto = new PackageMetadataDto(
-                version: SerializerVersion,
                 packageId: packageDefinition.PackageId,
                 packageSize: packageDefinition.PackageSize,
                 created: value.Created,
-                name: value.Name
+                name: value.Name,
+                packageParentId: value.ParentPackageId
             );
             _serializer.Serialize<PackageMetadataDto>(dto, stream);
         }
@@ -40,14 +42,17 @@ namespace ShareCluster.Packaging.IO
                 throw new ArgumentNullException(nameof(stream));
             }
 
+            // check version
+            VersionNumber version = _serializer.Deserialize<VersionNumber>(stream);
+            FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, version);
+
+            // read data
             PackageMetadataDto dto = _serializer.Deserialize<PackageMetadataDto>(stream);
 
             if (dto == null)
             {
                 throw new InvalidOperationException("No valid data in stream.");
             }
-
-            FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
 
             // verify
             Id packageId = packageDefinition.PackageId;
@@ -62,12 +67,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // create result
-            var result = new PackageMetadata()
-            {
-                Name = dto.Name,
-                Created = dto.Created
-            };
-
+            var result = new PackageMetadata(dto.Name, dto.Created, dto.PackageParentId);
             return result;
         }
     }

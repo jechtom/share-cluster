@@ -26,8 +26,9 @@ namespace ShareCluster.Packaging.IO
 
         public void Serialize(PackageDownloadStatus value, PackageDefinition packageDefinition, Stream stream)
         {
+            _serializer.Serialize<VersionNumber>(SerializerVersion);
+
             var dto = new PackageDownloadStatusDto(
-                version: SerializerVersion,
                 packageId: packageDefinition.PackageId,
                 isDownloading: value.IsDownloading,
                 downloadedBytes: value.BytesDownloaded,
@@ -43,14 +44,17 @@ namespace ShareCluster.Packaging.IO
                 throw new ArgumentNullException(nameof(stream));
             }
 
+            // check version
+            VersionNumber version = _serializer.Deserialize<VersionNumber>(stream);
+            FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, version);
+
+            // read data
             PackageDownloadStatusDto dto = _serializer.Deserialize<PackageDownloadStatusDto>(stream);
 
             if (dto == null)
             {
                 throw new InvalidOperationException("No valid data in stream.");
             }
-
-            FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, dto.Version);
 
             // verify
             Id packageId = packageDefinition.PackageId;

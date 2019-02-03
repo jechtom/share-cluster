@@ -19,5 +19,8 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(3)]
         public virtual VersionNumber CatalogVersion { get; set; }
+
+        [ProtoMember(4)]
+        public virtual bool IsShuttingDown { get; set; }
     }
 }

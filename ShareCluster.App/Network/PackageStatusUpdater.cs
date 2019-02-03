@@ -129,7 +129,7 @@ namespace ShareCluster.Network
         {
             lock (_syncLock)
             {
-                if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus status)) return;
+                if (!_peers.TryGetValue(peer.EndPoint, out PeerOverallStatus status)) return;
                 status.UseFastUpdate = true;
             }
         }
@@ -235,14 +235,14 @@ namespace ShareCluster.Network
             try
             {
                 // send request
-                statusResult = await _client.GetPackageStatusAsync(peer.PeerInfo.ServiceEndPoint, requestMessage);
-                peer.PeerInfo.Stats.MarkStatusUpdateSuccess(statusVersion: null);
+                statusResult = await _client.GetPackageStatusAsync(peer.PeerInfo.EndPoint, requestMessage);
+                peer.PeerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null);
                 success = true;
             }
             catch (Exception e)
             {
-                peer.PeerInfo.Stats.MarkStatusUpdateFail();
-                _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.ServiceEndPoint, e.Message);
+                peer.PeerInfo.Status.MarkStatusUpdateFail();
+                _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.EndPoint, e.Message);
             }
             return (peer, result: statusResult, success);
         }
@@ -272,7 +272,7 @@ namespace ShareCluster.Network
 
         public void PostponePeersPackage(LocalPackage package, PeerInfo peer)
         {
-            _logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.ServiceEndPoint, package);
+            _logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.EndPoint, package);
 
             lock (_syncLock)
             {
@@ -283,11 +283,11 @@ namespace ShareCluster.Network
 
         public void PostponePeer(PeerInfo peer)
         {
-            _logger.LogTrace("Peer {0} for all packages has been postponed.", peer.ServiceEndPoint);
+            _logger.LogTrace("Peer {0} for all packages has been postponed.", peer.EndPoint);
 
             lock (_syncLock)
             {
-                if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus peerStatus)) return;
+                if (!_peers.TryGetValue(peer.EndPoint, out PeerOverallStatus peerStatus)) return;
                 peerStatus.PostponeTimer = new PostponeTimer(_postponeInterval);
             }
         }
@@ -296,7 +296,7 @@ namespace ShareCluster.Network
         {
             lock (_syncLock)
             {
-                if (!_peers.TryGetValue(peer.ServiceEndPoint, out PeerOverallStatus peerStatus)) return;
+                if (!_peers.TryGetValue(peer.EndPoint, out PeerOverallStatus peerStatus)) return;
                 peerStatus.PostponeTimer = PostponeTimer.NoPostpone;
                 if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
                 packageStatus.PostPonePeer(peer, TimeSpan.Zero);
@@ -346,13 +346,13 @@ namespace ShareCluster.Network
 
                 if(status.DownloadedBytes > 0)
                 {
-                    _logger.LogTrace($"Stats: Package {_packageInfo.Metadata.Name} {_packageInfo.Id:s} from {peer.PeerInfo.ServiceEndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
+                    _logger.LogTrace($"Stats: Package {_packageInfo.Metadata.Name} {_packageInfo.Id:s} from {peer.PeerInfo.EndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
                 }
             }
 
             public void AddPeer(PeerOverallStatus peer, bool isSeeder)
             {
-                _logger.LogTrace("Peer {0} knows package {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);
+                _logger.LogTrace("Peer {0} knows package {1}.", peer.PeerInfo.EndPoint, _packageInfo);
 
                 var newStatus = new PackagePeerStatus(peer);
                 if (_peerStatuses.TryAdd(peer.PeerInfo, newStatus))
@@ -390,11 +390,11 @@ namespace ShareCluster.Network
                 }
                 catch(Exception e)
                 {
-                    _logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.ServiceEndPoint, _packageInfo, e.Message);
-                    peer.PeerInfo.Stats.MarkStatusUpdateFail();
+                    _logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.EndPoint, _packageInfo, e.Message);
+                    peer.PeerInfo.Status.MarkStatusUpdateFail();
                 }
 
-                _logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);
+                _logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.EndPoint, _packageInfo);
 
                 // reset postpone (new status data)
                 status.PostponeTimer = PostponeTimer.NoPostpone;
@@ -409,7 +409,7 @@ namespace ShareCluster.Network
 
                 if(wasSeeder != status.IsSeeder)
                 {
-                    _logger.LogTrace("Found seeder {0} of {1}.", peer.PeerInfo.ServiceEndPoint, _packageInfo);
+                    _logger.LogTrace("Found seeder {0} of {1}.", peer.PeerInfo.EndPoint, _packageInfo);
                     peer.InterestedForPackagesSeederCount += status.IsSeeder ? 1 : -1;
                 }
             }
