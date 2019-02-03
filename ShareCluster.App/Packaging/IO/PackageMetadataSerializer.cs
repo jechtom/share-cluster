@@ -23,7 +23,7 @@ namespace ShareCluster.Packaging.IO
 
         public void Serialize(PackageMetadata value, PackageDefinition packageDefinition, Stream stream)
         {
-            _serializer.Serialize<VersionNumber>(SerializerVersion);
+            _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
 
             var dto = new PackageMetadataDto(
                 packageId: packageDefinition.PackageId,

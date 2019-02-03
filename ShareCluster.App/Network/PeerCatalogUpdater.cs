@@ -92,23 +92,30 @@ namespace ShareCluster.Network
                 return;
             }
 
-            // add merge existing
-            var occurences = new List<RemotePackageOccurence>(catalogResult.Packages.Length);
-            foreach (CatalogPackage catalogItem in catalogResult.Packages)
+            if (catalogResult.Packages == null || catalogResult.Packages.Length == 0)
             {
-                var occ = new RemotePackageOccurence(
-                    peer.PeerId,
-                    catalogItem.PackageId,
-                    catalogItem.PackageSize,
-                    catalogItem.PackageName,
-                    catalogItem.Created,
-                    catalogItem.PackageParentId,
-                    catalogItem.IsSeeder
-                );
-                occurences.Add(occ);
+                // empty catalog
+                _remotePackageRegistry.RemovePeer(peer.PeerId);
             }
-            _remotePackageRegistry.UpdateOcurrencesForPeer(peer.PeerId, occurences);
-
+            else
+            {
+                // merge
+                var occurences = new List<RemotePackageOccurence>(catalogResult.Packages.Length);
+                foreach (CatalogPackage catalogItem in catalogResult.Packages)
+                {
+                    var occ = new RemotePackageOccurence(
+                        peer.PeerId,
+                        catalogItem.PackageId,
+                        catalogItem.PackageSize,
+                        catalogItem.PackageName,
+                        catalogItem.Created,
+                        catalogItem.PackageParentId,
+                        catalogItem.IsSeeder
+                    );
+                    occurences.Add(occ);
+                }
+                _remotePackageRegistry.UpdateOcurrencesForPeer(peer.PeerId, occurences);
+            }
             peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
         }
 

@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging.IO
 
         public void Serialize(PackageDefinition value, Stream stream)
         {
-            _serializer.Serialize<VersionNumber>(SerializerVersion);
+            _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
             PackageDefinitionDto dto = SerializeToDto(value);
             _serializer.Serialize<PackageDefinitionDto>(dto, stream);
         }

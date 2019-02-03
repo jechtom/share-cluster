@@ -26,7 +26,7 @@ namespace ShareCluster.Packaging.IO
 
         public void Serialize(PackageDownloadStatus value, PackageDefinition packageDefinition, Stream stream)
         {
-            _serializer.Serialize<VersionNumber>(SerializerVersion);
+            _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
 
             var dto = new PackageDownloadStatusDto(
                 packageId: packageDefinition.PackageId,
