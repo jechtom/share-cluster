@@ -105,7 +105,7 @@ namespace ShareCluster
             services.AddSingleton<INetworkChangeNotifier, NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<PackageFolderRepository>();
-            services.AddSingleton<PeerCatalogUpdater>();
+            services.AddSingleton<IPeerCatalogUpdater, PeerCatalogUpdater>();
             services.AddSingleton<PackageDownloadManager>();
             services.AddSingleton<PeersManager>();
             services.AddSingleton<AppInstanceBootstrapper>();

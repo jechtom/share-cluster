@@ -76,7 +76,8 @@ namespace ShareCluster.Tests
                     {
                         PackageId = new Id(new byte[] { 1, 2, 3 }),
                         PackageName = "abc",
-                        PackageSize = 456
+                        PackageSize = 456,
+                        PackageParentId = new Id(new byte[] { 4, 5, 6, 7 })
                     }
                 }
             };
@@ -96,6 +97,7 @@ namespace ShareCluster.Tests
             Assert.Equal(message.Packages[0].PackageId, message.Packages[0].PackageId);
             Assert.Equal(message.Packages[0].PackageName, message.Packages[0].PackageName);
             Assert.Equal(message.Packages[0].PackageSize, message.Packages[0].PackageSize);
+            Assert.Equal(message.Packages[0].PackageParentId, message.Packages[0].PackageParentId);
         }
     }
 }

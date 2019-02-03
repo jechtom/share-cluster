@@ -24,6 +24,7 @@ namespace ShareCluster.Network.Messages
             PackageSize = packageInfo.Definition.PackageSize;
             IsSeeder = packageInfo.DownloadStatus.IsDownloaded;
             PackageParentId = packageInfo.Metadata.ParentPackageId;
+            Created = packageInfo.Metadata.Created;
         }
         
         [ProtoMember(1)]
@@ -39,6 +40,9 @@ namespace ShareCluster.Network.Messages
         public virtual bool IsSeeder { get; set; }
 
         [ProtoMember(5)]
-        public virtual Id? PackageParentId { get; internal set; }
+        public virtual Id? PackageParentId { get; set; }
+
+        [ProtoMember(6)]
+        public virtual DateTimeOffset Created { get; set; }
     }
 }

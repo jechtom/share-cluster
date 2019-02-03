@@ -12,9 +12,6 @@ namespace ShareCluster.Network
         private readonly IClock _clock;
         private readonly NetworkSettings _settings;
         private readonly object _syncLock = new object();
-        private TimeSpan _disabledSince;
-        private VersionNumber _catalogAppliedVersion = VersionNumber.Zero;
-        private VersionNumber _catalogKnownVersion = VersionNumber.Zero;
 
         public PeerStatus(IClock clock, NetworkSettings settings)
         {
@@ -22,32 +19,32 @@ namespace ShareCluster.Network
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
-        public void UpdateCatalogKnownVersion(VersionNumber catalogVersion)
+        public void UpdateCatalogKnownVersion(VersionNumber newCatalogVersion)
         {
-            if (catalogVersion <= _catalogKnownVersion) return;
+            if (newCatalogVersion <= CatalogKnownVersion) return;
             lock (_syncLock)
             {
-                if (catalogVersion <= _catalogKnownVersion) return;
-                _catalogKnownVersion = catalogVersion;
+                if (newCatalogVersion <= CatalogKnownVersion) return;
+                CatalogKnownVersion = newCatalogVersion;
             }
         }
 
-        public void UpdateCatalogAppliedVersion(VersionNumber catalogVersion)
+        public void UpdateCatalogAppliedVersion(VersionNumber newCatalogVersion)
         {
-            if (catalogVersion <= _catalogAppliedVersion) return;
+            if (newCatalogVersion <= CatalogAppliedVersion) return;
             lock (_syncLock)
             {
-                if (catalogVersion <= _catalogAppliedVersion) return;
-                _catalogAppliedVersion = catalogVersion;
+                if (newCatalogVersion <= CatalogAppliedVersion) return;
+                CatalogAppliedVersion = newCatalogVersion;
             }
         }
 
-        public VersionNumber CatalogAppliedVersion => _catalogAppliedVersion;
-        public VersionNumber CatalogKnownVersion => _catalogKnownVersion;
+        public bool IsCatalogUpToDate => CatalogAppliedVersion >= CatalogKnownVersion;
+
+        public VersionNumber CatalogAppliedVersion { get; private set; }
+        public VersionNumber CatalogKnownVersion { get; private set; }
 
         public bool IsDead { get; private set; }
-
-        public event Action IsEnabledChanged;
 
         public void ReportCommunicationFail(PeerCommunicationType communicationType, PeerCommunicationFault fault)
         {

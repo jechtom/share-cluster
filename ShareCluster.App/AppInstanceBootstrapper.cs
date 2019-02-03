@@ -26,7 +26,7 @@ namespace ShareCluster
             ILocalPackageRegistry localPackageRegistry,
             PackageFolderRepository localPackageManager,
             PeersManager peersManager,
-            PeerCatalogUpdater peerCatalogUpdater,
+            IPeerCatalogUpdater peerCatalogUpdater,
             PackageManager packageManager,
             INetworkChangeNotifier networkChangeNotifier
         )
@@ -46,6 +46,7 @@ namespace ShareCluster
         public void Stop()
         {
             _logger.LogInformation("Stopping application");
+            PeerCatalogUpdater.StopScheduledUpdates();
             UdpPeerDiscovery.SendShutDownAsync().RunSynchronously();
         }
 
@@ -56,7 +57,7 @@ namespace ShareCluster
         public ILocalPackageRegistry LocalPackageRegistry { get; }
         public IRemotePackageRegistry RemotePackageRegistry { get; }
         public PackageFolderRepository LocalPackageManager { get; }
-        public PeerCatalogUpdater PeerCatalogUpdater { get; }
+        public IPeerCatalogUpdater PeerCatalogUpdater { get; }
         public PackageManager PackageManager { get; }
         public INetworkChangeNotifier NetworkChangeNotifier { get; }
 
@@ -71,9 +72,6 @@ namespace ShareCluster
 
             // start with housekeeping of peers
             PeersManager.StartHousekeeping();
-
-            // update remote package registry
-            PeerCatalogUpdater.Start();
 
             // continue with unfinished download
             PackageDownloadManager.RestoreUnfinishedDownloads();

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Http;
+using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 
 namespace ShareCluster.Network
@@ -12,143 +13,85 @@ namespace ShareCluster.Network
     /// <summary>
     /// Updates remote package registry with data from peers.
     /// </summary>
-    public class PeerCatalogUpdater : IDisposable
+    public class PeerCatalogUpdater : IDisposable, IPeerCatalogUpdater
     {
-        private bool _isStarted;
-        private Timer _timer;
         private bool _stop;
         private readonly object _syncLock = new object();
         private readonly ILogger<PeerCatalogUpdater> _logger;
-        private readonly ILoggerFactory _loggerFactory;
         private readonly IRemotePackageRegistry _remotePackageRegistry;
-        private readonly IPeerRegistry _peerRegistry;
         private readonly HttpApiClient _apiClient;
-        private readonly Dictionary<PeerId, CatalogUpdateStatus> _statuses;
+        private readonly TaskSemaphoreQueue<PeerId, PeerInfo> _updateLimitedQueue;
+        const int _runningTasksLimit = 3;
 
-        public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, ILoggerFactory loggerFactory, IRemotePackageRegistry remotePackageRegistry, IPeerRegistry peerRegistry, HttpApiClient apiClient)
+        public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, IRemotePackageRegistry remotePackageRegistry, HttpApiClient apiClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
-            _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-            _statuses = new Dictionary<PeerId, CatalogUpdateStatus>();
+            _updateLimitedQueue = new TaskSemaphoreQueue<PeerId, PeerInfo>(runningTasksLimit: _runningTasksLimit);
         }
 
-        public void Start()
-        {
-            if (_isStarted) return;
-            _isStarted = true;
-
-            _timer = new Timer(TimerCallback);
-            SetTimer();
-        }
-
-        private void SetTimer()
-        {
-            _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.Zero);
-        }
-
-        private void TimerCallback(object state)
-        {
-            try
-            {
-                lock (_syncLock)
-                {
-                    PerformCheck();
-                }
-            }
-            catch(Exception e)
-            {
-                _logger.LogError("Catalog updater failed.", e);
-            }
-            finally
-            {
-                if (!_stop)
-                {
-                    SetTimer();
-                }
-            }
-        }
         public void Dispose()
         {
+            StopScheduledUpdates();
+        }
+
+        public void StopScheduledUpdates()
+        {
+            if (_stop) return;
+            _updateLimitedQueue.ClearQueued();
             _stop = true;
         }
 
-        private void PerformCheck()
+        public void ScheduleUpdateFromPeer(PeerInfo peer)
         {
-            foreach (PeerInfo peer in _peerRegistry.Peers.Values)
-            {
-                if (peer.Status.CatalogAppliedVersion >= peer.Status.CatalogKnownVersion)
-                {
-                    continue;
-                }
-
-                if(!_statuses.TryGetValue(peer.PeerId, out CatalogUpdateStatus status))
-                {
-                    status = new CatalogUpdateStatus(peer, _apiClient, _remotePackageRegistry, _loggerFactory.CreateLogger<CatalogUpdateStatus>());
-                    _statuses.Add(peer.PeerId, status);
-                }
-
-                status.Check();
-
-                // TODO remove old packages
-                // TODO invoke this when needed not based on timer
-            }
+            // schedule 
+            _updateLimitedQueue.EnqueueIfNotExists(peer.PeerId, peer, (d) => UpdateCallAsync(d));
         }
 
-        class CatalogUpdateStatus
+        private async Task UpdateCallAsync(PeerInfo peer)
         {
-            private readonly PeerInfo _peer;
-            private readonly HttpApiClient _client;
-            private readonly IRemotePackageRegistry _remotePackageRegistry;
-            private readonly ILogger<CatalogUpdateStatus> _logger;
-            public Task _updateTask;
-            
-            public CatalogUpdateStatus(PeerInfo peer, HttpApiClient client, IRemotePackageRegistry remotePackageRegistry, ILogger<CatalogUpdateStatus> logger)
+            try
             {
-                _peer = peer ?? throw new ArgumentNullException(nameof(peer));
-                _client = client ?? throw new ArgumentNullException(nameof(client));
-                _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
-                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            }
-
-            public void Check()
-            {
-                if(_updateTask == null)
+                var request = new CatalogDataRequest()
                 {
-                    _updateTask = UpdateAsync().ContinueWith((t) =>
-                    {
-                        if (t.IsCompletedSuccessfully) _logger.LogDebug($"Updated catalog from {_peer.PeerId}");
-                        if (t.IsFaulted) _logger.LogWarning(t.Exception, $"Failed to update catalog from {_peer.PeerId}");
-                        _updateTask = null;
-                    });
-                }
-            }
-
-            public async Task UpdateAsync()
-            {
-                var request = new Messages.CatalogDataRequest()
-                {
-                    KnownCatalogVersion = _peer.Status.CatalogAppliedVersion
+                    KnownCatalogVersion = peer.Status.CatalogAppliedVersion
                 };
 
-                Messages.CatalogDataResponse catalogResult = await _client.GetCatalogAsync(_peer.EndPoint, request);
+                CatalogDataResponse catalogResult = await _apiClient.GetCatalogAsync(peer.EndPoint, request);
+
+                if (_stop) return; // ignore calls finished after stopping
 
                 if (catalogResult.IsUpToDate)
                 {
                     return;
                 }
 
-                foreach (Messages.CatalogPackage catalogItem in catalogResult.Packages)
+                foreach (CatalogPackage catalogItem in catalogResult.Packages)
                 {
+                    var occ = new RemotePackageOccurence(
+                        peer.PeerId,
+                        catalogItem.PackageSize,
+                        catalogItem.PackageName,
+                        catalogItem.Created,
+                        catalogItem.PackageParentId,
+                        catalogItem.IsSeeder
+                    );
+
                     RemotePackage newPackage = RemotePackage
-                        .WithPackage(catalogItem.PackageId, catalogItem.PackageSize)
-                        .WithPeer(new RemotePackageOccurence(_peer.PeerId, catalogItem.PackageName, DateTimeOffset.Now, catalogItem.PackageParentId, catalogItem.IsSeeder));
+                        .WithPackage(catalogItem.PackageId)
+                        .WithPeer(occ);
                     _remotePackageRegistry.MergePackage(newPackage);
                 }
 
-                _peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
+                peer.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
+                peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
+                _logger.LogDebug($"Updated catalog from {peer}");
+            }
+            catch (Exception e)
+            {
+                peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
+                _logger.LogWarning($"Catalog updater failed for peer {peer}", e);
             }
         }
     }

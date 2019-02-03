@@ -7,20 +7,23 @@ namespace ShareCluster.Packaging
 {
     public class RemotePackage
     {
-        private RemotePackage(Id packageId, long packageSize, IImmutableDictionary<PeerId, RemotePackageOccurence> peers)
+        private RemotePackage(Id packageId, IImmutableDictionary<PeerId, RemotePackageOccurence> peers)
         {
             PackageId = packageId;
-            PackageSize = packageSize;
             Peers = peers ?? throw new ArgumentNullException(nameof(peers));
+
             Name = string.Join(", ", Peers.Select(p => p.Value.Name).Distinct());
             Created = Peers.Any() ? Peers.First().Value.Created : DateTimeOffset.MinValue;
+            Size = Peers.Any() ? Peers.First().Value.PackageSize : -1;
+            ParentPackageId = Peers.Any() ? Peers.First().Value.ParentPackageId : null;
         }
 
         public Id PackageId { get; }
-        public long PackageSize { get; }
         public IImmutableDictionary<PeerId, RemotePackageOccurence> Peers { get; }
-        public string Name { get; }
 
+        public string Name { get; }
+        public long Size { get; }
+        public Id? ParentPackageId { get; }
         public DateTimeOffset Created { get; }
 
         public RemotePackage WithPeer(RemotePackageOccurence occurence)
@@ -32,7 +35,6 @@ namespace ShareCluster.Packaging
             
             return new RemotePackage(
                 PackageId,
-                PackageSize,
                 Peers
                     .Remove(occurence.PeerId)
                     .Add(occurence.PeerId, occurence)
@@ -45,20 +47,18 @@ namespace ShareCluster.Packaging
 
             return new RemotePackage(
                 PackageId,
-                PackageSize,
                 Peers.Remove(peerId)
             );
         }
 
-        public static RemotePackage WithPackage(Id packageId, long packageSize)
+        public static RemotePackage WithPackage(Id packageId)
         {
             return new RemotePackage(
                 packageId,
-                packageSize,
                 ImmutableDictionary<PeerId, RemotePackageOccurence>.Empty
             );
         }
 
-        public override string ToString() => $"{PackageId:s} ({SizeFormatter.ToString(PackageSize)})";
+        public override string ToString() => $"Id={PackageId:s}; name=\"{Name}\"; parent={ParentPackageId:s}; size={SizeFormatter.ToString(Size)}";
     }
 }

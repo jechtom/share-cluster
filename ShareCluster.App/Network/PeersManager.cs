@@ -15,16 +15,17 @@ namespace ShareCluster.Network
         private readonly PeerInfoFactory _peerFactory;
         private readonly IPeerRegistry _peerRegistry;
         private readonly Udp.UdpPeerDiscoveryListener _udpPeerDiscoveryListener;
+        private readonly PeerCatalogUpdater _peerCatalogUpdater;
         private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(10);
         private Timer _housekeepingTimer;
 
-        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener)
+        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, PeerCatalogUpdater peerCatalogUpdater)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _peerFactory = peerFactory ?? throw new ArgumentNullException(nameof(peerFactory));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _udpPeerDiscoveryListener = udpPeerDiscoveryListener ?? throw new ArgumentNullException(nameof(udpPeerDiscoveryListener));
-
+            _peerCatalogUpdater = peerCatalogUpdater ?? throw new ArgumentNullException(nameof(peerCatalogUpdater));
             _udpPeerDiscoveryListener.Discovery += UdpPeerDiscoveryListener_Discovery;
         }
 
@@ -42,6 +43,9 @@ namespace ShareCluster.Network
                 // handle UDP announce discovery
                 peerInfo.Status.UpdateCatalogKnownVersion(e.CatalogVersion);
                 peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.UdpDiscovery);
+
+                // schedule update of catalog
+                if (!peerInfo.Status.IsCatalogUpToDate) _peerCatalogUpdater.ScheduleUpdateFromPeer(peerInfo);
             }
         }
 
@@ -72,12 +76,19 @@ namespace ShareCluster.Network
 
         private void HousekeepingStep()
         {
-            // remove dead peers from registry
             foreach (PeerInfo peer in _peerRegistry.Peers.Values)
             {
-                if(peer.Status.IsDead)
+                // remove dead peers from registry
+                if (peer.Status.IsDead)
                 {
                     _peerRegistry.RemovePeer(peer);
+                    break;
+                }
+
+                // schedule updates of catalog
+                if (!peer.Status.IsCatalogUpToDate)
+                {
+                    _peerCatalogUpdater.ScheduleUpdateFromPeer(peer);
                 }
             }
         }
