@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace ShareCluster.Network.Http
 {
-    [ServiceFilter(typeof(HttpRequestHeaderValidator))]
+    [ServiceFilter(typeof(HttpApiControllerHeadersFilter))]
     public class HttpApiController : IHttpApiController
     {
         private readonly PeerController _peerController;

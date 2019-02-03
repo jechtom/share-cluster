@@ -25,14 +25,13 @@ namespace ShareCluster.Network.Http
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly PeerController _peerController;
 
-        public HttpCommonHeadersProcessor(ILogger<HttpCommonHeadersProcessor> logger, CompatibilityChecker compatibility, InstanceId instanceId, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry, PeerController peerController)
+        public HttpCommonHeadersProcessor(ILogger<HttpCommonHeadersProcessor> logger, CompatibilityChecker compatibility, InstanceId instanceId, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
             _instanceId = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
             _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
-            _peerController = peerController ?? throw new ArgumentNullException(nameof(peerController));
         }
 
         public void AddCommonHeaders(IHttpHeaderWriter headerWriter, string typeString)
@@ -47,14 +46,14 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentException("message", nameof(typeString));
             }
 
+            headerWriter.WriteHeader(TypeHeaderName, typeString);
             headerWriter.WriteHeader(VersionHeaderName, _compatibility.NetworkProtocolVersion.ToString());
             headerWriter.WriteHeader(InstanceHeaderName, _instanceId.Value.ToString());
-            headerWriter.WriteHeader(TypeHeaderName, typeString);
             headerWriter.WriteHeader(ServicePortHeaderName, _networkSettings.TcpServicePort.ToString());
             headerWriter.WriteHeader(CatalogVersionHeaderName, _localPackageRegistry.Version.ToString());
         }
 
-        public CommonHeaderData ReadAndValidateAndProcessCommonHeaders(IPAddress remoteAddress, IHttpHeaderReader headerReader)
+        public CommonHeaderData ReadAndValidateAndProcessCommonHeaders(IPAddress remoteAddress, PeerCommunicationType peerCommunicationType, IHttpHeaderReader headerReader)
         {
             // validate version
             if (!headerReader.TryReadHeader(VersionHeaderName, out string valueStringInstance))
@@ -118,7 +117,7 @@ namespace ShareCluster.Network.Http
             var peerId = new PeerId(instanceId, serviceEndpoint);
             bool isLoopback = instanceId == _instanceId.Value;
 
-            var result = new CommonHeaderData(catalogVersion, peerId, isLoopback, typeString);
+            var result = new CommonHeaderData(catalogVersion, peerId, isLoopback, typeString, peerCommunicationType);
             ProcessResult(result);
             return result;
         }
@@ -126,12 +125,10 @@ namespace ShareCluster.Network.Http
         private void ProcessResult(CommonHeaderData headerData)
         {
             // update
-            _peerController.ReportSuccessCommunicationWithCatalogVersion(
-                headerData.PeerId,
-                headerData.CatalogVersion,
-                PeerCommunicationType.TcpFromPeer
-            );
+            HeaderDataParsed.Invoke(this, headerData);
         }
+
+        public event EventHandler<CommonHeaderData> HeaderDataParsed;
 
         private void Fail(IPAddress remoteAddress, string message)
         {

@@ -9,17 +9,15 @@ using System.Net;
 
 namespace ShareCluster.Network.Http
 {
-    public class HttpRequestHeaderValidator : IActionFilter
+    public class HttpApiControllerHeadersFilter : IActionFilter
     {
-        private readonly ILogger<HttpRequestHeaderValidator> _logger;
+        private readonly ILogger<HttpApiControllerHeadersFilter> _logger;
         private readonly HttpCommonHeadersProcessor _headersProcessor;
-        private readonly PeerController _peerController;
 
-        public HttpRequestHeaderValidator(ILogger<HttpRequestHeaderValidator> logger, HttpCommonHeadersProcessor headersProcessor, PeerController peerController)
+        public HttpApiControllerHeadersFilter(ILogger<HttpApiControllerHeadersFilter> logger, HttpCommonHeadersProcessor headersProcessor)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _headersProcessor = headersProcessor ?? throw new ArgumentNullException(nameof(headersProcessor));
-            _peerController = peerController ?? throw new ArgumentNullException(nameof(peerController));
         }
 
         public CompatibilityChecker CompatibilityChecker { get; }
@@ -59,6 +57,7 @@ namespace ShareCluster.Network.Http
             {
                 headerData = _headersProcessor.ReadAndValidateAndProcessCommonHeaders(
                     context.HttpContext.Connection.RemoteIpAddress,
+                    PeerCommunicationType.TcpFromPeer,
                     new HttpContextHeadersWrapper(context.HttpContext)
                 );
             }

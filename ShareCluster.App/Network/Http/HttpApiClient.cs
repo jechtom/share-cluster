@@ -15,10 +15,6 @@ namespace ShareCluster.Network.Http
     {
         private readonly HttpClient _appClient = new HttpClient();
         private readonly IMessageSerializer _serializer;
-        private readonly CompatibilityChecker _compatibility;
-        private readonly InstanceId _instanceHash;
-        private readonly NetworkSettings _networkSettings;
-        private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly HttpCommonHeadersProcessor _headersProcessor;
 
         //enable to use Fiddler @ localhost: 
@@ -26,13 +22,9 @@ namespace ShareCluster.Network.Http
 
         string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
 
-        public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceId instanceHash, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry, HttpCommonHeadersProcessor headersProcessor)
+        public HttpApiClient(IMessageSerializer serializer, HttpCommonHeadersProcessor headersProcessor)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-            _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
-            _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
-            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
-            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _headersProcessor = headersProcessor ?? throw new ArgumentNullException(nameof(headersProcessor));
         }
 
@@ -116,7 +108,11 @@ namespace ShareCluster.Network.Http
                 {
                     resultMessage = await _appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
                     resultMessage.EnsureSuccessStatusCode();
-                    resultHeaders = _headersProcessor.ReadAndValidateAndProcessCommonHeaders(endpoint.Address, new HttpContentHeadersWrapper(resultMessage.Headers));
+                    resultHeaders = _headersProcessor.ReadAndValidateAndProcessCommonHeaders(
+                        endpoint.Address,
+                        PeerCommunicationType.TcpToPeer,
+                        new HttpContentHeadersWrapper(resultMessage.Headers)
+                    );
                 }
                 catch
                 {

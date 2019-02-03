@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using Microsoft.Extensions.Logging;
+using ShareCluster.Network.Http;
 
 namespace ShareCluster.Network
 {
@@ -16,17 +17,28 @@ namespace ShareCluster.Network
         private readonly IPeerRegistry _peerRegistry;
         private readonly Udp.UdpPeerDiscoveryListener _udpPeerDiscoveryListener;
         private readonly IPeerCatalogUpdater _peerCatalogUpdater;
+        private readonly HttpCommonHeadersProcessor _commonHeadersProcessor;
         private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(5);
         private Timer _housekeepingTimer;
 
-        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, IPeerCatalogUpdater peerCatalogUpdater)
+        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, IPeerCatalogUpdater peerCatalogUpdater, HttpCommonHeadersProcessor commonHeadersProcessor)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _peerFactory = peerFactory ?? throw new ArgumentNullException(nameof(peerFactory));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _udpPeerDiscoveryListener = udpPeerDiscoveryListener ?? throw new ArgumentNullException(nameof(udpPeerDiscoveryListener));
             _peerCatalogUpdater = peerCatalogUpdater ?? throw new ArgumentNullException(nameof(peerCatalogUpdater));
+            _commonHeadersProcessor = commonHeadersProcessor ?? throw new ArgumentNullException(nameof(commonHeadersProcessor));
             _udpPeerDiscoveryListener.Discovery += UdpPeerDiscoveryListener_Discovery;
+            _commonHeadersProcessor.HeaderDataParsed += CommonHeadersProcessor_HeaderDataParsed;
+        }
+
+        private void CommonHeadersProcessor_HeaderDataParsed(object sender, CommonHeaderData headerData)
+        {
+            // received header from peer - report
+            PeerInfo peer = GetOrCreatePeerInfo(headerData.PeerId);
+            peer.Status.UpdateCatalogKnownVersion(headerData.CatalogVersion);
+            peer.Status.ReportCommunicationSuccess(headerData.CommunicationType);
         }
 
         private void UdpPeerDiscoveryListener_Discovery(object sender, Udp.UdpPeerDiscoveryInfo e)
@@ -49,6 +61,8 @@ namespace ShareCluster.Network
                 if (!peerInfo.Status.IsCatalogUpToDate) _peerCatalogUpdater.ScheduleUpdateFromPeer(peerInfo);
             }
         }
+
+
 
         public PeerInfo GetOrCreatePeerInfo(PeerId peerId)
         {

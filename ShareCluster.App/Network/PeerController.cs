@@ -43,13 +43,6 @@ namespace ShareCluster.Network
             _packageDefinitions = new ConcurrentDictionary<Id, PackageDefinitionDto>();
         }
 
-        public void ReportSuccessCommunicationWithCatalogVersion(PeerId peerId, VersionNumber catalogVersion, PeerCommunicationType communicationType)
-        {
-            PeerInfo peer = _peerManager.GetOrCreatePeerInfo(peerId);
-            peer.Status.UpdateCatalogKnownVersion(catalogVersion);
-            peer.Status.ReportCommunicationSuccess(communicationType);
-        }
-
         public CatalogDataResponse GetCatalog(CatalogDataRequest request)
         {
             if (request == null)

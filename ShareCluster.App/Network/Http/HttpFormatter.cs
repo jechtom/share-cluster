@@ -20,7 +20,7 @@ namespace ShareCluster.Network.Http
         {
             IServiceProvider serviceProvider = context.HttpContext.RequestServices;
             IMessageSerializer serializer = serviceProvider.GetRequiredService<IMessageSerializer>();
-
+            
             if (!(context.HttpContext.Request.ContentType ?? "").Equals(serializer.MimeType, StringComparison.OrdinalIgnoreCase))
                 return false;
 

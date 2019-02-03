@@ -17,7 +17,7 @@ namespace ShareCluster.Network.Http
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<HttpRequestHeaderValidator>();
+            services.AddSingleton<HttpApiControllerHeadersFilter>();
             services.AddSingleton<HttpFilterOnlyLocal>();
 
             services.AddMvc(c =>
