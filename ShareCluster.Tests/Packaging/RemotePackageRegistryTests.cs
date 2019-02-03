@@ -159,7 +159,7 @@ namespace ShareCluster.Tests.Packaging
             Assert.Equal(1, registry.RemotePackages.Count);
             Assert.Equal(1, registry.RemotePackages[remotePackage.PackageId].Peers.Count);
             Assert.Equal("cde", registry.RemotePackages[remotePackage.PackageId].Peers[peerId].Name);
-            Assert.Equal(false, registry.RemotePackages[remotePackage.PackageId].Peers[peerId].IsSeeder);
+            Assert.False(registry.RemotePackages[remotePackage.PackageId].Peers[peerId].IsSeeder);
         }
     }
 }

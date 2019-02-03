@@ -11,7 +11,7 @@ using ShareCluster.Network.Messages;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Network.Udp
 {
     /// <summary>
     /// Listens for UDP discovery announcements sent by <see cref="UdpPeerDiscoverySender"/>.
@@ -25,7 +25,7 @@ namespace ShareCluster.Network
         private CancellationTokenSource _cancel;
         private Task _task;
 
-        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory,NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer)
+        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));

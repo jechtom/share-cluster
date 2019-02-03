@@ -9,43 +9,46 @@ using System.Threading;
 
 namespace ShareCluster.Network
 {
-    public class NetworkChangeNotifier : IDisposable
+    public class NetworkChangeNotifier : IDisposable, INetworkChangeNotifier
     {
         private Timer _checkTimer;
+        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
         private bool _isDisposed;
-        private readonly NetworkSettings _networkSettings;
         private readonly ILogger<NetworkChangeNotifier> _logger;
         private HashSet<IPAddress> _addresses;
-        private readonly bool _addressesKnown;
         private readonly object _syncLock = new object();
 
-        public NetworkChangeNotifier(NetworkSettings networkSettings, ILogger<NetworkChangeNotifier> logger)
+        public NetworkChangeNotifier(ILogger<NetworkChangeNotifier> logger)
         {
-            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _addresses = new HashSet<IPAddress>();
-            _addressesKnown = false;
+            _addresses = null;
             Start();
         }
 
         private void Start()
         {
+            NetworkChange.NetworkAvailabilityChanged += NetworkChange_NetworkAvailabilityChanged;
             NetworkChange.NetworkAddressChanged += NetworkChange_NetworkAddressChanged;
-            TimeSpan interval = _networkSettings.NetworkChangeDetectionInterval;
-             _checkTimer = new Timer(CheckTimer_Callback, null, TimeSpan.Zero, interval);
+            _checkTimer = new Timer(CheckTimer_Callback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            CheckForChangesAndScheduleNext();
         }
 
         private void CheckTimer_Callback(object state)
         {
-            CheckForChanges();
+            CheckForChangesAndScheduleNext();
+        }
+
+        private void NetworkChange_NetworkAvailabilityChanged(object sender, NetworkAvailabilityEventArgs e)
+        {
+            CheckForChangesAndScheduleNext();
         }
 
         private void NetworkChange_NetworkAddressChanged(object sender, EventArgs e)
         {
-            CheckForChanges();
+            CheckForChangesAndScheduleNext();
         }
 
-        public event EventHandler Change;
+        public event EventHandler Changed;
 
         public void Dispose()
         {
@@ -54,56 +57,67 @@ namespace ShareCluster.Network
 
             // dispose
             _checkTimer.Dispose();
+            NetworkChange.NetworkAvailabilityChanged -= NetworkChange_NetworkAvailabilityChanged;
             NetworkChange.NetworkAddressChanged -= NetworkChange_NetworkAddressChanged;
         }
 
-        private void CheckForChanges()
-        {
-            bool notifyChange = false;
 
-            lock (_syncLock)
+        private void CheckForChangesAndScheduleNext()
+        {
+            try
             {
-                // detect new set
-                var addressesNew = new HashSet<IPAddress>(_addresses.Count);
-                try
+                bool notifyChange = false;
+                lock (_syncLock)
                 {
-                    foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+                    // detect new set
+                    var addressesNew = new HashSet<IPAddress>(_addresses?.Count ?? 10);
+                    try
                     {
-                        foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
+                        foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
                         {
-                            if (!ip.IsDnsEligible && ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                            if (ni.OperationalStatus != OperationalStatus.Up) continue;
+
+                            foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
                             {
-                                addressesNew.Add(ip.Address);
+                                if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                                {
+                                    addressesNew.Add(ip.Address);
+                                }
                             }
                         }
                     }
-                }
-                catch (Exception e)
-                {
-                    _logger.LogWarning(e, "Can't read network properties");
-                }
-
-                if (!_addressesKnown)
-                {
-                    // first fetch
-                    _addresses = addressesNew;
-                }
-                else
-                { 
-                    // compare sets
-                    if (!addressesNew.SetEquals(_addresses))
+                    catch (Exception e)
                     {
+                        _logger.LogWarning(e, "Can't read network properties");
+                    }
+
+                    if (_addresses == null)
+                    {
+                        // first fetch
                         _addresses = addressesNew;
-                        notifyChange = true;
+                    }
+                    else
+                    {
+                        // compare sets
+                        if (!addressesNew.SetEquals(_addresses))
+                        {
+                            _addresses = addressesNew;
+                            notifyChange = true;
+                        }
                     }
                 }
-            }
 
-            // notify?
-            if(notifyChange)
+                // notify?
+                if (notifyChange)
+                {
+                    _logger.LogInformation("Found new network configuration.");
+                    Changed?.Invoke(this, EventArgs.Empty);
+                }
+            }
+            finally
             {
-                _logger.LogTrace("Found new network configuration.");
-                Change?.Invoke(this, EventArgs.Empty);
+                // schedule next check
+                _checkTimer.Change(_checkInterval, Timeout.InfiniteTimeSpan);
             }
         }
     }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Network.Udp
 {
     public class UdpPeerDiscoveryInfo
     {

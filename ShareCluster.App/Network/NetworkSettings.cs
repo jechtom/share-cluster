@@ -19,16 +19,6 @@ namespace ShareCluster.Network
         public ushort TcpServicePort { get; set; } = 13978;
 
         /// <summary>
-        /// Gets or sets how often UPD broadcast is send.
-        /// </summary>
-        public TimeSpan UdpDiscoveryTimer { get; set; } = TimeSpan.FromMinutes(5);
-
-        /// <summary>
-        /// Gets or sets how often changes in network devices and IP addresses are checked.
-        /// </summary>
-        public TimeSpan NetworkChangeDetectionInterval { get; set; } = TimeSpan.FromSeconds(30);
-
-        /// <summary>
         /// How many fails we protected peer from removing from peers list.
         /// </summary>
         public int DisablePeerAfterFails { get; set; } = 2;

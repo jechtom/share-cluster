@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
+using ShareCluster.Network.Udp;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.PackageFolders;
 using System;
@@ -18,7 +19,6 @@ namespace ShareCluster
         public AppInstanceBootstrapper(
             PackageDownloadManager packageDownloadManager,
             UdpPeerDiscovery udpPeerDiscovery,
-            NetworkChangeNotifier networkChangeNotifier,
             IPeerRegistry peerRegistry,
             ILocalPackageRegistry localPackageRegistry,
             PackageFolderRepository localPackageManager,
@@ -29,7 +29,6 @@ namespace ShareCluster
         {
             PackageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             UdpPeerDiscovery = udpPeerDiscovery ?? throw new ArgumentNullException(nameof(udpPeerDiscovery));
-            NetworkChangeNotifier = networkChangeNotifier ?? throw new ArgumentNullException(nameof(networkChangeNotifier));
             PeerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             LocalPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             LocalPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
@@ -40,7 +39,6 @@ namespace ShareCluster
 
         public PackageDownloadManager PackageDownloadManager { get; }
         public UdpPeerDiscovery UdpPeerDiscovery { get; }
-        public NetworkChangeNotifier NetworkChangeNotifier { get; }
         public IPeerRegistry PeerRegistry { get; }
         public PeersManager PeersManager { get; }
         public ILocalPackageRegistry LocalPackageRegistry { get; }
@@ -55,13 +53,8 @@ namespace ShareCluster
             UdpPeerDiscovery.OnPeerDiscovery += (s, e) => PeersManager.PeerDiscovered(e.PeerId, e.CatalogVersion);
 
             // start UDP announcer/listener
-            UdpPeerDiscovery.Start(
-                allowListener: settings.EnableUdpDiscoveryListener,
-                allowAnnouncer: settings.EnableUdpDiscoveryAnnouncer
-            );
-
-            // send announce on network change
-            NetworkChangeNotifier.Change += (s, e) => UdpPeerDiscovery.AnnounceNow();
+            if (settings.EnableUdpDiscoveryListener) UdpPeerDiscovery.StartListener();
+            if (settings.EnableUdpDiscoveryAnnouncer) UdpPeerDiscovery.StartAnnouncer();
 
             // update remote package registry
             PeerCatalogUpdater.Start();

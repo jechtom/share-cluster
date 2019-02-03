@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using ShareCluster.Network.Messages;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Network.Udp
 {
     public class UdpPeerDiscoverySerializer
     {

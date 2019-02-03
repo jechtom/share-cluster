@@ -5,10 +5,9 @@ using System.Text;
 
 namespace ShareCluster.Packaging
 {
-    public interface ILocalPackageRegistry
+    public interface ILocalPackageRegistry : ILocalPackageRegistryVersionProvider
     {
         void IncreaseVersion();
-        VersionNumber Version { get; }
         IImmutableDictionary<Id, LocalPackage> LocalPackages { get; }
         void AddLocalPackage(LocalPackage localPackage);
         void RemoveLocalPackage(LocalPackage localPackage);

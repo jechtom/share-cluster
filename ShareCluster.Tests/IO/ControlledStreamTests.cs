@@ -39,7 +39,7 @@ namespace ShareCluster.Tests.IO
             Assert.Null(controller.Test_CurrentPart);
             Assert.True(controller.Test_IsStreamClosed);
             Assert.True(controller.Test_IsDisposed);
-            Assert.Equal(1, controller.Test_PartsAll.Count);
+            Assert.Single(controller.Test_PartsAll);
 
             // compare data - should be same
             Assert.Equal(sourceData, targetPart.MemoryStream.ToArray());
@@ -71,7 +71,7 @@ namespace ShareCluster.Tests.IO
             Assert.Null(controller.Test_CurrentPart);
             Assert.True(controller.Test_IsStreamClosed);
             Assert.True(controller.Test_IsDisposed);
-            Assert.Equal(1, controller.Test_PartsAll.Count);
+            Assert.Single(controller.Test_PartsAll);
 
             // compare data - should be same
             Assert.Equal(sourceData, actualData);
@@ -174,7 +174,7 @@ namespace ShareCluster.Tests.IO
             // assert
             Assert.True(controller.Test_IsStreamClosed);
             Assert.True(controller.Test_IsDisposed);
-            Assert.Equal(1, controller.Test_PartsAll.Count);
+            Assert.Single(controller.Test_PartsAll);
 
             // compare data
             Assert.Equal(sourceData, targetPart.MemoryStream.ToArray());

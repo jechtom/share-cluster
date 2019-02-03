@@ -15,6 +15,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
+using ShareCluster.Network.Udp;
 
 namespace ShareCluster
 {
@@ -99,7 +100,7 @@ namespace ShareCluster
             services.AddSingleton<PackageStatusUpdater>();
             services.AddSingleton<PackageMetadataSerializer>();
             services.AddSingleton<PackageSerializerFacade>();
-            services.AddSingleton<NetworkChangeNotifier>();
+            services.AddSingleton<INetworkChangeNotifier, NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<PackageFolderRepository>();
             services.AddSingleton<PeerCatalogUpdater>();
@@ -113,6 +114,7 @@ namespace ShareCluster
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<IRemotePackageRegistry, RemotePackageRegistry>();
             services.AddSingleton<ILocalPackageRegistry, LocalPackageRegistry>();
+            services.AddSingleton<ILocalPackageRegistryVersionProvider>(x => x.GetService<ILocalPackageRegistry>());
             services.AddSingleton<WebFacade>();
             services.AddSingleton<LongRunningTasksManager>();
             services.AddSingleton<PackageFolderDataValidator>();

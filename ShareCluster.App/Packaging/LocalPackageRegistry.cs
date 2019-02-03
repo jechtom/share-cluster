@@ -8,13 +8,24 @@ namespace ShareCluster.Packaging
     public class LocalPackageRegistry : ILocalPackageRegistry
     {
         private readonly object _syncLock = new object();
+        private VersionNumber _version;
 
         public LocalPackageRegistry()
         {
             LocalPackages = ImmutableDictionary<Id, LocalPackage>.Empty;
         }
 
-        public VersionNumber Version { get; private set; }
+        public VersionNumber Version
+        {
+            get => _version;
+            set
+            {
+                _version = value;
+                VersionChanged?.Invoke(_version);
+            }
+        }
+
+        public event Action<VersionNumber> VersionChanged;
 
         public IImmutableDictionary<Id, LocalPackage> LocalPackages { get; private set; }
 

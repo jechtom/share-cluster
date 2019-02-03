@@ -10,8 +10,8 @@ namespace ShareCluster
     /// </summary>
     public class Clock : IClock
     {
-        private Stopwatch stopwatch = Stopwatch.StartNew();
-        public TimeSpan Time => stopwatch.Elapsed;
+        private Stopwatch _stopwatch = Stopwatch.StartNew();
+        public TimeSpan Time => _stopwatch.Elapsed;
 
         public TimeSpan ConvertToLocal(TimeSpan remoteTime, TimeSpan remoteValue)
         {
