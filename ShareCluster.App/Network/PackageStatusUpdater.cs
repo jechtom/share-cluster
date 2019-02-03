@@ -236,12 +236,12 @@ namespace ShareCluster.Network
             {
                 // send request
                 statusResult = await _client.GetPackageStatusAsync(peer.PeerInfo.EndPoint, requestMessage);
-                peer.PeerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null);
+                peer.PeerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
                 success = true;
             }
             catch (Exception e)
             {
-                peer.PeerInfo.Status.MarkStatusUpdateFail();
+                peer.PeerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
                 _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.EndPoint, e.Message);
             }
             return (peer, result: statusResult, success);
@@ -391,7 +391,7 @@ namespace ShareCluster.Network
                 catch(Exception e)
                 {
                     _logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.EndPoint, _packageInfo, e.Message);
-                    peer.PeerInfo.Status.MarkStatusUpdateFail();
+                    peer.PeerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
                 }
 
                 _logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.EndPoint, _packageInfo);

@@ -146,7 +146,7 @@ namespace ShareCluster.Network
                         try
                         {
                             response = _client.GetPackage(peerInfo.EndPoint, new PackageRequest(remotePackage.PackageId));
-                            peerInfo.Status.MarkStatusUpdateSuccess(statusVersion: null); // responded = working
+                            peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
                             if (response.Found)
                             {
                                 packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.ParentPackageId);
@@ -160,7 +160,7 @@ namespace ShareCluster.Network
                         }
                         catch (Exception e)
                         {
-                            peerInfo.Status.MarkStatusUpdateFail(); // mark as failed - this will remove peer from peer list if hit fail limit
+                            peerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
                             _logger.LogTrace(e, $"Error contacting client {peerInfo.EndPoint}");
                         }
                     }
@@ -595,13 +595,13 @@ namespace ShareCluster.Network
                 catch (HashMismatchException e)
                 {
                     _parent._logger.LogError($"Client {peer.EndPoint} failed to provide valid data segment: {e.Message}");
-                    peer.Status.MarkStatusUpdateFail();
+                    peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.HashMismatch);
                     return result;
                 }
                 catch (Exception e)
                 {
                     _parent._logger.LogError(e, $"Failed to download data segment from {peer.EndPoint}.");
-                    peer.Status.MarkStatusUpdateFail();
+                    peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
                     return result;
                 }
 
@@ -630,7 +630,7 @@ namespace ShareCluster.Network
                 if (totalSizeOfParts != bytes)
                 {
                     _parent._logger.LogWarning($"Stream ended too soon from {peer.EndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.");
-                    peer.Status.MarkStatusUpdateFail();
+                    peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
                     return result;
                 }
 

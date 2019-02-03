@@ -12,8 +12,14 @@ namespace ShareCluster.Network
         VersionMismatch,
 
         /// <summary>
+        /// Client provided package with invalid hash.
+        /// This can be both data corruption/change on clients disk or data injection attack.
+        /// </summary>
+        HashMismatch,
+
+        /// <summary>
         /// Unspecified communication error.
         /// </summary>
-        Other
+        Communication
     }
 }
