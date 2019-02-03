@@ -32,12 +32,15 @@ namespace ShareCluster.Packaging
             {
                 throw new ArgumentNullException(nameof(occurence));
             }
-            
+
+            if(Peers.TryGetValue(occurence.PeerId, out RemotePackageOccurence existingOccurence))
+            {
+                if (existingOccurence.Equals(occurence)) return this; // same - no need to change
+            }
+
             return new RemotePackage(
                 PackageId,
-                Peers
-                    .Remove(occurence.PeerId)
-                    .Add(occurence.PeerId, occurence)
+                Peers.SetItem(occurence.PeerId, occurence)
             );
         }
 

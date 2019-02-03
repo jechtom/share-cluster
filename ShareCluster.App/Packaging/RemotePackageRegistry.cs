@@ -36,53 +36,69 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public void RemovePackageFromPeer(PeerId peerId, Id packageId)
+        public void UpdateOcurrencesForPeer(PeerId peer, IEnumerable<RemotePackageOccurence> occurences)
         {
-            lock (_syncLock)
+            if (!occurences.Any())
             {
-                if (!RemotePackages.TryGetValue(packageId, out RemotePackage package)) return;
-                RemotePackage newPackage = package.WithoutPeer(peerId);
-
-                if (newPackage.Peers.Any())
-                {
-                    RemotePackages = RemotePackages.SetItem(packageId, newPackage);
-                }
-                else
-                {
-                    RemotePackages = RemotePackages.Remove(packageId);
-                }
-            }
-        }
-
-        public void MergePackage(RemotePackage remotePackageToMerge)
-        {
-            if (remotePackageToMerge == null)
-            {
-                throw new ArgumentNullException(nameof(remotePackageToMerge));
+                // empty - remove all occurences from this peer
+                RemovePeer(peer);
+                return;
             }
 
-            if (!remotePackageToMerge.Peers.Any())
+            if (occurences.Any(o => o.PeerId != peer))
             {
-                throw new ArgumentException("No peers found in given package", nameof(remotePackageToMerge));
+                throw new ArgumentException("Given items have different peer Id.", nameof(occurences));
             }
 
             lock (_syncLock)
             {
-                if (!RemotePackages.TryGetValue(remotePackageToMerge.PackageId, out RemotePackage package))
+                var toSet = new List<KeyValuePair<Id, RemotePackage>>();
+                var allIds = new HashSet<Id>();
+
+                // adding / changing
+                foreach (RemotePackageOccurence occurence in occurences)
                 {
-                    // package doesn't exist? just add it
-                    RemotePackages = RemotePackages.Add(remotePackageToMerge.PackageId, remotePackageToMerge);
-                }
-                else
-                {
-                    // merge
-                    foreach (RemotePackageOccurence itemToMerge in remotePackageToMerge.Peers.Values)
+                    Id packageId = occurence.PackageId;
+                    allIds.Add(packageId);
+
+                    RemotePackage itemNew;
+                    if (RemotePackages.TryGetValue(packageId, out RemotePackage item))
                     {
-                        // if peer is missing, then add it
-                        package = package.WithPeer(itemToMerge);
+                        // existing package - extend
+                        itemNew = item.WithPeer(occurence);
                     }
-                    RemotePackages = RemotePackages.SetItem(package.PackageId, package);
+                    else
+                    {
+                        // new package - unknown
+                        itemNew = RemotePackage.WithPackage(packageId).WithPeer(occurence);
+                    }
+
+                    if (itemNew == item) continue;
+                    toSet.Add(new KeyValuePair<Id, RemotePackage>(packageId, itemNew));
                 }
+
+                // deleting what is not present in new set
+                var toRemove = new List<Id>();
+                foreach (RemotePackage package in RemotePackages.Values.Where(v => !allIds.Contains(v.PackageId)))
+                {
+                    if (!package.Peers.ContainsKey(peer))
+                    {
+                        continue;
+                    }
+                    else if (package.Peers.Count == 1)
+                    {
+                        // last one - remove whole package
+                        toRemove.Add(package.PackageId);
+                    }
+                    else
+                    {
+                        // not last one - just remove this peer from package
+                        toSet.Add(new KeyValuePair<Id, RemotePackage>(package.PackageId, package.WithoutPeer(peer)));
+                    }
+                }
+
+                // apply to immutable collection
+                RemotePackages = RemotePackages.SetItems(toSet).RemoveRange(toRemove);
             }
         }
     }

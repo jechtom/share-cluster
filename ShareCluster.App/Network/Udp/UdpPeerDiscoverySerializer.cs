@@ -64,11 +64,6 @@ namespace ShareCluster.Network.Udp
             {
                 throw new InvalidOperationException("Invalid port 0");
             }
-
-            if (announceMessage.CatalogVersion.Version == 0)
-            {
-                throw new InvalidOperationException("Invalid revision 0");
-            }
         }
 
     }

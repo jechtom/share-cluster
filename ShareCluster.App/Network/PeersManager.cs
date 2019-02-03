@@ -15,11 +15,11 @@ namespace ShareCluster.Network
         private readonly PeerInfoFactory _peerFactory;
         private readonly IPeerRegistry _peerRegistry;
         private readonly Udp.UdpPeerDiscoveryListener _udpPeerDiscoveryListener;
-        private readonly PeerCatalogUpdater _peerCatalogUpdater;
-        private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(10);
+        private readonly IPeerCatalogUpdater _peerCatalogUpdater;
+        private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(5);
         private Timer _housekeepingTimer;
 
-        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, PeerCatalogUpdater peerCatalogUpdater)
+        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, IPeerCatalogUpdater peerCatalogUpdater)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _peerFactory = peerFactory ?? throw new ArgumentNullException(nameof(peerFactory));
@@ -36,7 +36,8 @@ namespace ShareCluster.Network
             if (e.IsShuttingDown)
             {
                 // handle shut-down UDP announce
-                _peerRegistry.RemovePeer(peerInfo);
+                peerInfo.Status.ReportDead(PeerStatusDeadReason.ShutdownAnnounce);
+                RemovePeer(peerInfo);
             }
             else
             {
@@ -81,7 +82,7 @@ namespace ShareCluster.Network
                 // remove dead peers from registry
                 if (peer.Status.IsDead)
                 {
-                    _peerRegistry.RemovePeer(peer);
+                    RemovePeer(peer);
                     break;
                 }
 
@@ -91,6 +92,12 @@ namespace ShareCluster.Network
                     _peerCatalogUpdater.ScheduleUpdateFromPeer(peer);
                 }
             }
+        }
+
+        private void RemovePeer(PeerInfo peer)
+        {
+            _peerRegistry.RemovePeer(peer);
+            _peerCatalogUpdater.ForgetPeer(peer);
         }
 
         public void Dispose()

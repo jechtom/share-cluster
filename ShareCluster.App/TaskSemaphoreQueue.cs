@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ShareCluster
@@ -9,11 +10,11 @@ namespace ShareCluster
     /// <summary>
     /// Task scheduler with limit for number of running task in parallel and deduplication by given <typeparamref name="TKey"/>.
     /// </summary>
-    public class TaskSemaphoreQueue<TKey, TData>
+    public class TaskSemaphoreQueue
     {
-        private readonly Dictionary<TKey, Item> _all = new Dictionary<TKey, Item>();
-        private readonly Queue<TKey> _waiting = new Queue<TKey>();
+        private readonly Queue<Item> _queue = new Queue<Item>();
         private readonly object _syncLock = new object();
+        private int _runningTasks;
         
         public TaskSemaphoreQueue(int runningTasksLimit)
         {
@@ -24,20 +25,15 @@ namespace ShareCluster
         public int RunningTasksLimit { get; }
 
         /// <summary>
-        /// Enqueues given task if given key is not already in processing (waiting or running).
+        /// Enqueues given task.
         /// </summary>
-        /// <param name="key">Identification of task.</param>
-        /// <param name="data">Args use to create task</param>
+        /// <param name="args">Args use to create task</param>
         /// <param name="createTaskCall">Task factory</param>
-        public void EnqueueIfNotExists(TKey key, TData data, Func<TData, Task> createTaskCall)
+        public void EnqueueTaskFactory<TArgs>(TArgs args, Func<TArgs, Task> createTaskCall)
         {
             lock(_syncLock)
             {
-                if (_all.ContainsKey(key)) return; // already exists
-
-                _waiting.Enqueue(key);
-                _all.Add(key, new Item() { Key = key, Data = data, CreateTaskCall = createTaskCall });
-
+                _queue.Enqueue(new Item(args, (arg) => createTaskCall((TArgs)arg)));
                 TryRunningTask();
             }
         }
@@ -46,18 +42,15 @@ namespace ShareCluster
         {
             lock(_syncLock)
             {
-                while (true)
+                while (_queue.Count > 0)
                 {
                     // all slots used?
-                    if (_all.Count - _waiting.Count >= RunningTasksLimit) return;
-
-                    // nothing in queue?
-                    if (_waiting.Count == 0) return;
+                    if (_runningTasks >= RunningTasksLimit) return;
+                    Interlocked.Increment(ref _runningTasks);
 
                     // next to process
-                    TKey nextKey = _waiting.Dequeue();
-                    Item next = _all[nextKey];
-                    next.CreateTaskCall(next.Data)
+                    Item next = _queue.Dequeue();
+                    next.CreateTaskCall(next.Args)
                         .ContinueWith((task) => AfterTaskFinished(next, task));
                 }
             }
@@ -65,12 +58,8 @@ namespace ShareCluster
 
         private void AfterTaskFinished(Item item, Task task)
         {
-            lock (_syncLock)
-            {
-                if (!_all.Remove(item.Key)) throw new Exception("Internal exception. Should not happen.");
-            }
-
-            //  try schedule next
+            // try schedule next
+            Interlocked.Decrement(ref _runningTasks);
             TryRunningTask();
         }
 
@@ -81,19 +70,20 @@ namespace ShareCluster
         {
             lock (_syncLock)
             {
-                while (_waiting.Any())
-                {
-                    TKey key = _waiting.Dequeue();
-                    if (!_all.Remove(key)) throw new Exception("Internal exception. Should not happen.");
-                }
+                _queue.Clear();
             }
         }
         
         class Item
         {
-            public TKey Key { get; set; }
-            public TData Data { get; set; }
-            public Func<TData, Task> CreateTaskCall { get; set; }
+            public Item(object args, Func<object, Task> createTaskCall)
+            {
+                Args = args;
+                CreateTaskCall = createTaskCall ?? throw new ArgumentNullException(nameof(createTaskCall));
+            }
+
+            public object Args { get; }
+            public Func<object, Task> CreateTaskCall { get; }
         }
     }
 }

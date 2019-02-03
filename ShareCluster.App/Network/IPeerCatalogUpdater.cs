@@ -4,5 +4,6 @@
     {
         void StopScheduledUpdates();
         void ScheduleUpdateFromPeer(PeerInfo peer);
+        void ForgetPeer(PeerInfo peer);
     }
 }

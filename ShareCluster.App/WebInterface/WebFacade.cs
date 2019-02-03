@@ -96,7 +96,7 @@ namespace ShareCluster.WebInterface
             }
 
             // try start download
-            if (!_packageDownloadManager.StartDownloadRemotePackage(remotePackage, out Task startDownloadTask))
+            if (!_packageDownloadManager.StartDownloadRemotePackage(remotePackage.PackageId, out Task startDownloadTask))
             {
                 return;
             }

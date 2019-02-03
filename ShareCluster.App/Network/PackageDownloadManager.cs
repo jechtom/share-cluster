@@ -35,6 +35,7 @@ namespace ShareCluster.Network
         private readonly PackageStatusUpdater _packageStatusUpdater;
         private readonly Dictionary<Id, PostponeTimer> _postPoneUpdateDownloadFile;
         private readonly TimeSpan _postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
+        private readonly PackageDetailDownloader _packageDetailDownloader;
         private bool _isNextTryScheduled = false;
 
         public PackageDefinitionSerializer _packageDefinitionSerializer;
@@ -49,7 +50,8 @@ namespace ShareCluster.Network
             LocalPackageManager localPackageManager,
             PackageDefinitionSerializer packageDefinitionSerializer,
             NetworkThrottling networkThrottling,
-            PackageStatusUpdater packageStatusUpdater
+            PackageStatusUpdater packageStatusUpdater,
+            PackageDetailDownloader packageDetailDownloader
             )
         {
             _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
@@ -62,6 +64,7 @@ namespace ShareCluster.Network
             _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
             _packageStatusUpdater = packageStatusUpdater ?? throw new ArgumentNullException(nameof(packageStatusUpdater));
+            _packageDetailDownloader = packageDetailDownloader ?? throw new ArgumentNullException(nameof(packageDetailDownloader));
             _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
             _downloadSlots = new List<PackageDownloadSlot>();
             _packagesDownloading = new Dictionary<Id, LocalPackage>();
@@ -90,25 +93,25 @@ namespace ShareCluster.Network
         /// <summary>
         /// Downloads discovered package hashes and starts download.
         /// </summary>
-        /// <param name="remotePackage">Discovered package to download.</param>
+        /// <param name="packageId">Discovered package to download.</param>
         /// <param name="startDownloadTask">Task that completed when download is started/failed.</param>
         /// <returns>
         /// Return true if download has started. False if it was already in progress. 
         /// Throws en exception if failed to download hashes or start download.
         /// </returns>
-        public bool StartDownloadRemotePackage(RemotePackage remotePackage, out Task startDownloadTask)
+        public bool StartDownloadRemotePackage(Id packageId, out Task startDownloadTask)
         {
             lock (_syncLock)
             {
                 // download definition already in progress
-                if (!_definitionsDownloading.Add(remotePackage.PackageId))
+                if (!_definitionsDownloading.Add(packageId))
                 {
                     startDownloadTask = null;
                     return false;
                 }
 
                 // already in repository, exit
-                if (_localPackageRegistry.LocalPackages.TryGetValue(remotePackage.PackageId, out LocalPackage _))
+                if (_localPackageRegistry.LocalPackages.ContainsKey(packageId))
                 {
                     startDownloadTask = null;
                     return false;
@@ -119,69 +122,25 @@ namespace ShareCluster.Network
             {
                 try
                 {
-                    PackageResponse response = null;
-                    PackageMetadata packageMeta = null;
+                    // try download
+                    (PackageDefinition packageDef, PackageMetadata packageMeta) =
+                        _packageDetailDownloader.DownloadDetailsForPackage(packageId);
 
-                    // download package segments
-                    while (true)
-                    {
-                        RemotePackageOccurence[] occurences = remotePackage.Peers.Values.ToArray();
-                        
-                        if (!occurences.Any())
-                        {
-                            throw new InvalidOperationException("No peers left to download package data.");
-                        }
-
-                        RemotePackageOccurence occurence = occurences[ThreadSafeRandom.Next(0, occurences.Length)];
-
-                        // peer not found - forget his package occurence
-                        if(!_peerRegistry.Peers.TryGetValue(occurence.PeerId, out PeerInfo peerInfo))
-                        {
-                            _remotePackageRegistry.RemovePackageFromPeer(occurence.PeerId, remotePackage.PackageId);
-                            continue;
-                        }
-
-                        // download package
-                        _logger.LogInformation($"Downloading definition of package \"{remotePackage.Name}\" {remotePackage.PackageId:s} from peer {peerInfo.EndPoint}.");
-                        try
-                        {
-                            response = _client.GetPackage(peerInfo.EndPoint, new PackageRequest(remotePackage.PackageId));
-                            peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
-                            if (response.Found)
-                            {
-                                packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.ParentPackageId);
-                                _logger.LogDebug($"Peer {peerInfo} don't know about catalog package {remotePackage}");
-                                break; // found
-                            }
-
-                            // package not found on peer - forget his package occurence
-                            _remotePackageRegistry.RemovePackageFromPeer(occurence.PeerId, remotePackage.PackageId);
-                            continue;
-                        }
-                        catch (Exception e)
-                        {
-                            peerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
-                            _logger.LogTrace(e, $"Error contacting client {peerInfo.EndPoint}");
-                        }
-                    }
-
-                    // save to local storage
-                    PackageDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition, remotePackage.PackageId);
-                    
-                    LocalPackage package = _localPackageManager.CreateForDownload(packageDefinition, packageMeta);
+                    // allocate and start download
+                    LocalPackage package = _localPackageManager.CreateForDownload(packageDef, packageMeta);
                     _localPackageRegistry.AddLocalPackage(package);
                     StartDownloadLocalPackage(package);
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "Can't download package data of \"{0}\" {1:s}", remotePackage.Name, remotePackage.PackageId);
+                    _logger.LogError(e, "Can't download package data of {1:s}", packageId);
                     throw;
                 }
                 finally
                 {
                     lock (_syncLock)
                     {
-                        _definitionsDownloading.Remove(remotePackage.PackageId);
+                        _definitionsDownloading.Remove(packageId);
                     }
                 }
             });
@@ -618,7 +577,7 @@ namespace ShareCluster.Network
                     if (errorResponse.PackageNotFound || errorResponse.PackageSegmentsNotFound)
                     {
                         _parent._logger.LogTrace($"Received not found data message from {peer.EndPoint}.");
-                        _parent._remotePackageRegistry.RemovePackageFromPeer(peer.PeerId, package.Id);
+                        // TODO what to do? choke? probably just don't have udpated catalog
                         return result;
                     }
 

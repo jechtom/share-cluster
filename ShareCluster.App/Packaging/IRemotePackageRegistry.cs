@@ -16,16 +16,10 @@ namespace ShareCluster.Packaging
         void RemovePeer(PeerId peer);
 
         /// <summary>
-        /// Merges given package to registry. If packages already known, then peers are merged.
+        /// Replaces given package occurences to registry for given peer. It will remove all previously added occurences of this peer.
         /// </summary>
-        /// <param name="package">Package with occurences to merge.</param>
-        void MergePackage(RemotePackage package);
-
-        /// <summary>
-        /// Removes one peer from given package. All packages without peers after this operation will be removed.
-        /// </summary>
-        /// <param name="peerId"></param>
-        /// <param name="packageId"></param>
-        void RemovePackageFromPeer(PeerId peerId, Id packageId);
+        /// <param name="peer">Peer that owns all given occurences.</param>
+        /// <param name="occurences">New package occurences of peer.</param>
+        void UpdateOcurrencesForPeer(PeerId peer, IEnumerable<RemotePackageOccurence> occurences);
     }
 }

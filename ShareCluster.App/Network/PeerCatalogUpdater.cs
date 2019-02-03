@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -20,7 +21,8 @@ namespace ShareCluster.Network
         private readonly ILogger<PeerCatalogUpdater> _logger;
         private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly HttpApiClient _apiClient;
-        private readonly TaskSemaphoreQueue<PeerId, PeerInfo> _updateLimitedQueue;
+        private readonly TaskSemaphoreQueue _updateLimitedQueue;
+        private readonly HashSet<PeerId> _processing;
         const int _runningTasksLimit = 3;
 
         public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, IRemotePackageRegistry remotePackageRegistry, HttpApiClient apiClient)
@@ -28,7 +30,8 @@ namespace ShareCluster.Network
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-            _updateLimitedQueue = new TaskSemaphoreQueue<PeerId, PeerInfo>(runningTasksLimit: _runningTasksLimit);
+            _updateLimitedQueue = new TaskSemaphoreQueue(runningTasksLimit: _runningTasksLimit);
+            _processing = new HashSet<PeerId>();
         }
 
         public void Dispose()
@@ -45,47 +48,20 @@ namespace ShareCluster.Network
 
         public void ScheduleUpdateFromPeer(PeerInfo peer)
         {
-            // schedule 
-            _updateLimitedQueue.EnqueueIfNotExists(peer.PeerId, peer, (d) => UpdateCallAsync(d));
+            // schedule
+            lock (_syncLock)
+            {
+                if (!_processing.Add(peer.PeerId)) return;
+                _updateLimitedQueue.EnqueueTaskFactory(peer, UpdateCallAsync);
+            }
         }
 
         private async Task UpdateCallAsync(PeerInfo peer)
         {
             try
             {
-                var request = new CatalogDataRequest()
-                {
-                    KnownCatalogVersion = peer.Status.CatalogAppliedVersion
-                };
-
-                CatalogDataResponse catalogResult = await _apiClient.GetCatalogAsync(peer.EndPoint, request);
-
-                if (_stop) return; // ignore calls finished after stopping
-
-                if (catalogResult.IsUpToDate)
-                {
-                    return;
-                }
-
-                foreach (CatalogPackage catalogItem in catalogResult.Packages)
-                {
-                    var occ = new RemotePackageOccurence(
-                        peer.PeerId,
-                        catalogItem.PackageSize,
-                        catalogItem.PackageName,
-                        catalogItem.Created,
-                        catalogItem.PackageParentId,
-                        catalogItem.IsSeeder
-                    );
-
-                    RemotePackage newPackage = RemotePackage
-                        .WithPackage(catalogItem.PackageId)
-                        .WithPeer(occ);
-                    _remotePackageRegistry.MergePackage(newPackage);
-                }
-
+                await UpdateCallInternalAsync(peer);
                 peer.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
-                peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
                 _logger.LogDebug($"Updated catalog from {peer}");
             }
             catch (Exception e)
@@ -93,6 +69,52 @@ namespace ShareCluster.Network
                 peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
                 _logger.LogWarning($"Catalog updater failed for peer {peer}", e);
             }
+            finally
+            {
+                // not processing - new request can be queued
+                _processing.Remove(peer.PeerId);
+            }
+        }
+
+        private async Task UpdateCallInternalAsync(PeerInfo peer)
+        {
+            var request = new CatalogDataRequest()
+            {
+                KnownCatalogVersion = peer.Status.CatalogAppliedVersion
+            };
+
+            CatalogDataResponse catalogResult = await _apiClient.GetCatalogAsync(peer.EndPoint, request);
+
+            if (_stop) return; // ignore calls finished after stopping
+
+            if (catalogResult.IsUpToDate)
+            {
+                return;
+            }
+
+            // add merge existing
+            var occurences = new List<RemotePackageOccurence>(catalogResult.Packages.Length);
+            foreach (CatalogPackage catalogItem in catalogResult.Packages)
+            {
+                var occ = new RemotePackageOccurence(
+                    peer.PeerId,
+                    catalogItem.PackageId,
+                    catalogItem.PackageSize,
+                    catalogItem.PackageName,
+                    catalogItem.Created,
+                    catalogItem.PackageParentId,
+                    catalogItem.IsSeeder
+                );
+                occurences.Add(occ);
+            }
+            _remotePackageRegistry.UpdateOcurrencesForPeer(peer.PeerId, occurences);
+
+            peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
+        }
+
+        public void ForgetPeer(PeerInfo peer)
+        {
+            _remotePackageRegistry.RemovePeer(peer.PeerId);
         }
     }
 }

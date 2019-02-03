@@ -17,9 +17,9 @@ namespace ShareCluster.Tests
         [Fact]
         public void TestSingleTask()
         {
-            var q = new TaskSemaphoreQueue<int, string>(runningTasksLimit: 1);
+            var q = new TaskSemaphoreQueue(runningTasksLimit: 1);
             var t1_result = new ManualResetEventSlim();
-            q.EnqueueIfNotExists(1, "a", (s) => Task.Run(() => {
+            q.EnqueueTaskFactory("a", (s) => Task.Run(() => {
                 t1_result.Set();
             }));
 
@@ -29,18 +29,18 @@ namespace ShareCluster.Tests
         [Fact]
         public void TestFailShouldNotAffectOthers()
         {
-            var q = new TaskSemaphoreQueue<int, string>(runningTasksLimit: 1);
+            var q = new TaskSemaphoreQueue(runningTasksLimit: 1);
             var t2_result = new ManualResetEventSlim();
             var e = new ManualResetEventSlim();
 
             // failed task should not break processing of next tasks
 
-            q.EnqueueIfNotExists(1, "aaaa", (s) => Task.Run(() =>
+            q.EnqueueTaskFactory("aaaa", (s) => Task.Run(() =>
             {
                 throw new InvalidOperationException();
             }));
 
-            q.EnqueueIfNotExists(2, "aaaa", (s) => Task.Run(() =>
+            q.EnqueueTaskFactory("aaaa", (s) => Task.Run(() =>
             {
                 t2_result.Set();
             }));
@@ -49,54 +49,19 @@ namespace ShareCluster.Tests
         }
 
         [Fact]
-        public void TestDeduplication()
-        {
-            var q = new TaskSemaphoreQueue<int, string>(runningTasksLimit: 1);
-            var t1_block = new ManualResetEventSlim();
-            var t1_result = new ManualResetEventSlim();
-            var t2_result = new ManualResetEventSlim();
-            var t3_result = new ManualResetEventSlim();
-            var e = new ManualResetEventSlim();
-
-            q.EnqueueIfNotExists(1, "aaaa", (s) => Task.Run(() => {
-                t1_block.Wait();
-                t1_result.Set();
-            }));
-
-            q.EnqueueIfNotExists(1, "aaaa", (s) => Task.Run(() => {
-                t2_result.Set();
-            }));
-
-            q.EnqueueIfNotExists(2, "aaaa", (s) => Task.Run(() => {
-                t3_result.Set();
-            }));
-
-
-            // unblock first task
-            t1_block.Set();
-
-            // first and third tasks should be completed
-            Assert.True(t1_result.Wait(TimeSpan.FromSeconds(1)));
-            Assert.True(t3_result.Wait(TimeSpan.FromSeconds(1)));
-
-            // but second task should not be processed (same key as first one)
-            Assert.False(t2_result.IsSet);
-        }
-
-        [Fact]
         public void TestCleaning()
         {
-            var q = new TaskSemaphoreQueue<int, string>(runningTasksLimit: 1);
+            var q = new TaskSemaphoreQueue(runningTasksLimit: 1);
             var t1_block = new ManualResetEventSlim();
             var t2_result = new ManualResetEventSlim();
             var t3_result = new ManualResetEventSlim();
             var e = new ManualResetEventSlim();
 
-            q.EnqueueIfNotExists(1, "aaaa", (s) => Task.Run(() => {
+            q.EnqueueTaskFactory("aaaa", (s) => Task.Run(() => {
                 t1_block.Wait();
             }));
 
-            q.EnqueueIfNotExists(2, "aaaa", (s) => Task.Run(() => {
+            q.EnqueueTaskFactory("aaaa", (s) => Task.Run(() => {
                 t2_result.Set();
             }));
 
@@ -104,7 +69,7 @@ namespace ShareCluster.Tests
             t1_block.Set(); // unblock first
 
             // continue adding third
-            q.EnqueueIfNotExists(3, "aaaa", (s) => Task.Run(() => {
+            q.EnqueueTaskFactory("aaaa", (s) => Task.Run(() => {
                 t3_result.Set();
             }));
 
@@ -118,7 +83,7 @@ namespace ShareCluster.Tests
         [Fact]
         public void TestMultipleParallel()
         {
-            var q = new TaskSemaphoreQueue<int, string>(runningTasksLimit: 2);
+            var q = new TaskSemaphoreQueue(runningTasksLimit: 2);
             
             var t1_block_completion = new ManualResetEventSlim();
             var t2_block_completion = new ManualResetEventSlim();
@@ -131,27 +96,27 @@ namespace ShareCluster.Tests
             var t4_started = new ManualResetEventSlim();
             var t5_started = new ManualResetEventSlim();
 
-            q.EnqueueIfNotExists(1, "a", (s) => {
+            q.EnqueueTaskFactory("a", (s) => {
                 t1_started.Set();
                 return Task.Run(() => { t1_block_completion.Wait(); });
             });
 
-            q.EnqueueIfNotExists(2, "a", (s) => {
+            q.EnqueueTaskFactory("a", (s) => {
                 t2_started.Set();
                 return Task.Run(() => { t2_block_completion.Wait(); });
             });
 
-            q.EnqueueIfNotExists(3, "a", (s) => {
+            q.EnqueueTaskFactory("a", (s) => {
                 t3_started.Set();
                 return Task.Run(() => { t3_block_completion.Wait(); });
             });
 
-            q.EnqueueIfNotExists(4, "a", (s) => {
+            q.EnqueueTaskFactory("a", (s) => {
                 t4_started.Set();
                 return Task.Run(() => { t4_block_completion.Wait(); });
             });
 
-            q.EnqueueIfNotExists(5, "a", (s) => {
+            q.EnqueueTaskFactory("a", (s) => {
                 t5_started.Set();
                 return Task.Run(() => { t4_block_completion.Wait(); });
             });

@@ -45,14 +45,14 @@ namespace ShareCluster.Network
         {
             if (!Peers.ContainsKey(peer.PeerId)) return;
 
+            if (!peer.Status.IsDead) throw new InvalidOperationException("Cannot remove undead peer.");
+
             lock(_syncLock)
             {
                 _logger.LogInformation($"Removing peer {peer.PeerId}");
 
                 Peers = Peers.Remove(peer.PeerId);
             }
-
-            peer.Status.ReportDead();
         }
     }
 }
