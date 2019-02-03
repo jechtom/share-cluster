@@ -33,7 +33,7 @@ namespace ShareCluster.Network
                     return result;
                 }
 
-                _logger.LogInformation($"Adding peer {peerId}");
+                _logger.LogDebug($"Adding peer {peerId}");
 
                 result = createFunc();
                 Peers = Peers.Add(peerId, result);
@@ -49,7 +49,7 @@ namespace ShareCluster.Network
 
             lock(_syncLock)
             {
-                _logger.LogInformation($"Removing peer {peer.PeerId}");
+                _logger.LogDebug($"Removing peer {peer.PeerId}; reason={peer.Status.DeadReason}");
 
                 Peers = Peers.Remove(peer.PeerId);
             }

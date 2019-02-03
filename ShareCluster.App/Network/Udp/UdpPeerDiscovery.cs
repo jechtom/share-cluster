@@ -57,7 +57,11 @@ namespace ShareCluster.Network.Udp
 
             // enable announcer
             _udpAnnouncerTimer = new Timer((_) => SendOrPlanAnnouncement(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-            _localPackageRegistryVersionProvider.VersionChanged += (_) => SendOrPlanAnnouncement();
+            _localPackageRegistryVersionProvider.VersionChanged += (v) =>
+            {
+                _logger.LogDebug($"Received local package registry version change to {v.Version} - preparing UDP announce");
+                SendOrPlanAnnouncement();
+            };
             _networkChangeNotifier.Changed += (s, o) => ForceSendOrPlanAnnouncment();
             SendOrPlanAnnouncement(); // initial round
         }
@@ -115,7 +119,7 @@ namespace ShareCluster.Network.Udp
                 Task sendTask;
                 if (sendNow)
                 {
-                    _logger.LogInformation($"Sending UDP info. Last announced version {_udpAnnounceLastSentVersion}, current is {currentCatalogVersion}");
+                    _logger.LogDebug($"Sending UDP info. Last announced version {_udpAnnounceLastSentVersion}, current is {currentCatalogVersion}");
                     (_udpAnnounceLastSent = _udpAnnounceLastSent ?? Stopwatch.StartNew()).Restart();
                     _udpAnnounceLastSentVersion = currentCatalogVersion;
                     _udpAnnounceForce = false;

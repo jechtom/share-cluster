@@ -52,6 +52,7 @@ namespace ShareCluster.Network
             lock (_syncLock)
             {
                 if (!_processing.Add(peer.PeerId)) return;
+                _logger.LogDebug($"Fetching catalog: peer={peer.PeerId}; remote_catalog={peer.Status.CatalogKnownVersion}; local_catalog={peer.Status.CatalogAppliedVersion}");
                 _updateLimitedQueue.EnqueueTaskFactory(peer, UpdateCallAsync);
             }
         }
@@ -62,7 +63,7 @@ namespace ShareCluster.Network
             {
                 await UpdateCallInternalAsync(peer);
                 peer.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
-                _logger.LogDebug($"Updated catalog from {peer}");
+                _logger.LogDebug($"Updated catalog from {peer}; version={peer.Status.CatalogAppliedVersion}");
             }
             catch (Exception e)
             {

@@ -10,6 +10,7 @@ namespace ShareCluster.Packaging
         void IncreaseVersion();
         IImmutableDictionary<Id, LocalPackage> LocalPackages { get; }
         void AddLocalPackage(LocalPackage localPackage);
+        void AddLocalPackages(IEnumerable<LocalPackage> localPackages);
         void RemoveLocalPackage(LocalPackage localPackage);
     }
 }

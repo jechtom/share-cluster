@@ -43,10 +43,21 @@ namespace ShareCluster.Packaging
             {
                 throw new ArgumentNullException(nameof(localPackage));
             }
+            AddLocalPackages(new[] { localPackage });
+        }
+
+        public void AddLocalPackages(IEnumerable<LocalPackage> localPackages)
+        {
+            if (localPackages == null)
+            {
+                throw new ArgumentNullException(nameof(localPackages));
+            }
 
             lock (_syncLock)
             {
-                LocalPackages = LocalPackages.Add(localPackage.Id, localPackage);
+                var localPackagesImmutable = localPackages.ToImmutableDictionary(p => p.Id);
+                if (localPackagesImmutable.Count == 0) return;
+                LocalPackages = LocalPackages.AddRange(localPackagesImmutable);
                 Version = new VersionNumber(Version.Version + 1);
             }
         }

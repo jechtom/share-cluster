@@ -31,10 +31,9 @@ namespace ShareCluster.Packaging
         public void Init()
         {
             // load local packages
-            foreach (LocalPackage localPackage in _localPackageManager.Load())
-            {
-                LocalPackageRegistry.AddLocalPackage(localPackage);
-            }
+            ICollection<LocalPackage> packages = _localPackageManager.Load();
+            _logger.LogInformation($"Found {packages.Count} local package(s)");
+            LocalPackageRegistry.AddLocalPackages(packages);
         }
 
         public async Task DeletePackageAsync(LocalPackage package)
