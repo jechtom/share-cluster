@@ -19,19 +19,21 @@ namespace ShareCluster.Network.Http
         private readonly InstanceId _instanceHash;
         private readonly NetworkSettings _networkSettings;
         private readonly ILocalPackageRegistry _localPackageRegistry;
+        private readonly HttpCommonHeadersProcessor _headersProcessor;
 
         //enable to use Fiddler @ localhost: 
         //string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
 
         string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
 
-        public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceId instanceHash, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry)
+        public HttpApiClient(IMessageSerializer serializer, CompatibilityChecker compatibility, InstanceId instanceHash, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry, HttpCommonHeadersProcessor headersProcessor)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
             _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
             _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
+            _headersProcessor = headersProcessor ?? throw new ArgumentNullException(nameof(headersProcessor));
         }
 
         public Task<Messages.PackageStatusResponse> GetPackageStatusAsync(IPEndPoint endpoint, Messages.PackageStatusRequest message)
@@ -71,12 +73,15 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            using (HttpResponseMessage resultMessage = await SendRequestAsync(endpoint, nameof(HttpApiController.Data), message, stream: true))
+            (HttpResponseMessage resultMessage, CommonHeaderData resultHeaders)
+                = await SendRequestAsync(endpoint, nameof(HttpApiController.Data), message, stream: true);
+
+            using(resultMessage)
             {
                 using (Stream stream = await resultMessage.Content.ReadAsStreamAsync())
                 {
-                    // unexpected response (expected stream) == fault 
-                    if(resultMessage.Headers.TryGetValues(HttpRequestHeaderValidator.TypeHeaderName, out IEnumerable<string> typeHeaderValues))
+                    // unexpected response (expected stream) == fault
+                    if(!resultHeaders.TypeIsStream)
                     {
                         return _serializer.Deserialize<Messages.DataResponseFault>(stream);
                     }
@@ -89,7 +94,7 @@ namespace ShareCluster.Network.Http
             }
         }
         
-        private async Task<HttpResponseMessage> SendRequestAsync<TReq>(IPEndPoint endpoint, string apiName, TReq req, bool stream = false)
+        private async Task<(HttpResponseMessage, CommonHeaderData)> SendRequestAsync<TReq>(IPEndPoint endpoint, string apiName, TReq req, bool stream = false)
         {
             string uri = BuildUrl(endpoint, apiName);
             byte[] requestBytes = _serializer.Serialize(req);
@@ -101,20 +106,17 @@ namespace ShareCluster.Network.Http
 
             var requestContent = new ByteArrayContent(requestBytes);
             requestContent.Headers.ContentType = new MediaTypeHeaderValue(_serializer.MimeType);
-            requestContent.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, _compatibility.NetworkProtocolVersion.ToString());
-            requestContent.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, _instanceHash.Value.ToString());
-            requestContent.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, typeof(TReq).Name);
-            requestContent.Headers.Add(HttpRequestHeaderValidator.ServicePortHeaderName, _networkSettings.TcpServicePort.ToString());
-            requestContent.Headers.Add(HttpRequestHeaderValidator.CatalogVersionHeaderName, _localPackageRegistry.Version.ToString());
-            
+            _headersProcessor.AddCommonHeaders(new HttpContentHeadersWrapper(requestContent.Headers), typeof(TReq).Name);
             using (var request = new HttpRequestMessage(HttpMethod.Post, uri))
             {
                 request.Content = requestContent;
                 HttpResponseMessage resultMessage = null;
+                CommonHeaderData resultHeaders = null;
                 try
                 {
                     resultMessage = await _appClient.SendAsync(request, stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
                     resultMessage.EnsureSuccessStatusCode();
+                    resultHeaders = _headersProcessor.ReadAndValidateAndProcessCommonHeaders(endpoint.Address, new HttpContentHeadersWrapper(resultMessage.Headers));
                 }
                 catch
                 {
@@ -124,7 +126,7 @@ namespace ShareCluster.Network.Http
                     }
                     throw;
                 }
-                return resultMessage;
+                return (resultMessage, resultHeaders);
             }
         }
 
@@ -135,7 +137,10 @@ namespace ShareCluster.Network.Http
 
         private async Task<TRes> SendRequestAndGetResponeAsync<TReq, TRes>(IPEndPoint endpoint, string apiName, TReq req)
         {
-            using (HttpResponseMessage resultMessage = await SendRequestAsync(endpoint, apiName, req))
+            (HttpResponseMessage resultMessage, CommonHeaderData resultHeaders)
+                = await SendRequestAsync(endpoint, apiName, req);
+
+            using (resultMessage)
             {
                 using (Stream stream = await resultMessage.Content.ReadAsStreamAsync())
                 {

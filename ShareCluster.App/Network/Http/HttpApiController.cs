@@ -26,21 +26,18 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public CatalogDataResponse GetCatalog([FromBody]CatalogDataRequest request)
         {
-            _peerController.ReportSuccessCommunicationWithCatalogVersion(PeerId, PeerCatalogVersion, PeerCommunicationType.TcpFromPeer);
             return _peerController.GetCatalog(request);
         }
 
         [HttpPost]
         public PackageResponse GetPackage([FromBody]PackageRequest request)
         {
-            _peerController.ReportSuccessCommunicationWithCatalogVersion(PeerId, PeerCatalogVersion, PeerCommunicationType.TcpFromPeer);
             return _peerController.GetPackage(request);
         }
 
         [HttpPost]
         public PackageStatusResponse GetPackageStatus([FromBody]PackageStatusRequest request)
         {
-            _peerController.ReportSuccessCommunicationWithCatalogVersion(PeerId, PeerCatalogVersion, PeerCommunicationType.TcpFromPeer);
             PackageStatusResponse result = _peerController.GetPackageStatus(request);
             return result;
         }
@@ -48,8 +45,6 @@ namespace ShareCluster.Network.Http
         [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
-            _peerController.ReportSuccessCommunicationWithCatalogVersion(PeerId, PeerCatalogVersion, PeerCommunicationType.TcpFromPeer);
-
             // create stream
             (Stream stream, DataResponseFault fault) = _peerController.GetDataStream(request);
 

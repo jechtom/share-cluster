@@ -102,6 +102,7 @@ namespace ShareCluster
             services.AddSingleton<PackageStatusUpdater>();
             services.AddSingleton<PackageMetadataSerializer>();
             services.AddSingleton<PackageDetailDownloader>();
+            services.AddSingleton<HttpCommonHeadersProcessor>();
             services.AddSingleton<PackageSerializerFacade>();
             services.AddSingleton<INetworkChangeNotifier, NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();

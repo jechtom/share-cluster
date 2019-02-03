@@ -24,7 +24,7 @@ namespace ShareCluster.Network.Http
             if (!(context.HttpContext.Request.ContentType ?? "").Equals(serializer.MimeType, StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            if (!context.HttpContext.Request.Headers.TryGetValue(HttpRequestHeaderValidator.TypeHeaderName, out StringValues typeHeadValues))
+            if (!context.HttpContext.Request.Headers.TryGetValue(HttpCommonHeadersProcessor.TypeHeaderName, out StringValues typeHeadValues))
                 return false;
 
             if (context.ModelType.Name != typeHeadValues.ToString())
@@ -54,17 +54,8 @@ namespace ShareCluster.Network.Http
         {
             IServiceProvider serviceProvider = context.HttpContext.RequestServices;
             IMessageSerializer serializer = serviceProvider.GetRequiredService<IMessageSerializer>();
-            CompatibilityChecker compatibilityChecker = serviceProvider.GetRequiredService<CompatibilityChecker>();
-            InstanceId instanceHash = serviceProvider.GetRequiredService<InstanceId>();
-            NetworkSettings networkSettings = serviceProvider.GetRequiredService<NetworkSettings>();
-            ILocalPackageRegistry localPackageRegistry = serviceProvider.GetRequiredService<ILocalPackageRegistry>();
-
+            
             // add headers
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.TypeHeaderName, context.ObjectType.Name);
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.VersionHeaderName, compatibilityChecker.NetworkProtocolVersion.ToString());
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.InstanceHeaderName, instanceHash.Value.ToString());
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.ServicePortHeaderName, networkSettings.TcpServicePort.ToString());
-            context.HttpContext.Response.Headers.Add(HttpRequestHeaderValidator.CatalogVersionHeaderName, localPackageRegistry.Version.ToString());
             context.ContentType = serializer.MimeType;
 
             // serialize
