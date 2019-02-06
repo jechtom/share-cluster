@@ -52,7 +52,7 @@ namespace ShareCluster.Network
             lock (_syncLock)
             {
                 if (!_processing.Add(peer.PeerId)) return;
-                _logger.LogDebug($"Fetching catalog: peer={peer.PeerId}; remote_catalog={peer.Status.CatalogKnownVersion}; local_catalog={peer.Status.CatalogAppliedVersion}");
+                _logger.LogDebug($"Fetching catalog: peer={peer.PeerId}; {peer.Status.Catalog}");
                 _updateLimitedQueue.EnqueueTaskFactory(peer, UpdateCallAsync);
             }
         }
@@ -63,7 +63,7 @@ namespace ShareCluster.Network
             {
                 await UpdateCallInternalAsync(peer);
                 peer.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
-                _logger.LogDebug($"Updated catalog from {peer}; version={peer.Status.CatalogAppliedVersion}");
+                _logger.LogDebug($"Updated catalog from {peer}; version={peer.Status.Catalog.LocalVersion}");
             }
             catch (Exception e)
             {
@@ -81,7 +81,7 @@ namespace ShareCluster.Network
         {
             var request = new CatalogDataRequest()
             {
-                KnownCatalogVersion = peer.Status.CatalogAppliedVersion
+                KnownCatalogVersion = peer.Status.Catalog.LocalVersion
             };
 
             CatalogDataResponse catalogResult = await _apiClient.GetCatalogAsync(peer.EndPoint, request);
@@ -117,7 +117,7 @@ namespace ShareCluster.Network
                 }
                 _remotePackageRegistry.UpdateOcurrencesForPeer(peer.PeerId, occurences);
             }
-            peer.Status.UpdateCatalogAppliedVersion(catalogResult.CatalogVersion);
+            peer.Status.Catalog.UpdateLocalVersion(catalogResult.CatalogVersion);
         }
 
         public void ForgetPeer(PeerInfo peer)

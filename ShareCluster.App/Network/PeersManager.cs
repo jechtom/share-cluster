@@ -37,7 +37,7 @@ namespace ShareCluster.Network
         {
             // received header from peer - report
             PeerInfo peer = GetOrCreatePeerInfo(headerData.PeerId);
-            peer.Status.UpdateCatalogKnownVersion(headerData.CatalogVersion);
+            peer.Status.Catalog.UpdateRemoteVersion(headerData.CatalogVersion);
             peer.Status.ReportCommunicationSuccess(headerData.CommunicationType);
         }
 
@@ -54,11 +54,11 @@ namespace ShareCluster.Network
             else
             {
                 // handle UDP announce discovery
-                peerInfo.Status.UpdateCatalogKnownVersion(e.CatalogVersion);
+                peerInfo.Status.Catalog.UpdateRemoteVersion(e.CatalogVersion);
                 peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.UdpDiscovery);
 
                 // schedule update of catalog
-                if (!peerInfo.Status.IsCatalogUpToDate) _peerCatalogUpdater.ScheduleUpdateFromPeer(peerInfo);
+                if (!peerInfo.Status.Catalog.IsUpToDate) _peerCatalogUpdater.ScheduleUpdateFromPeer(peerInfo);
             }
         }
 
@@ -101,7 +101,7 @@ namespace ShareCluster.Network
                 }
 
                 // schedule updates of catalog
-                if (!peer.Status.IsCatalogUpToDate)
+                if (!peer.Status.Catalog.IsUpToDate)
                 {
                     _peerCatalogUpdater.ScheduleUpdateFromPeer(peer);
                 }
