@@ -9,7 +9,7 @@ namespace ShareCluster
     /// </summary>
     public class InstanceId
     {
-        public InstanceId(CryptoProvider crypto)
+        public InstanceId(CryptoFacade crypto)
         {
             if (crypto == null)
             {

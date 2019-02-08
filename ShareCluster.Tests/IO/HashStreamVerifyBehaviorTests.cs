@@ -21,7 +21,7 @@ namespace ShareCluster.Tests.IO
         [Fact]
         public void VerifyCorrectAllPackage()
         {
-            CryptoProvider crypto = DefaultServices.DefaultCrypto;
+            CryptoFacade crypto = DefaultServices.DefaultCrypto;
             ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
 
             PackageGenerator.Result genPackage =
@@ -56,7 +56,7 @@ namespace ShareCluster.Tests.IO
         [Fact]
         public void VerifyIncorrectPackage()
         {
-            CryptoProvider crypto = DefaultServices.DefaultCrypto;
+            CryptoFacade crypto = DefaultServices.DefaultCrypto;
             ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
 
             PackageGenerator.Result genPackage =
@@ -99,7 +99,7 @@ namespace ShareCluster.Tests.IO
         [Fact]
         public void VerifyCorrectPartPackage()
         {
-            CryptoProvider crypto = DefaultServices.DefaultCrypto;
+            CryptoFacade crypto = DefaultServices.DefaultCrypto;
             ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
 
             PackageGenerator.Result genPackage =
@@ -149,7 +149,7 @@ namespace ShareCluster.Tests.IO
         [Fact]
         public void VerifyIncorrectPartPackage()
         {
-            CryptoProvider crypto = DefaultServices.DefaultCrypto;
+            CryptoFacade crypto = DefaultServices.DefaultCrypto;
             ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
 
             PackageGenerator.Result genPackage =

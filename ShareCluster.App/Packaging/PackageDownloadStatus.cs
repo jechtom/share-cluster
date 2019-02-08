@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ShareCluster.Synchronization;
 using ShareCluster.Network.Messages;
 
 namespace ShareCluster.Packaging
@@ -8,7 +9,7 @@ namespace ShareCluster.Packaging
     public class PackageDownloadStatus
     {
         private readonly object _syncLock = new object();
-        private readonly ResourceLocks _locks;
+        private readonly EntityLock _locks;
         private readonly PackageSplitInfo _splitInfo;
         private readonly byte _lastByteMask;
         private long _progressBytesReserved;
@@ -17,7 +18,7 @@ namespace ShareCluster.Packaging
         
         public PackageDownloadStatus(PackageSplitInfo splitInfo, byte[] segmentsBitmap, bool isDownloading)
         {
-            _locks = new ResourceLocks();
+            _locks = new EntityLock();
             _splitInfo = splitInfo ?? throw new ArgumentNullException(nameof(splitInfo));
             _partsInProgress = new HashSet<int>();
 
@@ -46,7 +47,7 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public ResourceLocks Locks => _locks;
+        public EntityLock Locks => _locks;
         public long BytesDownloaded => _bytesDownloaded;
         public long BytesTotal => _splitInfo.PackageSize;
         public bool IsDownloaded => SegmentsBitmap == null;

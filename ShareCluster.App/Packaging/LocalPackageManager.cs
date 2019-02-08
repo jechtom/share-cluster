@@ -22,7 +22,7 @@ namespace ShareCluster.Packaging
         private readonly ILoggerFactory _loggerFactory;
         private readonly FolderStreamSerializer _folderStreamSerializer;
         private readonly PackageSplitBaseInfo _defaultSplitInfo;
-        private readonly CryptoProvider _crypto;
+        private readonly CryptoFacade _crypto;
 
         public LocalPackageManager(
             PackageFolderRepository packageFolderRepository,
@@ -30,7 +30,7 @@ namespace ShareCluster.Packaging
             ILoggerFactory loggerFactory,
             FolderStreamSerializer folderStreamSerializer,
             PackageSplitBaseInfo defaultSplitInfo,
-            CryptoProvider crypto)
+            CryptoFacade crypto)
         {
             _packageFolderRepository = packageFolderRepository ?? throw new ArgumentNullException(nameof(packageFolderRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

@@ -15,7 +15,7 @@ namespace ShareCluster.Packaging.IO
     public class HashStreamController : IStreamController
     {
         private readonly ILogger<HashStreamController> _logger;
-        private readonly CryptoProvider _cryptoProvider;
+        private readonly CryptoFacade _cryptoProvider;
         private readonly IHashStreamBehavior _behavior;
         private CurrentPart _currentPart;
         private readonly MemoryStream _memStream;
@@ -25,7 +25,7 @@ namespace ShareCluster.Packaging.IO
         private Stream _nestedStream;
 
         /// <param name="nestedStream">Can be null if you just want to validate hashes.</param>
-        public HashStreamController(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider, IHashStreamBehavior behavior, Stream nestedStream)
+        public HashStreamController(ILoggerFactory loggerFactory, CryptoFacade cryptoProvider, IHashStreamBehavior behavior, Stream nestedStream)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<HashStreamController>();
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));

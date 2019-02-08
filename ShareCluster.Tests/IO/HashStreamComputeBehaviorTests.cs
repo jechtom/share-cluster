@@ -20,7 +20,7 @@ namespace ShareCluster.Tests.IO
         [Fact]
         public void SinglePartTest()
         {
-            CryptoProvider crypto = DefaultServices.DefaultCrypto;
+            CryptoFacade crypto = DefaultServices.DefaultCrypto;
             ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
 
             byte[] sourceBytes = Encoding.ASCII.GetBytes("Hello there!");
@@ -55,7 +55,7 @@ namespace ShareCluster.Tests.IO
         [Fact]
         public void MultiPartTest()
         {
-            CryptoProvider crypto = DefaultServices.DefaultCrypto;
+            CryptoFacade crypto = DefaultServices.DefaultCrypto;
             ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
 
             byte[] sourceBytes = Encoding.ASCII.GetBytes("Hello12345ABC");

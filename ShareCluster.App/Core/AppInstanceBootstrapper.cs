@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster
+namespace ShareCluster.Core
 {
     /// <summary>
     /// Provides direct access to most common services and starts application. Use <see cref="AppInstance"/> to create it.

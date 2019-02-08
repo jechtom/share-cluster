@@ -1,4 +1,5 @@
-﻿using ShareCluster.Network;
+﻿using ShareCluster.Core;
+using ShareCluster.Network;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.PackageFolders;
 using System;

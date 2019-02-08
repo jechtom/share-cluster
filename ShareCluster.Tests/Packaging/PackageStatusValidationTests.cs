@@ -1,4 +1,5 @@
-﻿using ShareCluster.Network.Messages;
+﻿using ShareCluster.Core;
+using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using System;
 using System.Linq;

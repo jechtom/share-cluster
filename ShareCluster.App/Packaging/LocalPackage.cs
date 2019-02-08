@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ShareCluster.Synchronization;
 using ShareCluster.Network;
 using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
@@ -26,7 +27,7 @@ namespace ShareCluster.Packaging
         public IPackageDataAccessor DataAccessor { get; }
 
         public PackageSplitInfo SplitInfo => Definition.PackageSplitInfo;
-        public ResourceLocks Locks => DownloadStatus.Locks; // investigate - how it is used?
+        public EntityLock Locks => DownloadStatus.Locks; // investigate - how it is used?
 
         public MeasureItem DownloadMeasure { get; }
         public MeasureItem UploadMeasure { get; }

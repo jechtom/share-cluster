@@ -1,16 +1,10 @@
-﻿using ShareCluster.Network.Messages;
-using ShareCluster.Packaging;
-using ShareCluster.Packaging.Dto;
+﻿using ShareCluster.Synchronization;
 using System;
-using System.Collections.Immutable;
-using System.IO;
-using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace ShareCluster.Tests
+namespace ShareCluster.Tests.Synchronization
 {
     public class TaskSemaphoreTests
     {

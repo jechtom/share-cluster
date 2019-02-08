@@ -4,12 +4,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ShareCluster
+namespace ShareCluster.Synchronization
 {
     /// <summary>
-    /// Provides logic for locking entity when is in use.
+    /// Provides shared locks (allowing multiple locks at the same time) with synchronization to deleted state.
+    /// When marked for deletion it will not allow obtaining new shared locks and waits for all shared locks to be released.
     /// </summary>
-    public class ResourceLocks
+    public class EntityLock
     {
         private readonly object _syncLock = new object();
 
@@ -18,7 +19,7 @@ namespace ShareCluster
 
         public bool IsMarkedToDelete { get; private set; }
         
-        public Task MarkForDelete()
+        public Task MarkForDeletionAsync()
         {
             lock(_syncLock)
             {
@@ -35,7 +36,7 @@ namespace ShareCluster
             return _deletedFinished.Task;
         }
 
-        public bool TryLock(out object token)
+        public bool TryObtainSharedLock(out object token)
         {
             lock (_syncLock)
             {
@@ -50,16 +51,16 @@ namespace ShareCluster
             }
         }
 
-        public object Lock()
+        public object ObtainSharedLock()
         {
-            if(!TryLock(out object result))
+            if(!TryObtainSharedLock(out object result))
             {
                 throw new InvalidOperationException("No more locks can be created for this resource. It is marked to deleted.");
             }
             return result;
         }
 
-        public void Unlock(object token)
+        public void ReleaseSharedLock(object token)
         {
             lock (_syncLock)
             {

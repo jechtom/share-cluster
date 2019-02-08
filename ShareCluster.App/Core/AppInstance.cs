@@ -17,7 +17,7 @@ using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
 using ShareCluster.Network.Udp;
 
-namespace ShareCluster
+namespace ShareCluster.Core
 {
     /// <summary>
     /// Class starting all neccessary services to run <see cref="AppInstanceBootstrapper"/>.

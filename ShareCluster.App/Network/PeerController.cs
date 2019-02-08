@@ -197,7 +197,7 @@ namespace ShareCluster.Network
             }
 
             // obtain lock
-            if (!package.Locks.TryLock(out object lockToken))
+            if (!package.Locks.TryObtainSharedLock(out object lockToken))
             {
                 return (null, DataResponseFault.CreateDataPackageNotFoundMessage());
             }
@@ -209,7 +209,7 @@ namespace ShareCluster.Network
                 .CreateStream(_loggerFactory, package.UploadMeasure);
 
             stream.Disposing += () => {
-                package.Locks.Unlock(lockToken);
+                package.Locks.ReleaseSharedLock(lockToken);
             };
             return (stream, null);
 

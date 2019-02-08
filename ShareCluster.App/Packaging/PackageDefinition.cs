@@ -22,7 +22,7 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public static PackageDefinition Build(CryptoProvider cryptoProvider, IEnumerable<Id> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
+        public static PackageDefinition Build(CryptoFacade cryptoProvider, IEnumerable<Id> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
         {
             var packageSegmentsHashes = packageSegmentsHashesSource.ToImmutableArray();
             Id packageId = cryptoProvider.HashFromHashes(packageSegmentsHashes);

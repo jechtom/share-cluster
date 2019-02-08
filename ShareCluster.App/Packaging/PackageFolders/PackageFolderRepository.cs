@@ -26,14 +26,14 @@ namespace ShareCluster.Packaging.PackageFolders
 
         private readonly ILogger<PackageFolderRepository> _logger;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly CryptoProvider _crypto;
+        private readonly CryptoFacade _crypto;
         private readonly PackageSerializerFacade _serializerFacade;
         private readonly PackageFolderDataAccessorBuilder _accessorBuilder;
 
         public PackageFolderRepository(
             ILogger<PackageFolderRepository> logger,
             ILoggerFactory loggerFactory,
-            CryptoProvider crypto,
+            CryptoFacade crypto,
             PackageFolderRepositorySettings settings,
             PackageSerializerFacade serializerFacade,
             PackageFolderDataAccessorBuilder accessorBuilder

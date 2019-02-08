@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Synchronization;
 
 namespace ShareCluster.Network
 {

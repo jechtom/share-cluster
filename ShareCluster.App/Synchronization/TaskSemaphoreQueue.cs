@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ShareCluster
+namespace ShareCluster.Synchronization
 {
     /// <summary>
     /// Task scheduler with limit for number of running task in parallel and deduplication by given <typeparamref name="TKey"/>.

@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using ShareCluster.Network;
+using ShareCluster.Core;
 using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
@@ -362,7 +362,7 @@ namespace ShareCluster.Network
                 try
                 {
                     // try allocate lock (make sure it will be release if allocation is approved)
-                    if (!_package.Locks.TryLock(out _lockToken))
+                    if (!_package.Locks.TryObtainSharedLock(out _lockToken))
                     {
                         // already marked for deletion
                         return (PackageDownloadSlotResult.MarkedForDelete, null);
@@ -424,7 +424,7 @@ namespace ShareCluster.Network
                 // release package lock
                 if (_isPackageLockReleaseNeeded)
                 {
-                    _package.Locks.Unlock(_lockToken);
+                    _package.Locks.ReleaseSharedLock(_lockToken);
                     _isPackageLockReleaseNeeded = false;
                 }
 

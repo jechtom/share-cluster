@@ -12,10 +12,10 @@ namespace ShareCluster.Packaging.PackageFolders
     public class PackageFolderDataValidator
     {
         private readonly ILoggerFactory _loggerFactory;
-        private readonly CryptoProvider _cryptoProvider;
+        private readonly CryptoFacade _cryptoProvider;
         private readonly ILogger<PackageFolderDataValidator> _logger;
 
-        public PackageFolderDataValidator(ILoggerFactory loggerFactory, CryptoProvider cryptoProvider)
+        public PackageFolderDataValidator(ILoggerFactory loggerFactory, CryptoFacade cryptoProvider)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
@@ -74,7 +74,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
 
             // before working with files - obtain lock to make sure package is not deleted on check
-            if (!package.Locks.TryLock(out object lockToken))
+            if (!package.Locks.TryObtainSharedLock(out object lockToken))
             {
                 throw new InvalidOperationException("Can't obtain lock for this package. It is marked for deletion.");
             }
@@ -138,7 +138,7 @@ namespace ShareCluster.Packaging.PackageFolders
             }
             finally
             {
-                package.Locks.Unlock(lockToken);
+                package.Locks.ReleaseSharedLock(lockToken);
             }
         }
     }

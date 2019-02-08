@@ -11,7 +11,7 @@ namespace ShareCluster.Packaging.IO
     public class PackageDefinitionSerializer
     {
         private readonly IMessageSerializer _serializer;
-        private readonly CryptoProvider _cryptoProvider;
+        private readonly CryptoFacade _cryptoProvider;
         private readonly ILogger<PackageDefinitionSerializer> _logger;
 
         /// <summary>
@@ -19,7 +19,7 @@ namespace ShareCluster.Packaging.IO
         /// </summary>
         public VersionNumber SerializerVersion { get; } = new VersionNumber(1);
 
-        public PackageDefinitionSerializer(IMessageSerializer serializer, CryptoProvider cryptoProvider, ILogger<PackageDefinitionSerializer> logger)
+        public PackageDefinitionSerializer(IMessageSerializer serializer, CryptoFacade cryptoProvider, ILogger<PackageDefinitionSerializer> logger)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));

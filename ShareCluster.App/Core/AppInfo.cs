@@ -9,11 +9,11 @@ using System.IO;
 using System.Reflection;
 using ShareCluster.Packaging.IO;
 
-namespace ShareCluster
+namespace ShareCluster.Core
 {
     public class AppInfo
     {
-        public static CryptoProvider CreateDefaultCryptoProvider() => new CryptoProvider(() => new SHA256Managed());
+        public static CryptoFacade CreateDefaultCryptoProvider() => new CryptoFacade(() => new SHA256Managed());
 
         public static AppInfo CreateCurrent(LogLevel logLevel)
         {
@@ -34,7 +34,7 @@ namespace ShareCluster
 
             //to enable logging of messages: var serializer = new LoggingMessageSerializer(new ProtoBufMessageSerializer(), @"c:\todel\logs2\");
             var serializer = new ProtoBufMessageSerializer();
-            CryptoProvider crypto = CreateDefaultCryptoProvider();
+            CryptoFacade crypto = CreateDefaultCryptoProvider();
             var result = new AppInfo()
             {
                 DataRootPath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "data"),
@@ -98,7 +98,7 @@ namespace ShareCluster
         /// </summary>
         public string DataRootPathExtractDefault { get; private set; }
         
-        public CryptoProvider Crypto { get; private set; }
+        public CryptoFacade Crypto { get; private set; }
         public VersionNumber NetworkVersion { get; private set; }
         public VersionNumber AppVersion { get; private set; }
         public IMessageSerializer MessageSerializer { get; private set; }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ShareCluster
+namespace ShareCluster.Core
 {
     public class AppInstanceSettings
     {

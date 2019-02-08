@@ -17,6 +17,7 @@ using System.Net;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ShareCluster.Core;
 
 namespace ShareCluster
 {

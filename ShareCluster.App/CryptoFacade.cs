@@ -5,12 +5,12 @@ using System.Security.Cryptography;
 
 namespace ShareCluster
 {
-    public class CryptoProvider
+    public class CryptoFacade
     {
         RandomNumberGenerator _randomGenerator;
         readonly Func<HashAlgorithm> _hashAlgFactory;
         
-        public CryptoProvider(Func<HashAlgorithm> algorithmFactory)
+        public CryptoFacade(Func<HashAlgorithm> algorithmFactory)
         {
             _randomGenerator = new RNGCryptoServiceProvider();
             _hashAlgFactory = algorithmFactory ?? throw new ArgumentNullException(nameof(algorithmFactory));

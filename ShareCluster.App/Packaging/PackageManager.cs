@@ -48,7 +48,7 @@ namespace ShareCluster.Packaging
             lock (_syncLock)
             {
                 if (package.Locks.IsMarkedToDelete) return;
-                waitForReleaseLocksTask = package.Locks.MarkForDelete();
+                waitForReleaseLocksTask = package.Locks.MarkForDeletionAsync();
             }
 
             // forget
@@ -72,7 +72,7 @@ namespace ShareCluster.Packaging
             }
 
             // rent package lock
-            if (!package.Locks.TryLock(out object lockToken))
+            if (!package.Locks.TryObtainSharedLock(out object lockToken))
             {
                 throw new InvalidOperationException("Package is marked to delete, can't extract it.");
             }
@@ -102,7 +102,7 @@ namespace ShareCluster.Packaging
             }
             finally
             {
-                package.Locks.Unlock(lockToken);
+                package.Locks.ReleaseSharedLock(lockToken);
             }
         }
 
