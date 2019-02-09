@@ -63,13 +63,12 @@ namespace ShareCluster.Network
             try
             {
                 await UpdateCallInternalAsync(peer);
-                peer.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
                 _logger.LogDebug($"Updated catalog from {peer}; version={peer.Status.Catalog.LocalVersion}");
+                peer.HandlePeerCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
             }
             catch (Exception e)
             {
-                peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
-                _logger.LogWarning($"Catalog updater failed for peer {peer}", e);
+                peer.HandlePeerCommunicationException(e, PeerCommunicationDirection.TcpOutgoing);
             }
             finally
             {

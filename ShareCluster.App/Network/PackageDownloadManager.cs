@@ -7,6 +7,7 @@ using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -37,6 +38,7 @@ namespace ShareCluster.Network
         private readonly PackageDetailDownloader _packageDetailDownloader;
         private readonly NetworkSettings _networkSettings;
         private readonly StreamsFactory _streamsFactory;
+        private readonly PackageDownloadSlotFactory _slotFactory;
         private bool _isNextTryScheduled = false;
 
         public PackageDefinitionSerializer _packageDefinitionSerializer;
@@ -54,7 +56,8 @@ namespace ShareCluster.Network
             PackageStatusUpdater packageStatusUpdater,
             PackageDetailDownloader packageDetailDownloader,
             NetworkSettings networkSettings,
-            StreamsFactory streamsFactory
+            StreamsFactory streamsFactory,
+            PackageDownloadSlotFactory slotFactory
             )
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -69,6 +72,7 @@ namespace ShareCluster.Network
             _packageDetailDownloader = packageDetailDownloader ?? throw new ArgumentNullException(nameof(packageDetailDownloader));
             _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             _streamsFactory = streamsFactory ?? throw new ArgumentNullException(nameof(streamsFactory));
+            _slotFactory = slotFactory ?? throw new ArgumentNullException(nameof(slotFactory));
             _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
             _downloadSlots = new List<PackageDownloadSlot>();
             _packagesDownloading = new Dictionary<Id, LocalPackage>();
@@ -206,33 +210,6 @@ namespace ShareCluster.Network
             DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = package, HasStopped = true });
         }
 
-        public PackageStatusResponse GetPackageStatusResponse(Id[] packageIds)
-        {
-            var packages = new PackageStatusItem[packageIds.Length];
-            for (int i = 0; i < packageIds.Length; i++)
-            {
-                var detail = new PackageStatusItem();
-                Id id = packageIds[i];
-                packages[i] = detail;
-                if (!_localPackageRegistry.LocalPackages.TryGetValue(id, out LocalPackage info) || info.Locks.IsMarkedToDelete)
-                {
-                    detail.IsFound = false;
-                    continue;
-                }
-
-                // found 
-                detail.IsFound = true;
-                detail.BytesDownloaded = info.DownloadStatus.BytesDownloaded;
-                detail.SegmentsBitmap = info.DownloadStatus.SegmentsBitmap;
-            }
-
-            var result = new PackageStatusResponse()
-            {
-                Packages = packages
-            };
-            return result;
-        }
-        
         private void UpdateQueue(LocalPackage package, bool isInterested)
         {
             _logger.LogInformation($"Package {package} download status: {package.DownloadStatus}");
@@ -276,30 +253,47 @@ namespace ShareCluster.Network
                 int packageRandomIndex = ThreadSafeRandom.Next(0, _packagesDownloading.Count);
                 LocalPackage package = _packagesDownloading.ElementAt(packageRandomIndex).Value;
 
-                List<PeerInfo> tmpPeers = _packageStatusUpdater.GetClientListForPackage(package);
+                if(!_remotePackageRegistry.RemotePackages.TryGetValue(package.Id, out RemotePackage remotePackage))
+                {
+                    // not found
+                    return;
+                }
+
+                remotePackage.Peers;
 
                 while (_downloadSlots.Count < _networkThrottling.DownloadSlots.Limit && tmpPeers.Any())
                 {
                     // pick random peer
                     int peerIndex = ThreadSafeRandom.Next(0, tmpPeers.Count);
-                    PeerInfo peer = tmpPeers[peerIndex];
-                    tmpPeers.RemoveAt(peerIndex);
-
-                    // create slot and try find
-                    var slot = new PackageDownloadSlot(this, package, peer);
-                    (PackageDownloadSlotResult result, Task<bool> task) = slot.TryStart();
-
-                    // exit now (cannot continue for package) - package has been deleted or we're waiting for last part to finish download
-                    if (result == PackageDownloadSlotResult.MarkedForDelete || result == PackageDownloadSlotResult.NoMoreToDownload) return;
-
-                    // cannot allocate for other reasons - continue
-                    if (task == null) continue;
-
-                    // schedule next check to deploy slots
-                    task.ContinueWith(t =>
+                    PeerId peerId = tmpPeers[peerIndex];
+                    tmpPeers = tmpPeers.Remove(peerId);
+                    if(!_peerRegistry.Peers.TryGetValue(peerId, out PeerInfo peer))
                     {
-                        TryScheduleNextDownload();
-                    });
+                        continue;
+                    }
+
+                    // create slot and try download
+                    PackageDownloadSlot slot = _slotFactory.Create(this, package, peer);
+                    PackageDownloadSlotResult result = slot.TryStartAsync();
+
+                    switch (result.Status)
+                    {
+                        case PackageDownloadSlotResultStatus.MarkedForDelete:
+                        case PackageDownloadSlotResultStatus.NoMoreToDownload:
+                            return; // exit now (cannot continue for package) - package has been deleted or we're waiting for last part to finish download
+                        case PackageDownloadSlotResultStatus.Error:
+                        case PackageDownloadSlotResultStatus.NoMatchWithPeer:
+                            continue; // cannot allocate for other reasons - continue
+                        case PackageDownloadSlotResultStatus.Started:
+                            // schedule next check to deploy slots
+                            result.DownloadTask.ContinueWith(t =>
+                            {
+                                TryScheduleNextDownload();
+                            });
+                            continue;
+                        default:
+                            throw new InvalidOperationException($"Unexpected enum value: {result.Status}");
+                    }
                 }
 
                 if (_isNextTryScheduled)
@@ -338,302 +332,5 @@ namespace ShareCluster.Network
         }
 
         public event Action<DownloadStatusChange> DownloadStatusChange;
-
-        class PackageDownloadSlot
-        {
-            private readonly PackageDownloadManager _parent;
-            private readonly LocalPackage _package;
-            private readonly PeerInfo _peer;
-
-            private int[] _segments;
-            private bool _isSegmentsReleasedNeeded;
-
-            private object _lockToken;
-            private bool _isPackageLockReleaseNeeded;
-
-            private Task<bool> _task;
-
-            public PackageDownloadSlot(PackageDownloadManager parent, LocalPackage package, PeerInfo peer)
-            {
-                _parent = parent ?? throw new ArgumentNullException(nameof(parent));
-                _package = package ?? throw new ArgumentNullException(nameof(package));
-                _peer = peer ?? throw new ArgumentNullException(nameof(peer));
-            }
-
-            public (PackageDownloadSlotResult, Task<bool>) TryStart()
-            {
-                bool hasStarted = false;
-                try
-                {
-                    // try allocate lock (make sure it will be release if allocation is approved)
-                    if (!_package.Locks.TryObtainSharedLock(out _lockToken))
-                    {
-                        // already marked for deletion
-                        return (PackageDownloadSlotResult.MarkedForDelete, null);
-                    }
-                    _isPackageLockReleaseNeeded = true;
-                
-                    // is there any more work for now?
-                    if (!_package.DownloadStatus.IsMoreToDownload)
-                    {
-                        _parent._logger.LogTrace("No more work for package {0}", _package);
-                        return (PackageDownloadSlotResult.NoMoreToDownload, null);
-                    }
-
-                    // select random segments to download
-                    if (!_parent._packageStatusUpdater.TryGetBitmapOfPeer(_package, _peer, out byte[] remoteBitmap))
-                    {
-                        // this peer didn't provided bitmap yet, skip it
-                        _parent._packageStatusUpdater.PostponePeersPackage(_package, _peer);
-                        return (PackageDownloadSlotResult.NoMatchWithPeer, null);
-                    }
-
-                    // try to reserve segments for download
-                    _segments = _package.DownloadStatus.TrySelectSegmentsForDownload(remoteBitmap, _parent._networkSettings.SegmentsPerRequest);
-                    if (_segments == null || _segments.Length == 0)
-                    {
-                        // not compatible - try again later - this peer don't have what we need
-                        // and consider marking peer as for fast update - maybe he will have some data soon
-                        if (_package.DownloadStatus.Progress < 0.333)
-                        {
-                            // remark: fast update when we don't have lot of package downloaded => it is big chance that peer will download part we don't have
-                            _parent._packageStatusUpdater.MarkPeerForFastUpdate(_peer);
-                        }
-                        _parent._packageStatusUpdater.PostponePeersPackage(_package, _peer);
-                        return (PackageDownloadSlotResult.NoMatchWithPeer, null);
-                    }
-                    _isSegmentsReleasedNeeded = true;
-
-                    // we're ready to download
-                    hasStarted = true;
-                    return (PackageDownloadSlotResult.Started, (_task = Start()));
-                }
-                catch (Exception error)
-                {
-                    _parent._logger.LogError(error, "Unexpected downloaded failure.");
-                    return (PackageDownloadSlotResult.Error, null);
-                }
-                finally
-                {
-                    // if we're not ready to start, release all locks
-                    if(!hasStarted)
-                    {
-                        ReleaseLocks();
-                    }
-                }
-            }
-
-            private void ReleaseLocks()
-            {
-                // release package lock
-                if (_isPackageLockReleaseNeeded)
-                {
-                    _package.Locks.ReleaseSharedLock(_lockToken);
-                    _isPackageLockReleaseNeeded = false;
-                }
-
-                // release locked segments
-                if(_isSegmentsReleasedNeeded)
-                {
-                    _package.DownloadStatus.ReturnLockedSegments(_segments, areDownloaded: false);
-                    _isSegmentsReleasedNeeded = false;
-                }
-            }
-
-            private async Task<bool> Start()
-            {
-                lock (_parent._syncLock)
-                {
-                    _parent._downloadSlots.Add(this);
-                }
-
-                try
-                {
-                    // start download
-                    DownloadSegmentResult result = await DownloadSegmentsInternalAsync(_package, _segments, _peer);
-
-                    if (!result.IsSuccess)
-                    {
-                        // ignore peer for some time or until new status is received or until other slot finished successfuly
-                        _parent._packageStatusUpdater.PostponePeer(_peer);
-                        return false;
-                    }
-
-                    // success, segments are downloaded
-                    _package.DownloadStatus.ReturnLockedSegments(_segments, areDownloaded: true);
-                    _isSegmentsReleasedNeeded = false;
-
-                    // finish successful download
-                    _parent._packageStatusUpdater.StatsUpdateSuccessPart(_peer, _package, result.TotalSizeDownloaded);
-                    _parent._logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", _package.Metadata.Name, _package.Id, _peer.EndPoint, _segments.Format());
-
-                    // download finished
-                    if (_package.DownloadStatus.IsDownloaded)
-                    {
-                        // stop and update
-                        _parent.StopDownloadPackage(_package);
-                    }
-                    else
-                    {
-                        // update download status, but don't do it too often (not after each segment)
-                        // - for sure we will save it when download is completed
-                        // - worst scenario is that we would loose track about few segments that has been downloaded if app crashes
-                        if (_parent.CanUpdateDownloadStatusForPackage(_package))
-                        {
-                            _package.DataAccessor.UpdatePackageDownloadStatus(_package.DownloadStatus);
-                        }
-                    }
-                }
-                finally
-                {
-                    ReleaseLocks();
-                    lock (_parent._syncLock)
-                    {
-                        _parent._downloadSlots.Remove(this);
-                    }
-                }
-
-                _parent._packageStatusUpdater.PostponePeerReset(_peer, _package);
-                return true; // success
-            }
-
-            private async Task<DownloadSegmentResult> DownloadSegmentsInternalAsync(LocalPackage package, int[] parts, PeerInfo peer)
-            {
-                _parent._logger.LogTrace("Downloading \"{0}\" {1:s} - from {2} - segments {3}", package.Metadata.Name, package.Id, peer.EndPoint, parts.Format());
-
-                var message = new DataRequest() { PackageId = package.Id, RequestedParts = parts };
-                long totalSizeOfParts = package.SplitInfo.GetSizeOfSegments(parts);
-
-                // remarks:
-                // - write incoming stream to streamValidate
-                // - streamValidate validates data and writes it to nested streamWrite
-                // - streamWrite writes data to data files
-
-                IStreamController controllerWriter = package.DataAccessor.CreateWriteSpecificPackageData(parts);
-
-                HashStreamVerifyBehavior hashValidateBehavior
-                    = _parent._streamsFactory.CreateHashStreamBehavior(package.Definition, parts);
-
-                Stream streamWrite = null;
-
-                HashStreamController controllerValidate = null;
-                Stream streamValidate = null;
-
-                Stream createStream()
-                {
-                    var sequencer = new PackageFolderPartsSequencer();
-                    streamWrite = _parent._streamsFactory.CreateControlledStreamFor(controllerWriter);
-
-                    controllerValidate = _parent._streamsFactory.CreateHashStreamController(hashValidateBehavior, streamWrite);
-                    streamValidate = _parent._streamsFactory.CreateControlledStreamFor(controllerValidate, package.DownloadMeasure);
-
-                    return streamValidate;
-                }
-
-                var result = new DownloadSegmentResult()
-                {
-                    TotalSizeDownloaded = totalSizeOfParts,
-                    IsSuccess = false
-                };
-
-                DataResponseFault errorResponse = null;
-                long bytes = -1;
-
-                try
-                {
-                    try
-                    {
-                        errorResponse = await _parent._client.DownloadPartsAsync(peer.EndPoint, message, new Lazy<Stream>(createStream));
-                        bytes = streamValidate?.Position ?? -1;
-                    }
-                    finally
-                    {
-                        if (streamValidate != null) streamValidate.Dispose();
-                        if (controllerValidate != null) controllerValidate.Dispose();
-                        if (streamWrite != null) streamWrite.Dispose();
-                        if (controllerWriter != null) controllerWriter.Dispose();
-                    }
-                }
-                catch (HashMismatchException e)
-                {
-                    _parent._logger.LogError($"Client {peer.EndPoint} failed to provide valid data segment: {e.Message}");
-                    peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.HashMismatch);
-                    return result;
-                }
-                catch (Exception e)
-                {
-                    _parent._logger.LogError(e, $"Failed to download data segment from {peer.EndPoint}.");
-                    peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
-                    return result;
-                }
-
-                if (errorResponse != null)
-                {
-                    // choked response?
-                    if (errorResponse.IsChoked)
-                    {
-                        _parent._logger.LogTrace($"Choke response from {peer.EndPoint}.");
-                        return result;
-                    }
-
-                    // not found (client probably deleted package)
-                    if (errorResponse.PackageNotFound || errorResponse.PackageSegmentsNotFound)
-                    {
-                        _parent._logger.LogTrace($"Received not found data message from {peer.EndPoint}.");
-                        // TODO what to do? choke? probably just don't have udpated catalog
-                        return result;
-                    }
-
-                    // this should not happen (just in case I forget something to check in response)
-                    throw new InvalidOperationException("Unknown result state.");
-                }
-
-                // received all data?
-                if (totalSizeOfParts != bytes)
-                {
-                    _parent._logger.LogWarning($"Stream ended too soon from {peer.EndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.");
-                    peer.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
-                    return result;
-                }
-
-                // success
-                result.IsSuccess = true;
-                return result;
-            }
-
-            private class DownloadSegmentResult
-            {
-                public bool IsSuccess { get; set; }
-                public long TotalSizeDownloaded { get; set; }
-            }
-        }
-
-        public enum PackageDownloadSlotResult
-        {
-            /// <summary>
-            /// Error while processing.
-            /// </summary>
-            Error,
-
-            /// <summary>
-            /// Nothing more to download. It means package has just been fully downloaded or all remaining parts are now beign processed by other slots.
-            /// </summary>
-            NoMoreToDownload,
-
-            /// <summary>
-            /// Package has been marked for delete. No allocation has been done.
-            /// </summary>
-            MarkedForDelete,
-
-            /// <summary>
-            /// Peer don't have data we need by our last status update.
-            /// </summary>
-            NoMatchWithPeer,
-
-            /// <summary>
-            /// Valid segments to download from peer has been found and reserved.
-            /// </summary>
-            Started
-        }
     }
 }

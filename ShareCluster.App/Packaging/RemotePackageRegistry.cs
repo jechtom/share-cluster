@@ -15,6 +15,9 @@ namespace ShareCluster.Packaging
 
         private readonly object _syncLock = new object();
 
+        public event EventHandler<RemotePackage> PackageChanged;
+        public event EventHandler<Id> PackageRemoved;
+
         public IImmutableDictionary<Id, RemotePackage> RemotePackages { get; private set; }
 
         public void RemovePeer(PeerId peer)
@@ -30,8 +33,15 @@ namespace ShareCluster.Packaging
                 if (toReplace.Any())
                 {
                     // update packages with at leason one remaining peer and delete additional ones
-                    RemotePackages = RemotePackages.SetItems(toReplace.Where(r => r.Value.Peers.Any()));
-                    RemotePackages = RemotePackages.RemoveRange(toReplace.Where(r => !r.Value.Peers.Any()).Select(r => r.Key));
+                    var toSet = toReplace.Where(r => r.Value.Peers.Any()).ToList();
+                    var toRemove = toReplace.Where(r => !r.Value.Peers.Any()).Select(r => r.Key).ToList();
+
+                    // apply
+                    RemotePackages = RemotePackages.SetItems(toSet).RemoveRange(toRemove);
+
+                    // events
+                    toSet.ForEach(r => PackageChanged?.Invoke(this, r.Value));
+                    toRemove.ForEach(r => PackageRemoved?.Invoke(this, r));
                 }
             }
         }
@@ -99,6 +109,10 @@ namespace ShareCluster.Packaging
 
                 // apply to immutable collection
                 RemotePackages = RemotePackages.SetItems(toSet).RemoveRange(toRemove);
+
+                // events
+                toSet.ForEach(r => PackageChanged?.Invoke(this, r.Value));
+                toRemove.ForEach(r => PackageRemoved?.Invoke(this, r));
             }
         }
     }

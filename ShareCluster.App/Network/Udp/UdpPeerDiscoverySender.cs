@@ -23,13 +23,15 @@ namespace ShareCluster.Network.Udp
         private readonly NetworkSettings _settings;
         private readonly UdpPeerDiscoverySerializer _discoverySerializer;
         private readonly InstanceId _instance;
+        private readonly PeerAppVersionCompatibility _compatibility;
 
-        public UdpPeerDiscoverySender(ILogger<UdpPeerDiscoverySender> logger, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer, InstanceId instance)
+        public UdpPeerDiscoverySender(ILogger<UdpPeerDiscoverySender> logger, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer, InstanceId instance, PeerAppVersionCompatibility compatibility)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
+            _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
         }
 
         public async Task SendAnnouncmentAsync(VersionNumber catalogVersion, bool isShuttingDown)
@@ -58,7 +60,8 @@ namespace ShareCluster.Network.Udp
                 ServicePort = _settings.TcpServicePort,
                 CatalogVersion = catalogVersion,
                 PeerId = _instance.Value,
-                IsShuttingDown = isShuttingDown
+                IsShuttingDown = isShuttingDown,
+                AppVersion = _compatibility.LocalVersion
             };
             return message;
         }

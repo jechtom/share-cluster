@@ -2,7 +2,7 @@
 {
     public class CommonHeaderData
     {
-        public CommonHeaderData(VersionNumber catalogVersion, PeerId peerId, bool isLoopback, string typeString, PeerCommunicationType communicationType)
+        public CommonHeaderData(VersionNumber catalogVersion, PeerId peerId, bool isLoopback, string typeString, PeerCommunicationDirection communicationType)
         {
             CatalogVersion = catalogVersion;
             PeerId = peerId;
@@ -15,7 +15,7 @@
         public PeerId PeerId { get; }
         public bool IsLoopback { get; set; }
         public string TypeString { get; }
-        public PeerCommunicationType CommunicationType { get; }
+        public PeerCommunicationDirection CommunicationType { get; }
 
         public bool TypeIsStream => TypeString == HttpCommonHeadersProcessor.TypeHeaderForStream;
     }

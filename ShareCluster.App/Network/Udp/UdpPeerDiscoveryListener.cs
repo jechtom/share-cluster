@@ -22,16 +22,18 @@ namespace ShareCluster.Network.Udp
         private readonly NetworkSettings _settings;
         private readonly UdpPeerDiscoverySerializer _discoverySerializer;
         private readonly InstanceId _localInstanceId;
+        private readonly PeerAppVersionCompatibility _compatibility;
         private UdpClient _client;
         private CancellationTokenSource _cancel;
         private Task _task;
 
-        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer, InstanceId localInstanceId)
+        public UdpPeerDiscoveryListener(ILoggerFactory loggerFactory, NetworkSettings settings, UdpPeerDiscoverySerializer discoverySerializer, InstanceId localInstanceId, PeerAppVersionCompatibility compatibility)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<UdpPeerDiscoveryListener>();
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _discoverySerializer = discoverySerializer ?? throw new ArgumentNullException(nameof(discoverySerializer));
             _localInstanceId = localInstanceId;
+            _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
         }
 
         public void Dispose()
@@ -68,6 +70,13 @@ namespace ShareCluster.Network.Udp
                         // deserialize following message
                         announceMessage = _discoverySerializer.Deserialize(memStream);
                         if (announceMessage == null) continue; // maybe valid but incompatible
+                    }
+
+                    // ignore incompatible versions
+                    if(!_compatibility.IsCompatibleWith(receiveResult.RemoteEndPoint.Address, announceMessage.CatalogVersion))
+                    {
+                        _logger.LogTrace($"Ignored announce from {receiveResult.RemoteEndPoint.Address} - incompatible app version.");
+                        continue;
                     }
 
                     // publish message

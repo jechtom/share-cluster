@@ -110,7 +110,7 @@ namespace ShareCluster.Network.Http
                     resultMessage.EnsureSuccessStatusCode();
                     resultHeaders = _headersProcessor.ReadAndValidateAndProcessCommonHeaders(
                         endpoint.Address,
-                        PeerCommunicationType.TcpToPeer,
+                        PeerCommunicationDirection.TcpOutgoing,
                         new HttpContentHeadersWrapper(resultMessage.Headers)
                     );
                 }

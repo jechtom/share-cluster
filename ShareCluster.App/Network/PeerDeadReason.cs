@@ -4,10 +4,10 @@ using System.Text;
 
 namespace ShareCluster.Network
 {
-    public enum PeerStatusDeadReason
+    public enum PeerDeadReason
     {
-        VersionMismatch,
+        IncompatibleVersion,
         ShutdownAnnounce,
-        Failing
+        Down
     }
 }

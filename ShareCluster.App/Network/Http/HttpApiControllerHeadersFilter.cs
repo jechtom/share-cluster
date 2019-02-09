@@ -57,7 +57,7 @@ namespace ShareCluster.Network.Http
             {
                 headerData = _headersProcessor.ReadAndValidateAndProcessCommonHeaders(
                     context.HttpContext.Connection.RemoteIpAddress,
-                    PeerCommunicationType.TcpFromPeer,
+                    PeerCommunicationDirection.TcpIncoming,
                     new HttpContextHeadersWrapper(context.HttpContext)
                 );
             }

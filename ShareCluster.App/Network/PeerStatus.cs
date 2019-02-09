@@ -5,11 +5,13 @@ using System.Text;
 namespace ShareCluster.Network
 {
     /// <summary>
-    /// Mutable peer status.
+    /// Mutable peer status that stores if peer is available or not.
     /// </summary>
     public class PeerStatus
     {
-        public PeerStatusCatalog Catalog { get; } = new PeerStatusCatalog();
+        public PeerStatusCatalog Catalog { get; }
+        public PeerStatusSlots Slots { get; }
+        public PeerStatusCommunication Communication { get; }
 
         private readonly IClock _clock;
         private readonly NetworkSettings _settings;
@@ -22,68 +24,20 @@ namespace ShareCluster.Network
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            Catalog = new PeerStatusCatalog();
+            Slots = new PeerStatusSlots(_clock);
+            Communication = new PeerStatusCommunication(_clock);
         }
 
         public bool IsDead { get; private set; }
-        public PeerStatusDeadReason? DeadReason { get; private set; }
+        public PeerDeadReason? DeadReason { get; private set; }
 
-        public void ReportCommunicationFail(PeerCommunicationType communicationType, PeerCommunicationFault fault)
-        {
-            lock (_syncLock)
-            {
-                switch (fault)
-                {
-                    case PeerCommunicationFault.VersionMismatch:
-                        // version mismatch - no need to wait, unsupported version of peer
-                        ReportDead(PeerStatusDeadReason.VersionMismatch);
-                        break;
-                    case PeerCommunicationFault.HashMismatch:
-                    case PeerCommunicationFault.Communication:
-                    default:
-                        switch (communicationType)
-                        {
-                            case PeerCommunicationType.UdpDiscovery:
-                                break; // ignore - UDP discovery is always success
-                            case PeerCommunicationType.TcpFromPeer:
-                                break; // ignore incoming call from peer
-                            case PeerCommunicationType.TcpToPeer:
-                                // give warning - and mark dead if not fixed
-                                _failsSinceLastTcpToPeerSuccess++;
-                                if (_failsSinceLastTcpToPeerSuccess > 3
-                                    && _lastTcpToPeerSuccess + TimeSpan.FromSeconds(30) < _clock.Time)
-                                {
-                                    ReportDead(PeerStatusDeadReason.VersionMismatch);
-                                }
-                                break;
-                        }
-                        break;
-                }
-            }
-        }
+        /// <summary>
+        /// Gets if communication with this client is enabled for this moment.
+        /// </summary>
+        public bool IsEnabled => !IsDead && Communication.IgnoreClientUntil < _clock.Time;
 
-        public void ReportCommunicationSuccess(PeerCommunicationType communicationType)
-        {
-            lock (_syncLock)
-            {
-                switch (communicationType)
-                {
-                    case PeerCommunicationType.UdpDiscovery:
-                        break; // ignore - UDP discovery is always success
-                    case PeerCommunicationType.TcpFromPeer:
-                        break; // ignore incoming call from peer
-                    case PeerCommunicationType.TcpToPeer:
-                        // peer is alive - hurray!
-                        lock (_syncLock)
-                        {
-                            _lastTcpToPeerSuccess = _clock.Time;
-                            _failsSinceLastTcpToPeerSuccess = 0;
-                        }
-                        break;
-                }
-            }
-        }
-
-        public void ReportDead(PeerStatusDeadReason reason)
+        public void ReportDead(PeerDeadReason reason)
         {
             IsDead = true;
             DeadReason = reason;

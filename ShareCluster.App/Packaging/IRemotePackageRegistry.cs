@@ -21,5 +21,15 @@ namespace ShareCluster.Packaging
         /// <param name="peer">Peer that owns all given occurences.</param>
         /// <param name="occurences">New package occurences of peer.</param>
         void UpdateOcurrencesForPeer(PeerId peer, IEnumerable<RemotePackageOccurence> occurences);
+
+        /// <summary>
+        /// Is invoked after package is added or changed.
+        /// </summary>
+        event EventHandler<RemotePackage> PackageChanged;
+
+        /// <summary>
+        /// Is invoked after package is removed.
+        /// </summary>
+        event EventHandler<RemotePackage> PackageRemoved;
     }
 }

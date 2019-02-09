@@ -63,7 +63,7 @@ namespace ShareCluster.Network
                 try
                 {
                     response = _client.GetPackage(peerInfo.EndPoint, new PackageRequest(remotePackage.PackageId));
-                    peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
+                    peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
                     if (response.Found)
                     {
                         packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.ParentPackageId);
@@ -77,7 +77,7 @@ namespace ShareCluster.Network
                 }
                 catch (Exception e)
                 {
-                    peerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
+                    peerInfo.Status.ReportCommunicationFail(PeerCommunicationDirection.TcpOutgoing, PeerCommunicationFault.Communication);
                     _logger.LogTrace(e, $"Error contacting client {peerInfo.EndPoint}");
                 }
             }

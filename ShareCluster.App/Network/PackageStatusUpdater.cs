@@ -2,8 +2,10 @@
 using ShareCluster.Network.Http;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Synchronization;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -15,154 +17,134 @@ using System.Threading.Tasks.Dataflow;
 namespace ShareCluster.Network
 {
     /// <summary>
-    /// Keeps track about packages parts available to download from peers.
+    /// Keeps track about packages parts available to download from peers that are not seeders.
     /// </summary>
     public class PackageStatusUpdater
     {
-        const int _concurrentStatusUpdates = 5;
+        const int _runningTasksLimit = 5;
 
         readonly ILogger<PackageStatusUpdater> _logger;
         readonly object _syncLock = new object();
         private readonly TimeSpan _statusTimerInterval = TimeSpan.FromSeconds(5);
         private readonly TimeSpan _postponeInterval = TimeSpan.FromSeconds(15);
-        private readonly Timer _statusTimer;
-        private readonly Stopwatch _stopwatch;
-
-        private Dictionary<Id, PackagePeersStatus> _packageStates;
-        Dictionary<IPEndPoint, PeerOverallStatus> _peers;
-        private readonly ILoggerFactory _loggerFactory;
+        private Dictionary<Id, PackageItem> _packages;
         private readonly NetworkSettings _settings;
         private readonly HttpApiClient _client;
         private readonly IPeerRegistry _peerRegistry;
         private readonly IRemotePackageRegistry _remotePackageRegistry;
+        private readonly IClock _clock;
+        private readonly TimerEx _updateTimer;
+        public TaskSemaphoreQueue _updateLimitedQueue;
 
-        public PackageStatusUpdater(ILoggerFactory loggerFactory, NetworkSettings settings, HttpApiClient client, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry)
+        public PackageStatusUpdater(ILogger<PackageStatusUpdater> logger, NetworkSettings settings, HttpApiClient client, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, IClock clock)
         {
-            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _logger = loggerFactory.CreateLogger<PackageStatusUpdater>();
-            _stopwatch = Stopwatch.StartNew();
-            _packageStates = new Dictionary<Id, PackagePeersStatus>();
-            _peers = new Dictionary<IPEndPoint, PeerOverallStatus>();
-            _statusTimer = new Timer(StatusTimeoutCallback, null, _statusTimerInterval, Timeout.InfiniteTimeSpan);
+            _packages = new Dictionary<Id, PackageItem>();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+            _updateLimitedQueue = new TaskSemaphoreQueue(_runningTasksLimit);
+            _remotePackageRegistry.PackageRemoved += RemotePackageRegistry_PackageRemoved;
+            _remotePackageRegistry.PackageChanged += RemotePackageRegistry_PackageChanged;
+        }
+
+        private void RemotePackageRegistry_PackageChanged(object sender, RemotePackage e)
+        {
+            lock (_syncLock)
+            {
+                if (!_packages.TryGetValue(e.PackageId, out PackageItem packageItem)) return;
+                UpdatePeers(packageItem);
+            }
+        }
+
+        private void RemotePackageRegistry_PackageRemoved(object sender, RemotePackage e)
+        {
+            NotInterestedInPackage(e.PackageId);
         }
 
         public event Action NewDataAvailable;
         
         public void InterestedInPackage(LocalPackage package)
         {
-            _logger.LogDebug("Started looking for peers having: {0}", package);
-            lock(_syncLock)
+            lock (_syncLock)
             {
-                if (_packageStates.ContainsKey(package.Id)) return; // already there
-                var status = new PackagePeersStatus(_loggerFactory.CreateLogger<PackagePeersStatus>(), package);
-                _packageStates.Add(package.Id, status);
+                if (_packages.ContainsKey(package.Id)) return;
+                _logger.LogDebug("Started looking for peers having packing {0}", package);
+                var status = new PackageItem(package);
+                _packages.Add(package.Id, status);
+                UpdatePeers(status);
+            }
+        }
 
-                // add status for each peer that knows package
-                int alreadyFound = 0;
-                if(_remotePackageRegistry.RemotePackages.TryGetValue(package.Id, out RemotePackage remotePackage))
+        public void NotInterestedInPackage(Id packageId)
+        {
+            lock (_syncLock)
+            {
+                if (!_packages.ContainsKey(packageId)) return;
+                _logger.LogDebug("Stopped looking for peers having: {0}", packageId);
+                _packages.Remove(packageId);
+            }
+        }
+
+        private void UpdatePeers(PackageItem packageState)
+        {
+            if (!_remotePackageRegistry.RemotePackages.TryGetValue(packageState.Package.Id, out RemotePackage remotePackage))
+            {
+                // already removed from package registry - ignore
+                return;
+            }
+
+            // we are interested only in peers that are not seeders (seeders have all parts - we don't need to get status from them)
+            var leechers = remotePackage.Peers
+                .Where(p => !p.Value.IsSeeder)
+                .Select(p => p.Key)
+                .ToHashSet();
+
+            IEnumerable<PeerId> peersToRemove = packageState.Peers.Select(p => p.Key).Except(leechers);
+            IEnumerable<PeerId> newPeers = leechers.Except(packageState.Peers.Select(p => p.Key));
+
+            foreach (PeerId peerId in peersToRemove)
+            {
+                packageState.Peers.Remove(peerId);
+            }
+
+            foreach (PeerId peerId in newPeers)
+            {
+                if (!_peerRegistry.Peers.TryGetValue(peerId, out PeerInfo peerInfo)) continue;
+                packageState.Peers.Add(peerId, new PackagePeerStatus(peerInfo));
+            }
+
+            ScheduleRefreshTimer();
+        }
+
+        private void ScheduleRefreshTimer()
+        {
+            lock (_syncLock)
+            {
+                if (_packages.Count == 0) return;
+
+                foreach (PackageItem packageState in _packages.Values)
                 {
-                    foreach (KeyValuePair<PeerId, RemotePackageOccurence> peerOccurence in remotePackage.Peers)
-                    {
-                        if (!_peerRegistry.Peers.TryGetValue(peerOccurence.Key, out PeerInfo peerInfo)) continue;
-
-                        alreadyFound++;
-                        status.AddPeer(new PeerOverallStatus(peerInfo), peerOccurence.Value.IsSeeder);
-                    }
+                    UpdatePeers(packageState);
                 }
-            }
 
-            // update status if needed
-            TryRunStatusCallbackNow();
-        }
+                TimeSpan time = _clock.Time;
 
-        public void NotInterestedInPackage(LocalPackage packageInfo)
-        {
-            _logger.LogDebug("Stopped looking for peers having: {0}", packageInfo);
-            lock (_syncLock)
-            {
-                if (!_packageStates.ContainsKey(packageInfo.Id)) return; // already there
-                _packageStates[packageInfo.Id].RemoveAllPeers(); // unregister peers
-                _packageStates.Remove(packageInfo.Id); // remove
-            }
-        }
-
-        /// <summary>
-        /// Updates internal peers cache and status refresh plan.
-        /// </summary>
-        public void UpdatePeers(IEnumerable<PeerInfoChange> peersChanges)
-        {
-            bool refreshStatus = false;
-
-            lock(_syncLock)
-            {
-               // shit removed
-            }
-
-            if (refreshStatus)
-            {
-                TryRunStatusCallbackNow();
-            }
-        }
-
-        private void TryRunStatusCallbackNow()
-        {
-            _statusTimer.Change(TimeSpan.FromMilliseconds(500), Timeout.InfiniteTimeSpan);
-        }
-
-        private void StatusTimeoutCallback(object dummy)
-        {
-            try
-            {
-                StatusUpdateInternal();
-            }
-            finally
-            {
-                _statusTimer.Change(_statusTimerInterval, Timeout.InfiniteTimeSpan);
-            }
-        }
-
-        public void MarkPeerForFastUpdate(PeerInfo peer)
-        {
-            lock (_syncLock)
-            {
-                if (!_peers.TryGetValue(peer.EndPoint, out PeerOverallStatus status)) return;
-                status.UseFastUpdate = true;
-            }
-        }
-
-        private void StatusUpdateInternal()
-        {
-            PackageStatusRequest requestMessage;
-            PeerOverallStatus[] peersToUpdate;
-            TimeSpan elapsed = _stopwatch.Elapsed;
-            TimeSpan elapsedThresholdRegular = elapsed.Subtract(_settings.PeerPackageUpdateStatusMaximumTimer);
-            TimeSpan elapsedThresholdFast = elapsed.Subtract(_settings.PeerPackageUpdateStatusFastTimer);
-
-            // prepare list of peers and list of packages we're interested in
-            lock (_syncLock)
-            {
-                if (_packageStates.Count == 0) return;
-
-                peersToUpdate = _peers.Values
-                    .Where(c => c.LastUpdateTry < (c.UseFastUpdate ? elapsedThresholdFast : elapsedThresholdRegular) && c.DoUpdateStatus)
+                PackagePeerStatus[] peersToUpdate = _packages
+                    .SelectMany(p => p.Value.Peers)
+                    .Where(p => p.Value.Peer.Status.IsEnabled && p.Value.WaitForRefreshUntil < time)
+                    .Select(p => p.Value)
                     .ToArray();
 
                 if (peersToUpdate.Length == 0) return;
 
-                foreach (PeerOverallStatus item in peersToUpdate)
-                {
-                    item.UseFastUpdate = false; // reset
-                    item.LastUpdateTry = elapsed;
-                }
+                var requestMessage = new PackageStatusRequest() { PackageIds = _packages.Keys.ToArray() };
 
-                requestMessage = new PackageStatusRequest() { PackageIds = _packageStates.Keys.ToArray() };
+                _logger.LogTrace("Sending update request for {0} package(s) to {1} peer(s).", requestMessage.PackageIds.Length, peersToUpdate.Length);
             }
 
-            _logger.LogTrace("Sending update request for {0} package(s) to {1} peer(s).", requestMessage.PackageIds.Length, peersToUpdate.Length);
 
             // build blocks to process and link them
             var fetchClientStatusBlock = new TransformBlock<PeerOverallStatus, (PeerOverallStatus peer, PackageStatusResponse result, bool succes)>(
@@ -191,29 +173,46 @@ namespace ShareCluster.Network
             fetchClientStatusBlock.Complete();
             applyClientStatusBlock.Completion.Wait();
 
-
             // apply downloads
             NewDataAvailable?.Invoke();
         }
 
-        private void ApplyClientStatus((PeerOverallStatus peer, PackageStatusResponse result, bool success) input, PackageStatusRequest requestMessage)
+        private async Task FetchClientStatusAsync(PeerInfo peer, PackageStatusRequest requestMessage)
+        {
+            bool success = false;
+            PackageStatusResponse statusResult = null;
+            try
+            {
+                // send request
+                statusResult = await _client.GetPackageStatusAsync(peer.EndPoint, requestMessage);
+                peer.HandlePeerCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
+                success = true;
+            }
+            catch (Exception e)
+            {
+                _logger.LogDebug("Can't reach client {0}: {1}", peer.EndPoint, e.Message);
+                peer.HandlePeerCommunicationException(e, PeerCommunicationDirection.TcpOutgoing);
+            }
+
+            // process response
+            if (success)
+            {
+                ApplyClientStatus(peer, requestMessage, statusResult);
+            }
+        }
+
+        private void ApplyClientStatus(PeerInfo peer, PackageStatusRequest requestMessage, PackageStatusResponse responseMessage)
         {
             lock (_syncLock)
             {
-                // update timing - we have fresh data now
-                input.peer.LastUpdateTry = _stopwatch.Elapsed;
-
-                // failed
-                if (!input.success) return;
-
                 // apply changes
                 for (int i = 0; i < requestMessage.PackageIds.Length; i++)
                 {
                     Id packageId = requestMessage.PackageIds[i];
-                    PackageStatusItem result = input.result.Packages[i];
+                    PackageStatusItem result = responseMessage.Packages[i];
 
                     // download state (are we still interested in packages?)
-                    if (!_packageStates.TryGetValue(packageId, out PackagePeersStatus state)) continue;
+                    if (!_packages.TryGetValue(packageId, out PackageItem state)) continue;
 
                     // remove not found packages
                     if (!result.IsFound)
@@ -228,39 +227,12 @@ namespace ShareCluster.Network
             }
         }
 
-        private async Task<(PeerOverallStatus peer, PackageStatusResponse result, bool success)> FetchClientStatusAsync(PeerOverallStatus peer, PackageStatusRequest requestMessage)
-        {
-            bool success = false;
-            PackageStatusResponse statusResult = null;
-            try
-            {
-                // send request
-                statusResult = await _client.GetPackageStatusAsync(peer.PeerInfo.EndPoint, requestMessage);
-                peer.PeerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.TcpToPeer);
-                success = true;
-            }
-            catch (Exception e)
-            {
-                peer.PeerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
-                _logger.LogDebug("Can't reach client {0}: {1}", peer.PeerInfo.EndPoint, e.Message);
-            }
-            return (peer, result: statusResult, success);
-        }
-
-        public List<PeerInfo> GetClientListForPackage(LocalPackage package)
-        {
-            lock (_syncLock)
-            {
-                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus status)) return new List<PeerInfo>(capacity: 0);
-                return status.GetClientList();
-            }
-        }
 
         public bool TryGetBitmapOfPeer(LocalPackage package, PeerInfo peer, out byte[] remoteBitmap)
         {
             lock (_syncLock)
             {
-                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus))
+                if (!_packages.TryGetValue(package.Id, out PackageItem packageStatus))
                 {
                     remoteBitmap = null;
                     return false;
@@ -270,249 +242,30 @@ namespace ShareCluster.Network
             }
         }
 
-        public void PostponePeersPackage(LocalPackage package, PeerInfo peer)
+        class PackageItem
         {
-            _logger.LogTrace("Peer {0} for package {1} has been postponed.", peer.EndPoint, package);
+            public LocalPackage Package { get; }
+            public Dictionary<PeerId, PackagePeerStatus> Peers { get; set; }
 
-            lock (_syncLock)
+            public PackageItem(LocalPackage package)
             {
-                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
-                packageStatus.PostPonePeer(peer, _postponeInterval);
-            }
-        }
-
-        public void PostponePeer(PeerInfo peer)
-        {
-            _logger.LogTrace("Peer {0} for all packages has been postponed.", peer.EndPoint);
-
-            lock (_syncLock)
-            {
-                if (!_peers.TryGetValue(peer.EndPoint, out PeerOverallStatus peerStatus)) return;
-                peerStatus.PostponeTimer = new PostponeTimer(_postponeInterval);
-            }
-        }
-
-        public void PostponePeerReset(PeerInfo peer, LocalPackage package)
-        {
-            lock (_syncLock)
-            {
-                if (!_peers.TryGetValue(peer.EndPoint, out PeerOverallStatus peerStatus)) return;
-                peerStatus.PostponeTimer = PostponeTimer.NoPostpone;
-                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
-                packageStatus.PostPonePeer(peer, TimeSpan.Zero);
-            }
-        }
-
-        public void StatsUpdateSuccessPart(PeerInfo peer, LocalPackage package, long downloadedBytes)
-        {
-            lock (_syncLock)
-            {
-                if (!_packageStates.TryGetValue(package.Id, out PackagePeersStatus packageStatus)) return;
-                packageStatus.StatsUpdateSuccessPart(peer, downloadedBytes);
-            }
-        }
-
-        class PackagePeersStatus
-        {
-            private readonly ILogger<PackagePeersStatus> _logger;
-            private readonly LocalPackage _packageInfo;
-            private readonly Dictionary<PeerInfo, PackagePeerStatus> _peerStatuses;
-
-            public PackagePeersStatus(ILogger<PackagePeersStatus> logger, LocalPackage packageInfo)
-            {
-                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-                _packageInfo = packageInfo ?? throw new ArgumentNullException(nameof(packageInfo));
-                _peerStatuses = new Dictionary<PeerInfo, PackagePeerStatus>();
-            }
-
-            public void RemoveAllPeers()
-            {
-                foreach (PeerOverallStatus peer in _peerStatuses.Values.Select(v => v.Peer).ToArray())
-                {
-                    RemovePeer(peer);
-                }
-            }
-
-            public void RemovePeer(PeerOverallStatus peer)
-            {
-                if(!_peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
-                {
-                    return;
-                }
-
-                peer.InterestedForPackagesTotalCount--;
-                if (status.IsSeeder) peer.InterestedForPackagesSeederCount--;
-                _peerStatuses.Remove(peer.PeerInfo);
-
-                if(status.DownloadedBytes > 0)
-                {
-                    _logger.LogTrace($"Stats: Package {_packageInfo.Metadata.Name} {_packageInfo.Id:s} from {peer.PeerInfo.EndPoint} downloaded {SizeFormatter.ToString(status.DownloadedBytes)}");
-                }
-            }
-
-            public void AddPeer(PeerOverallStatus peer, bool isSeeder)
-            {
-                _logger.LogTrace("Peer {0} knows package {1}.", peer.PeerInfo.EndPoint, _packageInfo);
-
-                var newStatus = new PackagePeerStatus(peer);
-                if (_peerStatuses.TryAdd(peer.PeerInfo, newStatus))
-                {
-                    peer.InterestedForPackagesTotalCount++;
-                    peer.PostponeTimer = PostponeTimer.NoPostpone; // reset postpone, new data
-
-                    if (isSeeder)
-                    {
-                        // mark as seeder
-                        peer.InterestedForPackagesSeederCount++;
-                        newStatus.StatusDetail = new PackageStatusItem()
-                        {
-                            BytesDownloaded = _packageInfo.Definition.PackageSize,
-                            IsFound = true,
-                            SegmentsBitmap = null
-                        };
-                    }
-                }
-            }
-
-            public void Update(PeerOverallStatus peer, PackageStatusItem detail)
-            {
-                // did peer added known package from update?
-                if(!_peerStatuses.TryGetValue(peer.PeerInfo, out PackagePeerStatus status))
-                {
-                    AddPeer(peer, isSeeder: false);
-                    status = _peerStatuses[peer.PeerInfo];
-                }
-
-                // update detail
-                try
-                {
-                    _packageInfo.DownloadStatus.ValidateStatusUpdateFromPeer(detail);
-                }
-                catch(Exception e)
-                {
-                    _logger.LogWarning("Invalid package status data from peer {0} for package {1}: {2}", peer.PeerInfo.EndPoint, _packageInfo, e.Message);
-                    peer.PeerInfo.Status.ReportCommunicationFail(PeerCommunicationType.TcpToPeer, PeerCommunicationFault.Communication);
-                }
-
-                _logger.LogTrace("Received update from {0} for {1}.", peer.PeerInfo.EndPoint, _packageInfo);
-
-                // reset postpone (new status data)
-                status.PostponeTimer = PostponeTimer.NoPostpone;
-                status.Peer.PostponeTimer = PostponeTimer.NoPostpone;
-
-                // update status and number of seeders
-                bool wasSeeder = status.IsSeeder;
-                status.StatusDetail = detail;
-
-                // mark fast updates for peers without any data - we can expect they will have it soon (this can speed up initial seeding)
-                if (detail.BytesDownloaded == 0) peer.UseFastUpdate = true;
-
-                if(wasSeeder != status.IsSeeder)
-                {
-                    _logger.LogTrace("Found seeder {0} of {1}.", peer.PeerInfo.EndPoint, _packageInfo);
-                    peer.InterestedForPackagesSeederCount += status.IsSeeder ? 1 : -1;
-                }
-            }
-
-            public List<PeerInfo> GetClientList()
-            {
-                return _peerStatuses.Values
-                    .Where(pv => pv.CanDownload)
-                    .Select(pv => pv.Peer.PeerInfo)
-                    .ToList();
-            }
-
-            public void PostPonePeer(PeerInfo peer, TimeSpan postponeInterval)
-            {
-                if (!_peerStatuses.TryGetValue(peer, out PackagePeerStatus status)) return;
-                status.PostponeTimer = postponeInterval <= TimeSpan.Zero ? PostponeTimer.NoPostpone : new PostponeTimer(postponeInterval);
-            }
-
-            public bool TrygetBitmapOfPeer(PeerInfo peer, out byte[] remoteBitmap)
-            {
-                if (!_peerStatuses.TryGetValue(peer, out PackagePeerStatus status) || status.StatusDetail == null)
-                {
-                    remoteBitmap = null;
-                    return false;
-                }
-
-                remoteBitmap = status.StatusDetail.SegmentsBitmap;
-                return true;
-            }
-
-            public void StatsUpdateSuccessPart(PeerInfo peer, long downloadedBytes)
-            {
-                if (!_peerStatuses.TryGetValue(peer, out PackagePeerStatus status)) return;
-                status.DownloadedBytes += downloadedBytes;
+                Package = package ?? throw new ArgumentNullException(nameof(package));
+                Peers = new Dictionary<PeerId, PackagePeerStatus>();
             }
         }
 
         class PackagePeerStatus
         {
-            public PackagePeerStatus(PeerOverallStatus peer)
+            public PackagePeerStatus(PeerInfo peer)
             {
                 Peer = peer ?? throw new ArgumentNullException(nameof(peer));
-                PostponeTimer = Network.PostponeTimer.NoPostpone;
             }
 
-            public PeerOverallStatus Peer { get; set; }
+            public TimeSpan? LastUpdate { get; set; }
+            public PeerInfo Peer { get; set; }
             public PackageStatusItem StatusDetail { get; set; }
-            public bool IsSeeder => StatusDetail != null && StatusDetail.SegmentsBitmap == null; // null bitmap == all downloaded
-            public bool CanDownload => StatusDetail != null && StatusDetail.BytesDownloaded > 0 && !IsPostponedPackageOrPeer;
-            public PostponeTimer PostponeTimer { get; set; }
-            public bool IsPostponedPackageOrPeer => PostponeTimer.IsPostponed || Peer.PostponeTimer.IsPostponed;
             public long DownloadedBytes { get; set; }
-        }
-
-        class PeerOverallStatus
-        {
-            public PeerOverallStatus(PeerInfo peer)
-            {
-                PeerInfo = peer ?? throw new ArgumentNullException(nameof(peer));
-                PostponeTimer = Network.PostponeTimer.NoPostpone;
-                LastUpdateTry = TimeSpan.MinValue;
-            }
-
-            public PeerInfo PeerInfo { get; set; }
-
-            public bool DoUpdateStatus
-            {
-                get
-                {
-                    // postponed? do not update this peer
-                    if (PostponeTimer.IsPostponed) return false;
-
-                    // this peer don't know any of interesting packages?
-                    if (InterestedForPackagesTotalCount <= 0) return false;
-
-                    // this peer is seeder for all interesting packages? then we don't need to update
-                    if (InterestedForPackagesSeederCount == InterestedForPackagesTotalCount) return false;
-
-                    return true;
-                }
-            }
-
-            /// <summary>
-            /// Gets or sets how many packages (in which we're interested) are known to this peer.
-            /// </summary>
-            public int InterestedForPackagesTotalCount { get; set; }
-
-            /// <summary>
-            /// Gets or sets for how many packages (in which we're interested) is this peer seeder.
-            /// </summary>
-            public int InterestedForPackagesSeederCount { get; set; }
-
-            /// <summary>
-            /// Gets or sets when this peer status has been done last time.
-            /// </summary>
-            public TimeSpan LastUpdateTry { get; set; }
-
-            /// <summary>
-            /// Gets or sets if fast update should be used (if not enough seeders are available).
-            /// </summary>
-            public bool UseFastUpdate { get; set; }
-
-            public PostponeTimer PostponeTimer { get; set; }
+            public TimeSpan WaitForRefreshUntil { get; set; }
         }
     }
 }

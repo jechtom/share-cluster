@@ -52,61 +52,58 @@ namespace ShareCluster.Network.Http
             headerWriter.WriteHeader(CatalogVersionHeaderName, _localPackageRegistry.Version.ToString());
         }
 
-        public CommonHeaderData ReadAndValidateAndProcessCommonHeaders(IPAddress remoteAddress, PeerCommunicationType peerCommunicationType, IHttpHeaderReader headerReader)
+        public CommonHeaderData ReadAndValidateAndProcessCommonHeaders(IPAddress remoteAddress, PeerCommunicationDirection peerCommunicationType, IHttpHeaderReader headerReader)
         {
             // validate version
             if (!headerReader.TryReadHeader(VersionHeaderName, out string valueStringInstance))
             {
-                Fail(remoteAddress, $"Missing header {VersionHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Missing header {VersionHeaderName}");
             }
 
             if (!VersionNumber.TryParse(valueStringInstance, out VersionNumber version))
             {
-                Fail(remoteAddress, $"Invalid value of header {VersionHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Invalid value of header {VersionHeaderName}");
             }
 
-            if (!_compatibility.IsCompatibleWith(remoteAddress, version))
-            {
-                Fail(remoteAddress, $"Server is incompatible with version defined in header {VersionHeaderName}");
-            }
+            _compatibility.ThrowIfNotCompatibleWith(remoteAddress, version);
 
             // validate instance type header
             if (!headerReader.TryReadHeader(InstanceHeaderName, out valueStringInstance))
             {
-                Fail(remoteAddress, $"Missing header {InstanceHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Missing header {InstanceHeaderName}");
             }
 
             if (!Id.TryParse(valueStringInstance, out Id instanceId))
             {
-                Fail(remoteAddress, $"Invalid value of header {InstanceHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Invalid value of header {InstanceHeaderName}");
             }
 
             // validate input type header
             if (!headerReader.TryReadHeader(TypeHeaderName, out string typeString))
             {
-                Fail(remoteAddress, $"Missing header {TypeHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Missing header {TypeHeaderName}");
             }
 
             // validate service port header
             if (!headerReader.TryReadHeader(ServicePortHeaderName, out string valueStringPort))
             {
-                Fail(remoteAddress, $"Missing header {ServicePortHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Missing header {ServicePortHeaderName}");
             }
 
             if (!ushort.TryParse(valueStringPort, out ushort servicePort))
             {
-                Fail(remoteAddress, $"Invalid value of header {ServicePortHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Invalid value of header {ServicePortHeaderName}");
             }
 
             // validate catalog version header
             if (!headerReader.TryReadHeader(CatalogVersionHeaderName, out string valueStringCatalog))
             {
-                Fail(remoteAddress, $"Missing header {CatalogVersionHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Missing header {CatalogVersionHeaderName}");
             }
 
             if (!VersionNumber.TryParse(valueStringCatalog, out VersionNumber catalogVersion))
             {
-                Fail(remoteAddress, $"Invalid value of header {CatalogVersionHeaderName}");
+                ThrowHeaderError(remoteAddress, $"Invalid value of header {CatalogVersionHeaderName}");
             }
 
             // convert ::ffff:192.168.1.1 format to IPv4 (this happened to me on localhost, not sure why)
@@ -129,9 +126,11 @@ namespace ShareCluster.Network.Http
 
         public event EventHandler<CommonHeaderData> HeaderDataParsed;
 
-        private void Fail(IPAddress remoteAddress, string message)
+        private void ThrowHeaderError(IPAddress remoteAddress, string message)
         {
-            _logger.LogTrace($"{remoteAddress}: {message}");
+            string messageWithAddress = $"{remoteAddress}: {message}";
+            _logger.LogTrace(messageWithAddress);
+            throw new MissingOrInvalidHeaderException(messageWithAddress);
         }
     }
 }

@@ -73,6 +73,7 @@ namespace ShareCluster.Core
             services.AddSingleton<PackageFolderRepository>();
             services.AddSingleton<IPeerCatalogUpdater, PeerCatalogUpdater>();
             services.AddSingleton<PackageDownloadManager>();
+            services.AddSingleton<PackageDownloadSlotFactory>();
             services.AddSingleton<PeersManager>();
             services.AddSingleton<AppInstanceStarter>();
             services.AddSingleton(new PackageFolderRepositorySettings(_settings.PackagingSettings.DataRootPathPackageRepository));

@@ -33,14 +33,15 @@ namespace ShareCluster.Synchronization
             throw new NotImplementedException();
         }
 
-        public void Schedule()
+        public void KeepOffFor()
         {
             throw new NotImplementedException();
         }
 
-        public void KeepOffFor()
+        public void Schedule(Action<TimerExScheduleBuilder> conf)
         {
             throw new NotImplementedException();
+
         }
     }
 }

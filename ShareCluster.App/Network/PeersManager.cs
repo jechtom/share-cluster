@@ -18,7 +18,7 @@ namespace ShareCluster.Network
         private readonly Udp.UdpPeerDiscoveryListener _udpPeerDiscoveryListener;
         private readonly IPeerCatalogUpdater _peerCatalogUpdater;
         private readonly HttpCommonHeadersProcessor _commonHeadersProcessor;
-        private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(15);
         private Timer _housekeepingTimer;
 
         public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, IPeerCatalogUpdater peerCatalogUpdater, HttpCommonHeadersProcessor commonHeadersProcessor)
@@ -38,7 +38,7 @@ namespace ShareCluster.Network
             // received header from peer - report
             PeerInfo peer = GetOrCreatePeerInfo(headerData.PeerId);
             peer.Status.Catalog.UpdateRemoteVersion(headerData.CatalogVersion);
-            peer.Status.ReportCommunicationSuccess(headerData.CommunicationType);
+            peer.HandlePeerCommunicationSuccess(headerData.CommunicationType);
         }
 
         private void UdpPeerDiscoveryListener_Discovery(object sender, Udp.UdpPeerDiscoveryInfo e)
@@ -48,14 +48,14 @@ namespace ShareCluster.Network
             if (e.IsShuttingDown)
             {
                 // handle shut-down UDP announce
-                peerInfo.Status.ReportDead(PeerStatusDeadReason.ShutdownAnnounce);
+                peerInfo.Status.ReportDead(PeerDeadReason.ShutdownAnnounce);
                 RemovePeer(peerInfo);
             }
             else
             {
                 // handle UDP announce discovery
                 peerInfo.Status.Catalog.UpdateRemoteVersion(e.CatalogVersion);
-                peerInfo.Status.ReportCommunicationSuccess(PeerCommunicationType.UdpDiscovery);
+                peerInfo.HandlePeerCommunicationSuccess(PeerCommunicationDirection.UdpDiscovery);
 
                 // schedule update of catalog
                 if (!peerInfo.Status.Catalog.IsUpToDate) _peerCatalogUpdater.ScheduleUpdateFromPeer(peerInfo);
@@ -93,6 +93,12 @@ namespace ShareCluster.Network
         {
             foreach (PeerInfo peer in _peerRegistry.Peers.Values)
             {
+                // mark timeouted peers as dead
+                if(peer.Status.Communication.ShouldDeleteClient)
+                {
+                    peer.Status.ReportDead(PeerDeadReason.Down);
+                }
+
                 // remove dead peers from registry
                 if (peer.Status.IsDead)
                 {
@@ -101,7 +107,7 @@ namespace ShareCluster.Network
                 }
 
                 // schedule updates of catalog
-                if (!peer.Status.Catalog.IsUpToDate)
+                if (!peer.Status.Catalog.IsUpToDate && peer.Status.IsEnabled)
                 {
                     _peerCatalogUpdater.ScheduleUpdateFromPeer(peer);
                 }

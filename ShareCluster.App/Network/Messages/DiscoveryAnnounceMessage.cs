@@ -22,5 +22,9 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(4)]
         public virtual bool IsShuttingDown { get; set; }
+
+        [ProtoMember(5)]
+        public virtual VersionNumber AppVersion { get; set; }
+
     }
 }

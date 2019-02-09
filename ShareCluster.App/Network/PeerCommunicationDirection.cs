@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ShareCluster.Network
 {
-    public enum PeerCommunicationType
+    public enum PeerCommunicationDirection
     {
         /// <summary>
         /// Received UDP discovery packet.
@@ -14,11 +14,11 @@ namespace ShareCluster.Network
         /// <summary>
         /// Sent TCP message to peer - we can connect to peers endpoint.
         /// </summary>
-        TcpToPeer,
+        TcpOutgoing,
 
         /// <summary>
         /// Received TCP message from peer - peer can connect to our endpoint.
         /// </summary>
-        TcpFromPeer
+        TcpIncoming
     }
 }
