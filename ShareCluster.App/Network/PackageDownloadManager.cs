@@ -21,7 +21,6 @@ namespace ShareCluster.Network
     /// </summary>
     public class PackageDownloadManager
     {
-        private readonly AppInfo _appInfo;
         private readonly ILogger<PackageDownloadManager> _logger;
         private readonly HttpApiClient _client;
         private readonly IRemotePackageRegistry _remotePackageRegistry;
@@ -36,13 +35,15 @@ namespace ShareCluster.Network
         private readonly Dictionary<Id, PostponeTimer> _postPoneUpdateDownloadFile;
         private readonly TimeSpan _postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
         private readonly PackageDetailDownloader _packageDetailDownloader;
+        private readonly NetworkSettings _networkSettings;
+        private readonly StreamsFactory _streamsFactory;
         private bool _isNextTryScheduled = false;
 
         public PackageDefinitionSerializer _packageDefinitionSerializer;
         private readonly NetworkThrottling _networkThrottling;
 
         public PackageDownloadManager(
-            AppInfo appInfo,
+            ILogger<PackageDownloadManager> logger,
             HttpApiClient client,
             ILocalPackageRegistry localPackageRegistry,
             IRemotePackageRegistry remotePackageRegistry,
@@ -51,11 +52,12 @@ namespace ShareCluster.Network
             PackageDefinitionSerializer packageDefinitionSerializer,
             NetworkThrottling networkThrottling,
             PackageStatusUpdater packageStatusUpdater,
-            PackageDetailDownloader packageDetailDownloader
+            PackageDetailDownloader packageDetailDownloader,
+            NetworkSettings networkSettings,
+            StreamsFactory streamsFactory
             )
         {
-            _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
-            _logger = appInfo.LoggerFactory.CreateLogger<PackageDownloadManager>();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
@@ -65,6 +67,8 @@ namespace ShareCluster.Network
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
             _packageStatusUpdater = packageStatusUpdater ?? throw new ArgumentNullException(nameof(packageStatusUpdater));
             _packageDetailDownloader = packageDetailDownloader ?? throw new ArgumentNullException(nameof(packageDetailDownloader));
+            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
+            _streamsFactory = streamsFactory ?? throw new ArgumentNullException(nameof(streamsFactory));
             _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
             _downloadSlots = new List<PackageDownloadSlot>();
             _packagesDownloading = new Dictionary<Id, LocalPackage>();
@@ -385,7 +389,7 @@ namespace ShareCluster.Network
                     }
 
                     // try to reserve segments for download
-                    _segments = _package.DownloadStatus.TrySelectSegmentsForDownload(remoteBitmap, _parent._appInfo.NetworkSettings.SegmentsPerRequest);
+                    _segments = _package.DownloadStatus.TrySelectSegmentsForDownload(remoteBitmap, _parent._networkSettings.SegmentsPerRequest);
                     if (_segments == null || _segments.Length == 0)
                     {
                         // not compatible - try again later - this peer don't have what we need
@@ -506,7 +510,9 @@ namespace ShareCluster.Network
                 // - streamWrite writes data to data files
 
                 IStreamController controllerWriter = package.DataAccessor.CreateWriteSpecificPackageData(parts);
-                var hashValidateBehavior = new HashStreamVerifyBehavior(_parent._appInfo.LoggerFactory, package.Definition, parts);
+
+                HashStreamVerifyBehavior hashValidateBehavior
+                    = _parent._streamsFactory.CreateHashStreamBehavior(package.Definition, parts);
 
                 Stream streamWrite = null;
 
@@ -516,13 +522,10 @@ namespace ShareCluster.Network
                 Stream createStream()
                 {
                     var sequencer = new PackageFolderPartsSequencer();
-                    streamWrite = new ControlledStream(_parent._appInfo.LoggerFactory, controllerWriter);
-                    
-                    controllerValidate = new HashStreamController(_parent._appInfo.LoggerFactory, _parent._appInfo.Crypto, hashValidateBehavior, streamWrite);
-                    streamValidate = new ControlledStream(_parent._appInfo.LoggerFactory, controllerValidate)
-                    {
-                        Measure = package.DownloadMeasure
-                    };
+                    streamWrite = _parent._streamsFactory.CreateControlledStreamFor(controllerWriter);
+
+                    controllerValidate = _parent._streamsFactory.CreateHashStreamController(hashValidateBehavior, streamWrite);
+                    streamValidate = _parent._streamsFactory.CreateControlledStreamFor(controllerValidate, package.DownloadMeasure);
 
                     return streamValidate;
                 }

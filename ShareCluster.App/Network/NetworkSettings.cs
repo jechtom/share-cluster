@@ -9,16 +9,6 @@ namespace ShareCluster.Network
         public IMessageSerializer MessageSerializer { get; set; }
 
         /// <summary>
-        /// Gets or sets UDP announce port. This has to be same for all clients.
-        /// </summary>
-        public ushort UdpAnnouncePort { get; set; } = 13977;
-
-        /// <summary>
-        /// Gets or sets TCP service port. This can vary by each client but predefined default is used.
-        /// </summary>
-        public ushort TcpServicePort { get; set; } = 13978;
-
-        /// <summary>
         /// How many fails we protected peer from removing from peers list.
         /// </summary>
         public int DisablePeerAfterFails { get; set; } = 2;
@@ -62,6 +52,27 @@ namespace ShareCluster.Network
         /// Gets or sets maximum number of concurrent upload tasks.
         /// </summary>
         public int MaximumUploadsSlots { get; set; } = 5;
+
+        /// <summary>
+        /// Gets or sets is app is doing UDP announcments listening after start.
+        /// </summary>
+        public bool EnableUdpDiscoveryListener { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets is app is doing UDP announcments sending after start.
+        /// </summary>
+        public bool EnableUdpDiscoveryAnnouncer { get; set; } = true;
+
+
+        /// <summary>
+        /// Gets or sets UDP announce port. This has to be same for all clients.
+        /// </summary>
+        public ushort UdpAnnouncePort { get; set; } = 13977;
+
+        /// <summary>
+        /// Gets or sets TCP service port. This can vary by each client but predefined default is used.
+        /// </summary>
+        public ushort TcpServicePort { get; set; } = 13978;
 
         public void Validate()
         {

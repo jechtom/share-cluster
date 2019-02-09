@@ -18,6 +18,6 @@ namespace ShareCluster.Tests.Helpers
             new LoggerFactory(new[] { new TraceSourceLoggerProvider(new SourceSwitch("Test")) });
 
         public CryptoFacade CryptoProvider { get; } =
-                AppInfo.CreateDefaultCryptoProvider();
+                AppInstanceServicesInstaller.CreateDefaultCryptoProvider();
     }
 }

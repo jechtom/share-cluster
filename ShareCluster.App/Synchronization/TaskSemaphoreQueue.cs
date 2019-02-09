@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace ShareCluster.Synchronization
 {
     /// <summary>
-    /// Task scheduler with limit for number of running task in parallel and deduplication by given <typeparamref name="TKey"/>.
+    /// Task scheduler with limit for number of concurrently running task in parallel and queue for waiting tasks.
     /// </summary>
     public class TaskSemaphoreQueue
     {

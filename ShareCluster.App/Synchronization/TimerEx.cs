@@ -8,7 +8,7 @@ namespace ShareCluster.Synchronization
 {
     public class TimerEx
     {
-        private Timer _timer;
+        private readonly Timer _timer;
         private TimeSpan _baseInterval;
 
         public delegate Task TimerExCallbackAsync(TimerExContext context);

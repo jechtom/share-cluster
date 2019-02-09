@@ -13,7 +13,6 @@ namespace ShareCluster.WebInterface
 {
     public class WebFacade
     {
-        private readonly AppInfo _appInfo;
         private readonly PackageDownloadManager _packageDownloadManager;
         private readonly LocalPackageManager _localPackageManager;
         private readonly IPeerRegistry _peerRegistry;
@@ -23,12 +22,13 @@ namespace ShareCluster.WebInterface
         private readonly LongRunningTasksManager _tasks;
         private readonly NetworkThrottling _networkThrottling;
         private readonly PackageManager _packageManger;
+        private readonly NetworkSettings _networkSettings;
+        private readonly PackagingSettings _packagingSettings;
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(AppInfo appInfo, PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling, PackageManager packageManger)
+        public WebFacade(PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling, PackageManager packageManger, NetworkSettings networkSettings, PackagingSettings packagingSettings)
         {
-            _appInfo = appInfo ?? throw new ArgumentNullException(nameof(appInfo));
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
@@ -38,7 +38,11 @@ namespace ShareCluster.WebInterface
             _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
             _packageManger = packageManger ?? throw new ArgumentNullException(nameof(packageManger));
+            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
+            _packagingSettings = packagingSettings ?? throw new ArgumentNullException(nameof(packagingSettings));
         }
+
+        public string LocalPortalUrl => $"http://localhost:{_networkSettings.TcpServicePort}";
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {
@@ -187,7 +191,7 @@ namespace ShareCluster.WebInterface
 
         public string RecommendFolderForExtraction()
         {
-            return _appInfo.DataRootPathExtractDefault;
+            return _packagingSettings.DataRootPathExtractDefault;
         }
 
         public PackageOperationViewModel GetPackageOrNull(Id packageId)

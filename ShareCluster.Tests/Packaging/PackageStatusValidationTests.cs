@@ -12,7 +12,7 @@ namespace ShareCluster.Tests.Packaging
         [Fact]
         public void Valid()
         {
-            Id id = AppInfo.CreateDefaultCryptoProvider().CreateRandom();
+            Id id = AppInstanceServicesInstaller.CreateDefaultCryptoProvider().CreateRandom();
             var version = new VersionNumber(1);
             PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
             long size = baseInfo.SegmentLength * 18; // bitmap length: 8bits + 8bits + 2bits

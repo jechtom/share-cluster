@@ -27,16 +27,16 @@ namespace ShareCluster
 
         static void Main(string[] args)
         {
-            LogLevel level = LogLevel.Information;
+            var loggingSettings = new LoggingSettings();
 
             if(args.Length >= 1 && args[0] == "trace")
             {
-                level = LogLevel.Trace;
+                loggingSettings.DefaultAppLogLevel = LogLevel.Trace;
             }
 
             if (args.Length >= 1 && args[0] == "debug")
             {
-                level = LogLevel.Debug;
+                loggingSettings.DefaultAppLogLevel = LogLevel.Debug;
             }
 
             if (args.Length >= 2)
@@ -44,23 +44,20 @@ namespace ShareCluster
                 var count = int.Parse(args[1]);
                 for (int i = 0; i < count; i++)
                 {
-                    Task.Factory.StartNew((iobj) => { CreateInstance((int)iobj, level); }, state: (object)i);
+                    Task.Factory.StartNew((iobj) => { CreateInstance((int)iobj, loggingSettings); }, state: (object)i);
                 }
             }
             else
             {
                 // instance 1
-                var appInfo = AppInfo.CreateCurrent(level);
-                
-                var appSettings = new AppInstanceSettings()
-                {
-                    EnableUdpDiscoveryListener = true,
-                    EnableUdpDiscoveryAnnouncer = true
-                };
+                var appSettings = new AppInstanceSettings();
+                appSettings.Logging = loggingSettings;
+                appSettings.NetworkSettings.EnableUdpDiscoveryListener = true;
+                appSettings.NetworkSettings.EnableUdpDiscoveryAnnouncer = true;
 
-                var instance = new AppInstance(appInfo);
+                var instance = new AppInstance();
                 _instances.Add(instance);
-                AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
+                instance.Start(appSettings);
             }
 
             Console.ReadLine();
@@ -77,22 +74,21 @@ namespace ShareCluster
             Console.WriteLine("Stopped.");
         }
 
-        private static void CreateInstance(int index, LogLevel logLevel)
+        private static void CreateInstance(int index, LoggingSettings loggingSettings)
         {
             // instance n
-            var appInfo = AppInfo.CreateCurrent(logLevel);
-            appInfo.NetworkSettings.TcpServicePort += (ushort)(index);
-            appInfo.DataRootPath = @"c:\temp\temp" + index;
+            var appSettings = new AppInstanceSettings();
 
-            var appSettings = new AppInstanceSettings()
-            {
-                EnableUdpDiscoveryListener = (index == 0),
-                EnableUdpDiscoveryAnnouncer = true
-            };
+            appSettings.PackagingSettings.DataRootPath = @"c:\temp\temp" + index;
+            appSettings.Logging = loggingSettings;
+            appSettings.NetworkSettings.TcpServicePort += (ushort)(index);
+            appSettings.NetworkSettings.EnableUdpDiscoveryListener = (index == 0);
+            appSettings.NetworkSettings.EnableUdpDiscoveryAnnouncer = true;
 
-            var instance = new AppInstance(appInfo);
+            var instance = new AppInstance();
             _instances.Add(instance);
-            AppInstanceBootstrapper bootstrapper = instance.Start(appSettings);
+            instance.Start(appSettings);
         }
     }
 }
+

@@ -23,7 +23,6 @@ namespace ShareCluster.Network.Http
         private readonly InstanceId _instanceId;
         private readonly NetworkSettings _networkSettings;
         private readonly ILocalPackageRegistry _localPackageRegistry;
-        private readonly PeerController _peerController;
 
         public HttpCommonHeadersProcessor(ILogger<HttpCommonHeadersProcessor> logger, CompatibilityChecker compatibility, InstanceId instanceId, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry)
         {
