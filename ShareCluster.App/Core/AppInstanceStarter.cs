@@ -9,6 +9,7 @@ using ShareCluster.WebInterface;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace ShareCluster.Core
@@ -74,6 +75,7 @@ namespace ShareCluster.Core
 
         public void Start(AppInstanceSettings settings)
         {
+            _logger.LogDebug($"Runtime: {RuntimeInformation.OSDescription}; {RuntimeInformation.OSArchitecture}; {RuntimeInformation.ProcessArchitecture}; {RuntimeInformation.FrameworkDescription}");
             _logger.LogInformation($"Starting sequence. App {InstanceVersion}. Instance {InstanceId.Value:s}. Ports: {NetworkSettings.UdpAnnouncePort}/UDP-discovery; {NetworkSettings.TcpServicePort}/TCP-service");
             _logger.LogDebug($"Repository path: {PackageFolderRepository.PackageRepositoryPath}");
             _logger.LogInformation($"Start browser {WebFacade.LocalPortalUrl}");
@@ -103,7 +105,7 @@ namespace ShareCluster.Core
 
         private void RunBrowserWithPortal()
         {
-            Process.Start(WebFacade.LocalPortalUrl);
+            UrlStarter.OpenUrl(WebFacade.LocalPortalUrl);
         }
     }
 }

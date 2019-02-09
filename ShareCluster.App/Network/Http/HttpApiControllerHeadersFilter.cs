@@ -20,7 +20,7 @@ namespace ShareCluster.Network.Http
             _headersProcessor = headersProcessor ?? throw new ArgumentNullException(nameof(headersProcessor));
         }
 
-        public CompatibilityChecker CompatibilityChecker { get; }
+        public PeerAppVersionCompatibility CompatibilityChecker { get; }
         public InstanceId InstanceHash { get; }
 
         public void OnActionExecuted(ActionExecutedContext context)

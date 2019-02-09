@@ -13,7 +13,7 @@ namespace ShareCluster.Packaging.IO
         /// <summary>
         /// Gets current version of serializer. This is mechanism to prevent version mismatch if newer version of serializer will be released.
         /// </summary>
-        public VersionNumber SerializerVersion { get; } = new VersionNumber(1);
+        public VersionNumber SerializerVersion { get; } = new VersionNumber(1,0);
 
         public PackageMetadataSerializer(IMessageSerializer serializer, ILogger<PackageMetadataSerializer> logger)
         {

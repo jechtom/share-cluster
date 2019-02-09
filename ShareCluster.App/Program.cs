@@ -28,8 +28,8 @@ namespace ShareCluster
         static void Main(string[] args)
         {
             var loggingSettings = new LoggingSettings();
-
-            if(args.Length >= 1 && args[0] == "trace")
+            
+            if (args.Length >= 1 && args[0] == "trace")
             {
                 loggingSettings.DefaultAppLogLevel = LogLevel.Trace;
             }

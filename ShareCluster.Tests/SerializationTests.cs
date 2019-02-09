@@ -68,7 +68,7 @@ namespace ShareCluster.Tests
             // sample message (this caused deserialization issues)
             var message = new CatalogDataResponse()
             {
-                CatalogVersion = new VersionNumber(123),
+                CatalogVersion = new VersionNumber(123, 456),
                 IsUpToDate = true,
                 Packages = new CatalogPackage[]
                 {

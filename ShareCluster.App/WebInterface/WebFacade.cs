@@ -42,7 +42,7 @@ namespace ShareCluster.WebInterface
             _packagingSettings = packagingSettings ?? throw new ArgumentNullException(nameof(packagingSettings));
         }
 
-        public string LocalPortalUrl => $"http://localhost:{_networkSettings.TcpServicePort}";
+        public string LocalPortalUrl => $"http://localhost:{_networkSettings.TcpServicePort}/";
 
         public void TryChangeDownloadPackage(Id packageId, bool start)
         {

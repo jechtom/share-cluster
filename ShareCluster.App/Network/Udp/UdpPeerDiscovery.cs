@@ -59,7 +59,7 @@ namespace ShareCluster.Network.Udp
             _udpAnnouncerTimer = new Timer((_) => SendOrPlanAnnouncement(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             _localPackageRegistryVersionProvider.VersionChanged += (v) =>
             {
-                _logger.LogDebug($"Received local package registry version change to {v.Version} - preparing UDP announce");
+                _logger.LogDebug($"Received local package registry version change to {v} - preparing UDP announce");
                 SendOrPlanAnnouncement();
             };
             _networkChangeNotifier.Changed += (s, o) => ForceSendOrPlanAnnouncment();

@@ -33,7 +33,7 @@ namespace ShareCluster.Packaging
         {
             lock (_syncLock)
             {
-                Version = new VersionNumber(Version.Version + 1);
+                Version = Version.IncreaseMajor();
             }
         }
 
@@ -58,7 +58,7 @@ namespace ShareCluster.Packaging
                 var localPackagesImmutable = localPackages.ToImmutableDictionary(p => p.Id);
                 if (localPackagesImmutable.Count == 0) return;
                 LocalPackages = LocalPackages.AddRange(localPackagesImmutable);
-                Version = new VersionNumber(Version.Version + 1);
+                Version = Version.IncreaseMajor();
             }
         }
 
@@ -73,7 +73,7 @@ namespace ShareCluster.Packaging
             {
                 if (!LocalPackages.ContainsKey(localPackage.Id)) return;
                 LocalPackages = LocalPackages.Remove(localPackage.Id);
-                Version = new VersionNumber(Version.Version + 1);
+                Version = Version.IncreaseMajor();
             }
         }
     }

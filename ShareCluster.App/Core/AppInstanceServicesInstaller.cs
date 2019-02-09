@@ -23,7 +23,7 @@ namespace ShareCluster.Core
     public class AppInstanceServicesInstaller
     {
         private readonly AppInstanceSettings _settings;
-        public static InstanceVersion CreateAppVersion() => new InstanceVersion(new VersionNumber(4));
+        public static InstanceVersion CreateAppVersion() => new InstanceVersion(new VersionNumber(4, 0));
         public static CryptoFacade CreateDefaultCryptoProvider() => new CryptoFacade(() => new SHA256Managed());
         public static IMessageSerializer CreateDefaultMessageSerializer() => new ProtoBufMessageSerializer();
 
@@ -45,6 +45,7 @@ namespace ShareCluster.Core
             services.AddSingleton(CreateDefaultMessageSerializer());
             services.AddSingleton(CreateDefaultCryptoProvider());
             services.AddSingleton(_settings.NetworkSettings);
+            services.AddSingleton(_settings.PackagingSettings);
             services.AddSingleton<InstanceId>();
             services.AddSingleton(CreateAppVersion());
             services.AddSingleton(PackageSplitBaseInfo.Default);
@@ -66,6 +67,7 @@ namespace ShareCluster.Core
             services.AddSingleton<HttpCommonHeadersProcessor>();
             services.AddSingleton<PackageSerializerFacade>();
             services.AddSingleton<StreamsFactory>();
+            services.AddSingleton<PeerAppVersionCompatibility>();
             services.AddSingleton<INetworkChangeNotifier, NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<PackageFolderRepository>();

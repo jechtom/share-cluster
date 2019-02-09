@@ -19,12 +19,12 @@ namespace ShareCluster.Network.Http
         public const string ServicePortHeaderName = "X-ShareClusterPort";
         public const string CatalogVersionHeaderName = "X-ShareClusterCatalog";
         private readonly ILogger<HttpCommonHeadersProcessor> _logger;
-        private readonly CompatibilityChecker _compatibility;
+        private readonly PeerAppVersionCompatibility _compatibility;
         private readonly InstanceId _instanceId;
         private readonly NetworkSettings _networkSettings;
         private readonly ILocalPackageRegistry _localPackageRegistry;
 
-        public HttpCommonHeadersProcessor(ILogger<HttpCommonHeadersProcessor> logger, CompatibilityChecker compatibility, InstanceId instanceId, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry)
+        public HttpCommonHeadersProcessor(ILogger<HttpCommonHeadersProcessor> logger, PeerAppVersionCompatibility compatibility, InstanceId instanceId, NetworkSettings networkSettings, ILocalPackageRegistry localPackageRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _compatibility = compatibility ?? throw new ArgumentNullException(nameof(compatibility));
@@ -46,7 +46,7 @@ namespace ShareCluster.Network.Http
             }
 
             headerWriter.WriteHeader(TypeHeaderName, typeString);
-            headerWriter.WriteHeader(VersionHeaderName, _compatibility.NetworkProtocolVersion.ToString());
+            headerWriter.WriteHeader(VersionHeaderName, _compatibility.LocalVersion.ToString());
             headerWriter.WriteHeader(InstanceHeaderName, _instanceId.Value.ToString());
             headerWriter.WriteHeader(ServicePortHeaderName, _networkSettings.TcpServicePort.ToString());
             headerWriter.WriteHeader(CatalogVersionHeaderName, _localPackageRegistry.Version.ToString());
@@ -65,7 +65,7 @@ namespace ShareCluster.Network.Http
                 Fail(remoteAddress, $"Invalid value of header {VersionHeaderName}");
             }
 
-            if (!_compatibility.IsCompatibleWith(CompatibilitySet.NetworkProtocol, remoteAddress.ToString(), version))
+            if (!_compatibility.IsCompatibleWith(remoteAddress, version))
             {
                 Fail(remoteAddress, $"Server is incompatible with version defined in header {VersionHeaderName}");
             }
