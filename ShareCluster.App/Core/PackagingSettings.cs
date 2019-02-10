@@ -47,7 +47,7 @@ namespace ShareCluster.Core
             // remark: Path.Combine will ignore first parameter if second param is absolute
 
             string appRootPath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            DataRootPath = Path.Combine(DataRootPath, appRootPath);
+            DataRootPath = Path.Combine(appRootPath, DataRootPath);
             DataRootPathPackageRepository = Path.Combine(DataRootPath, DataRootPathPackageRepository);
             DataRootPathExtractDefault = Path.Combine(DataRootPath, DataRootPathExtractDefault);
         }

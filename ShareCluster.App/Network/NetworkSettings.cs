@@ -70,6 +70,11 @@ namespace ShareCluster.Network
         public ushort UdpAnnouncePort { get; set; } = 13977;
 
         /// <summary>
+        /// Gets or sets UDP announce port. This has to be same for all clients.
+        /// </summary>
+        public ushort UdpListenPort { get; set; } = 13977;
+
+        /// <summary>
         /// Gets or sets TCP service port. This can vary by each client but predefined default is used.
         /// </summary>
         public ushort TcpServicePort { get; set; } = 13978;

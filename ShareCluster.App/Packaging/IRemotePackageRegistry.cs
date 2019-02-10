@@ -30,6 +30,6 @@ namespace ShareCluster.Packaging
         /// <summary>
         /// Is invoked after package is removed.
         /// </summary>
-        event EventHandler<RemotePackage> PackageRemoved;
+        event EventHandler<Id> PackageRemoved;
     }
 }

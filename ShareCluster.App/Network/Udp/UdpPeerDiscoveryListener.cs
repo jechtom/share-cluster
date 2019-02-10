@@ -44,9 +44,9 @@ namespace ShareCluster.Network.Udp
 
         public void Start()
         {
-            _logger.LogDebug("Starting discovery listening on UDP port {0}", _settings.UdpAnnouncePort);
+            _logger.LogDebug("Starting discovery listening on UDP port {0}", _settings.UdpListenPort);
 
-            _client = new UdpClient(_settings.UdpAnnouncePort);
+            _client = new UdpClient(_settings.UdpListenPort);
             _cancel = new CancellationTokenSource();
             _task = Task.Run(StartInternal, _cancel.Token)
                 .ContinueWith(c=>
@@ -73,7 +73,7 @@ namespace ShareCluster.Network.Udp
                     }
 
                     // ignore incompatible versions
-                    if(!_compatibility.IsCompatibleWith(receiveResult.RemoteEndPoint.Address, announceMessage.CatalogVersion))
+                    if(!_compatibility.IsCompatibleWith(receiveResult.RemoteEndPoint.Address, announceMessage.AppVersion))
                     {
                         _logger.LogTrace($"Ignored announce from {receiveResult.RemoteEndPoint.Address} - incompatible app version.");
                         continue;

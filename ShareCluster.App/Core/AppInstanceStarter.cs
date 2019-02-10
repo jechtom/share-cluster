@@ -87,11 +87,11 @@ namespace ShareCluster.Core
             // start with housekeeping of peers
             PeersManager.StartHousekeeping();
 
-            // continue with unfinished download
-            PackageDownloadManager.RestoreUnfinishedDownloads();
-
             // load packages
             PackageManager.Init();
+
+            // continue with unfinished download
+            PackageDownloadManager.RestoreUnfinishedDownloads();
 
             // watch network changes
             NetworkChangeNotifier.Start();

@@ -22,24 +22,24 @@ namespace ShareCluster.Network
     /// </summary>
     public class PackageDownloadManager
     {
+        readonly TimeSpan _tryScheduleInterval = TimeSpan.FromSeconds(5);
+        readonly TimeSpan _delayBetweenWritingStatusToDisk = TimeSpan.FromSeconds(10);
+
         private readonly ILogger<PackageDownloadManager> _logger;
         private readonly HttpApiClient _client;
         private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly IPeerRegistry _peerRegistry;
         private readonly LocalPackageManager _localPackageManager;
-        private readonly Dictionary<Id, LocalPackage> _packagesDownloading;
-        private readonly HashSet<Id> _definitionsDownloading = new HashSet<Id>();
-        private List<PackageDownloadSlot> _downloadSlots;
+        private readonly List<PackageDownloadSlot> _downloadSlots;
         private readonly object _syncLock = new object();
-        private readonly PackageStatusUpdater _packageStatusUpdater;
-        private readonly Dictionary<Id, PostponeTimer> _postPoneUpdateDownloadFile;
-        private readonly TimeSpan _postPoneUpdateDownloadFileInterval = TimeSpan.FromSeconds(20);
+        private readonly PeerPackageStatusFetcher _packageStatusUpdater;
+        private readonly HashSet<Id> _definitionsInDownload;
         private readonly PackageDetailDownloader _packageDetailDownloader;
-        private readonly NetworkSettings _networkSettings;
-        private readonly StreamsFactory _streamsFactory;
         private readonly PackageDownloadSlotFactory _slotFactory;
-        private bool _isNextTryScheduled = false;
+        private readonly IClock _clock;
+        private readonly Timer _scheduleTimer;
+        private readonly Dictionary<Id, TimeSpan> _lastWritingStatus;
 
         public PackageDefinitionSerializer _packageDefinitionSerializer;
         private readonly NetworkThrottling _networkThrottling;
@@ -53,11 +53,10 @@ namespace ShareCluster.Network
             LocalPackageManager localPackageManager,
             PackageDefinitionSerializer packageDefinitionSerializer,
             NetworkThrottling networkThrottling,
-            PackageStatusUpdater packageStatusUpdater,
+            PeerPackageStatusFetcher packageStatusUpdater,
             PackageDetailDownloader packageDetailDownloader,
-            NetworkSettings networkSettings,
-            StreamsFactory streamsFactory,
-            PackageDownloadSlotFactory slotFactory
+            PackageDownloadSlotFactory slotFactory,
+            IClock clock
             )
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -70,15 +69,27 @@ namespace ShareCluster.Network
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
             _packageStatusUpdater = packageStatusUpdater ?? throw new ArgumentNullException(nameof(packageStatusUpdater));
             _packageDetailDownloader = packageDetailDownloader ?? throw new ArgumentNullException(nameof(packageDetailDownloader));
-            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
-            _streamsFactory = streamsFactory ?? throw new ArgumentNullException(nameof(streamsFactory));
             _slotFactory = slotFactory ?? throw new ArgumentNullException(nameof(slotFactory));
-            _postPoneUpdateDownloadFile = new Dictionary<Id, PostponeTimer>();
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _downloadSlots = new List<PackageDownloadSlot>();
-            _packagesDownloading = new Dictionary<Id, LocalPackage>();
-            _definitionsDownloading = new HashSet<Id>();
-            _packageStatusUpdater.NewDataAvailable += TryScheduleNextDownload;
+            _definitionsInDownload = new HashSet<Id>();
+            _lastWritingStatus = new Dictionary<Id, TimeSpan>();
+            Downloads = ImmutableDictionary<Id, PackageDownload>.Empty;
+            _packageStatusUpdater.NewDataAvailable += TryDownloadPart;
+
+            _scheduleTimer = new Timer((_) => {
+                try
+                {
+                    TryDownloadPart();
+                }
+                finally
+                {
+                    _scheduleTimer.Change(_tryScheduleInterval, Timeout.InfiniteTimeSpan);
+                }
+            }, null, _tryScheduleInterval, Timeout.InfiniteTimeSpan);
         }
+
+        public IImmutableDictionary<Id, PackageDownload> Downloads { get; private set; }
 
         public void RestoreUnfinishedDownloads()
         {
@@ -86,7 +97,7 @@ namespace ShareCluster.Network
             {
                 foreach (LocalPackage item in _localPackageRegistry.LocalPackages.Values.Where(p => p.DownloadStatus.IsDownloading))
                 {
-                    StartDownloadLocalPackage(item);
+                    StartDownload(item.Id);
                 }
             }
         }
@@ -95,38 +106,154 @@ namespace ShareCluster.Network
         {
             // stop download 
             // (opened download streams will be closed after completion after releasing package locks)
-            StopDownloadPackage(obj);
+            StopDownload(obj.Id);
         }
 
         /// <summary>
-        /// Downloads discovered package hashes and starts download.
+        /// Starts to download package data.
         /// </summary>
-        /// <param name="packageId">Discovered package to download.</param>
-        /// <param name="startDownloadTask">Task that completed when download is started/failed.</param>
+        /// <param name="packageId">Package Id to download.</param>
         /// <returns>
         /// Return true if download has started. False if it was already in progress. 
         /// Throws en exception if failed to download hashes or start download.
         /// </returns>
-        public bool StartDownloadRemotePackage(Id packageId, out Task startDownloadTask)
+        public bool StartDownload(Id packageId)
         {
+            PackageDownload packageDownload;
+
             lock (_syncLock)
             {
                 // download definition already in progress
-                if (!_definitionsDownloading.Add(packageId))
+                if(Downloads.TryGetValue(packageId, out packageDownload) && !packageDownload.IsCancelled)
                 {
-                    startDownloadTask = null;
+                    // already in progress - don't do anything
                     return false;
                 }
 
-                // already in repository, exit
-                if (_localPackageRegistry.LocalPackages.ContainsKey(packageId))
+                packageDownload = PackageDownload.ForPackage(packageId);
+
+                // do we already have definition?
+                if (!packageDownload.IsLocalPackageAvailable && _localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage localPackage))
                 {
-                    startDownloadTask = null;
-                    return false;
+                    packageDownload = packageDownload.WithLocalPackage(localPackage);
+                }
+
+                Downloads = Downloads.SetItem(packageDownload.PackageId, packageDownload);
+
+                if(packageDownload.IsLocalPackageAvailable)
+                {
+                    // continue with download of data
+                    OnDefinitionAvailable(packageDownload.LocalPackage);
+                }
+                else
+                {
+                    // continue with definition download 
+                    TryStartDownloadingDefinition(packageId);
                 }
             }
 
-            startDownloadTask = Task.Run(() =>
+            DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = packageDownload, HasStarted = true });
+
+            return true;
+        }
+
+        public void StopDownload(Id packageId)
+        {
+            PackageDownload packageDownload;
+
+            lock (_syncLock)
+            {
+                // is really downloading?
+                if (!Downloads.TryGetValue(packageId, out packageDownload)) return;
+
+                packageDownload = packageDownload.WithIsCancelled();
+
+                // update status
+                if (packageDownload.IsLocalPackageAvailable)
+                {
+                    LocalPackage package = packageDownload.LocalPackage;
+
+                    package.DownloadStatus.UpdateIsDownloaded();
+
+                    // mark as "don't resume download"
+                    package.DownloadStatus.IsDownloading = false;
+                    package.DataAccessor.UpdatePackageDownloadStatus(package.DownloadStatus);
+
+                    // update version
+                    if (package.DownloadStatus.IsDownloaded)
+                    {
+                        _localPackageRegistry.IncreaseVersion();
+                    }
+                }
+
+                // stop
+                Downloads = Downloads.Remove(packageDownload.PackageId);
+
+                // not interested in package anymore
+                _packageStatusUpdater.NotInterestedInPackage(packageDownload.PackageId);
+            }
+
+            DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = packageDownload, HasStopped = true });
+        }
+
+        public bool CanUpdateDownloadStatusForPackage(Id packageId)
+        {
+            lock(_syncLock)
+            {
+                if (!_lastWritingStatus.TryGetValue(packageId, out TimeSpan value) || value < _clock.Time)
+                {
+                    _lastWritingStatus[packageId] = _clock.Time.Add(_delayBetweenWritingStatusToDisk);
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        private void OnDefinitionAvailable(LocalPackage localPackage)
+        {
+            PackageDownload packageDownload;
+
+            lock (_syncLock)
+            {
+                // already downloading? ignore
+                if (!Downloads.TryGetValue(localPackage.Id, out packageDownload)) return;
+
+                // marked for delete? ignore
+                if (localPackage.Locks.IsMarkedToDelete) return;
+
+                // already downloaded? ignore
+                if (localPackage.DownloadStatus.IsDownloaded) return;
+
+                // mark as "Resume download"
+                if(!localPackage.DownloadStatus.IsDownloading)
+                {
+                    localPackage.DownloadStatus.IsDownloading = true;
+                    localPackage.DataAccessor.UpdatePackageDownloadStatus(localPackage.DownloadStatus);
+                }
+
+                // start download
+                packageDownload = packageDownload.WithLocalPackage(localPackage);
+                Downloads = Downloads.SetItem(packageDownload.PackageId, packageDownload);
+
+                // interested in package
+                _packageStatusUpdater.InterestedInPackage(localPackage);
+            }
+
+            DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = packageDownload });
+
+            TryDownloadPart();
+        }
+
+
+        private void TryStartDownloadingDefinition(Id packageId)
+        {
+            lock (_syncLock)
+            {
+                if (_definitionsInDownload.Contains(packageId)) return;
+            }
+
+            Task.Run(() =>
             {
                 try
                 {
@@ -137,7 +264,7 @@ namespace ShareCluster.Network
                     // allocate and start download
                     LocalPackage package = _localPackageManager.CreateForDownload(packageDef, packageMeta);
                     _localPackageRegistry.AddLocalPackage(package);
-                    StartDownloadLocalPackage(package);
+                    OnDefinitionAvailable(package);
                 }
                 catch (Exception e)
                 {
@@ -148,186 +275,111 @@ namespace ShareCluster.Network
                 {
                     lock (_syncLock)
                     {
-                        _definitionsDownloading.Remove(packageId);
+                        _definitionsInDownload.Remove(packageId);
                     }
                 }
             });
-
-            return true;
         }
 
-        public void StartDownloadLocalPackage(LocalPackage package)
-        {
-            lock(_syncLock)
-            {
-                // already downloading? ignore
-                if (_packagesDownloading.ContainsKey(package.Id)) return;
-
-                // marked for delete? ignore
-                if (package.Locks.IsMarkedToDelete) return;
-
-                // already downloaded? ignore
-                if (package.DownloadStatus.IsDownloaded) return;
-
-                // mark as "Resume download"
-                if(!package.DownloadStatus.IsDownloading)
-                {
-                    package.DownloadStatus.IsDownloading = true;
-                    package.DataAccessor.UpdatePackageDownloadStatus(package.DownloadStatus);
-                }
-
-                // start download
-                UpdateQueue(package, isInterested: true);
-            }
-
-            DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = package, HasStarted = true });
-        }
-
-        public void StopDownloadPackage(LocalPackage package)
+        private void TryDownloadPart()
         {
             lock (_syncLock)
             {
-                // is really downloading?
-                if (!_packagesDownloading.ContainsKey(package.Id)) return;
-
-                // update status
-                package.DownloadStatus.UpdateIsDownloaded();
-
-                // mark as "don't resume download"
-                package.DownloadStatus.IsDownloading = false;
-                package.DataAccessor.UpdatePackageDownloadStatus(package.DownloadStatus);
-
-                // update version
-                if (package.DownloadStatus.IsDownloaded)
-                {
-                    _localPackageRegistry.IncreaseVersion();
-                }
-
-                // stop
-                UpdateQueue(package, isInterested: false);
-            }
-
-            DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = package, HasStopped = true });
-        }
-
-        private void UpdateQueue(LocalPackage package, bool isInterested)
-        {
-            _logger.LogInformation($"Package {package} download status: {package.DownloadStatus}");
-
-            lock (_syncLock)
-            {
-                // add/remove
-                if (isInterested)
-                {
-                    _packagesDownloading.Add(package.Id, package);
-                    _packageStatusUpdater.InterestedInPackage(package);
-                }
-                else
-                {
-                    _packagesDownloading.Remove(package.Id);
-                    _packageStatusUpdater.NotInterestedInPackage(package);
-                }
-            }
-
-            TryScheduleNextDownload();
-        }
-
-        private void TryScheduleNextDownload()
-        {
-            lock (_syncLock)
-            {
-                _isNextTryScheduled = false;
+                if (!Downloads.Any()) return;
 
                 if (_downloadSlots.Count >= _networkThrottling.DownloadSlots.Limit)
                 {
-                    // no slots? exit - this method will be called when slot is returned
+                    // no slots - don't even try
                     return;
                 }
 
-                if (_packagesDownloading.Count == 0)
+                var eligibleDownloads = Downloads.Values
+                        .Where(d => d.IsLocalPackageAvailable && !d.IsCancelled)
+                        .ToList();
+
+                // randomly try download parts for all eligible downloads
+                while(eligibleDownloads.Any() && _downloadSlots.Count < _networkThrottling.DownloadSlots.Limit)
                 {
-                    // no package for download? exit - this method will be called when new package is added
-                    return;
+                    int packageRandomIndex = ThreadSafeRandom.Next(0, Downloads.Count);
+                    PackageDownload packageDownload = eligibleDownloads.ElementAt(packageRandomIndex);
+                    eligibleDownloads.RemoveAt(packageRandomIndex);
+
+                    TryDownloadPartForPackage(packageDownload);
+                }
+            }
+        }
+
+        private void TryDownloadPartForPackage(PackageDownload packageDownload)
+        {
+            if (!_remotePackageRegistry.RemotePackages.TryGetValue(packageDownload.PackageId, out RemotePackage remotePackage))
+            {
+                // not found - can't schedule
+                return;
+            }
+
+            var eligiblePeers = remotePackage.Peers.Values.ToList();
+            while (_downloadSlots.Count < _networkThrottling.DownloadSlots.Limit && eligiblePeers.Any())
+            {
+                // pick random peer
+                int peerIndex = ThreadSafeRandom.Next(0, eligiblePeers.Count);
+                RemotePackageOccurence peerOccurence = eligiblePeers[peerIndex];
+                eligiblePeers.RemoveAt(peerIndex);
+                if(!_peerRegistry.Peers.TryGetValue(peerOccurence.PeerId, out PeerInfo peer))
+                {
+                    continue;
                 }
 
-                int packageRandomIndex = ThreadSafeRandom.Next(0, _packagesDownloading.Count);
-                LocalPackage package = _packagesDownloading.ElementAt(packageRandomIndex).Value;
-
-                if(!_remotePackageRegistry.RemotePackages.TryGetValue(package.Id, out RemotePackage remotePackage))
+                // skip peer if is not enabled at this moment
+                if(!peer.Status.IsEnabled)
                 {
-                    // not found
-                    return;
+                    continue;
+                }
+                
+                // obtain status slot of this peer
+                if (!peer.Status.Slots.TryObtainSlot())
+                {
+                    continue;
                 }
 
-                remotePackage.Peers;
+                // create slot and try download
+                PackageDownloadSlot slot = _slotFactory.Create(this, packageDownload, peer);
+                PackageDownloadSlotResult result = slot.TryStartAsync();
 
-                while (_downloadSlots.Count < _networkThrottling.DownloadSlots.Limit && tmpPeers.Any())
+                // release status slot of this peer
+                result.DownloadTask.ContinueWith(t => { peer.Status.Slots.ReleaseSlot(); });
+
+                switch (result.Status)
                 {
-                    // pick random peer
-                    int peerIndex = ThreadSafeRandom.Next(0, tmpPeers.Count);
-                    PeerId peerId = tmpPeers[peerIndex];
-                    tmpPeers = tmpPeers.Remove(peerId);
-                    if(!_peerRegistry.Peers.TryGetValue(peerId, out PeerInfo peer))
-                    {
+                    case PackageDownloadSlotResultStatus.MarkedForDelete:
+                    case PackageDownloadSlotResultStatus.NoMoreToDownload:
+                        StopDownload(packageDownload.PackageId);
+                        return; // exit now (cannot continue for package) - package has been deleted or we're waiting for last part to finish download
+                    case PackageDownloadSlotResultStatus.Error:
+                    case PackageDownloadSlotResultStatus.NoMatchWithPeer:
+                        continue; // cannot allocate for other reasons - continue
+                    case PackageDownloadSlotResultStatus.Started:
+                        // schedule next check to deploy slots.
+                        _downloadSlots.Add(slot);
+                        result.DownloadTask.ContinueWith(t => OnSlotFinished(slot));
                         continue;
-                    }
-
-                    // create slot and try download
-                    PackageDownloadSlot slot = _slotFactory.Create(this, package, peer);
-                    PackageDownloadSlotResult result = slot.TryStartAsync();
-
-                    switch (result.Status)
-                    {
-                        case PackageDownloadSlotResultStatus.MarkedForDelete:
-                        case PackageDownloadSlotResultStatus.NoMoreToDownload:
-                            return; // exit now (cannot continue for package) - package has been deleted or we're waiting for last part to finish download
-                        case PackageDownloadSlotResultStatus.Error:
-                        case PackageDownloadSlotResultStatus.NoMatchWithPeer:
-                            continue; // cannot allocate for other reasons - continue
-                        case PackageDownloadSlotResultStatus.Started:
-                            // schedule next check to deploy slots
-                            result.DownloadTask.ContinueWith(t =>
-                            {
-                                TryScheduleNextDownload();
-                            });
-                            continue;
-                        default:
-                            throw new InvalidOperationException($"Unexpected enum value: {result.Status}");
-                    }
-                }
-
-                if (_isNextTryScheduled)
-                {
-                    return; // already scheduled, exit
-                }
-
-                if (_downloadSlots.Count >= _networkThrottling.DownloadSlots.Limit)
-                {
-                    // no slots? exit - this method will be called when any slot is returned
-                    return;
-                }
-
-                if (tmpPeers.Count == 0)
-                {
-                    // all peers has been depleated (busy or incompatible), let's try again soon but waite
-                    _isNextTryScheduled = true;
-                    Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => TryScheduleNextDownload());
+                    default:
+                        throw new InvalidOperationException($"Unexpected enum value: {result.Status}");
                 }
             }
         }
-        
-        private bool CanUpdateDownloadStatusForPackage(LocalPackage package)
+
+        private void OnSlotFinished(PackageDownloadSlot slot)
         {
-            lock(_syncLock)
+            lock (_syncLock)
             {
-                if(_postPoneUpdateDownloadFile.TryGetValue(package.Id, out PostponeTimer timer) && timer.IsPostponed)
+                _downloadSlots.Remove(slot);
+
+                if(slot.LocalPackage.DownloadStatus.IsDownloaded)
                 {
-                    // still postponed
-                    return false;
+                    StopDownload(slot.Download.PackageId);
                 }
 
-                _postPoneUpdateDownloadFile[package.Id] = new PostponeTimer(_postPoneUpdateDownloadFileInterval);
-                return true;
+                TryDownloadPart();
             }
         }
 

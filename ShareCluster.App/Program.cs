@@ -52,8 +52,6 @@ namespace ShareCluster
                 // instance 1
                 var appSettings = new AppInstanceSettings();
                 appSettings.Logging = loggingSettings;
-                appSettings.NetworkSettings.EnableUdpDiscoveryListener = true;
-                appSettings.NetworkSettings.EnableUdpDiscoveryAnnouncer = true;
 
                 var instance = new AppInstance();
                 _instances.Add(instance);
@@ -82,8 +80,8 @@ namespace ShareCluster
             appSettings.PackagingSettings.DataRootPath = @"c:\temp\temp" + index;
             appSettings.Logging = loggingSettings;
             appSettings.NetworkSettings.TcpServicePort += (ushort)(index);
-            appSettings.NetworkSettings.EnableUdpDiscoveryListener = (index == 0);
-            appSettings.NetworkSettings.EnableUdpDiscoveryAnnouncer = true;
+            appSettings.NetworkSettings.UdpAnnouncePort += (ushort)(index == 0 ? 0 : 1);
+            appSettings.NetworkSettings.UdpListenPort += (ushort)(index == 0 ? 1 : 0);
 
             var instance = new AppInstance();
             _instances.Add(instance);

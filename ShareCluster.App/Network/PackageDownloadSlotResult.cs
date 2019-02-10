@@ -18,6 +18,6 @@ namespace ShareCluster.Network
             => new PackageDownloadSlotResult(PackageDownloadSlotResultStatus.Started, task);
 
         public static PackageDownloadSlotResult CreateFailed(PackageDownloadSlotResultStatus status)
-            => new PackageDownloadSlotResult(status, downloadTask: null);
+            => new PackageDownloadSlotResult(status, Task.CompletedTask);
     }
 }

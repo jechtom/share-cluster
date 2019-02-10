@@ -1,17 +1,52 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Core;
+using ShareCluster.Network.Http;
+using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Packaging.IO;
+using ShareCluster.Packaging.PackageFolders;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ShareCluster.Network
 {
+    /// <summary>
+    /// Info about state of package registered in download manager.
+    /// </summary>
     public class PackageDownload
     {
-        private readonly LocalPackage _package;
+        public static PackageDownload ForPackage(Id packageId)
+            => new PackageDownload(packageId, localPackage: null, isCancelled: false);
 
-        public PackageDownload(LocalPackage package)
+        public PackageDownload WithLocalPackage(LocalPackage localPackage)
+            => new PackageDownload(PackageId, localPackage, isCancelled: false);
+
+        public PackageDownload WithIsCancelled()
+            => new PackageDownload(PackageId, LocalPackage, isCancelled: true);
+
+        private PackageDownload(Id packageId, LocalPackage localPackage, bool isCancelled)
         {
-            _package = package ?? throw new ArgumentNullException(nameof(package));
+            PackageId = packageId;
+            LocalPackage = localPackage;
+            IsCancelled = isCancelled;
         }
+
+        public bool IsLocalPackageAvailable => LocalPackage != null;
+
+        public LocalPackage LocalPackage { get; }
+
+        public bool IsCancelled { get; }
+
+        public Id PackageId { get; }
+
+        public override string ToString()
+            => $"{ (IsLocalPackageAvailable ? LocalPackage.ToString() : PackageId.ToString()) }; local_package={IsLocalPackageAvailable}; cancelled={IsCancelled}";
     }
 }

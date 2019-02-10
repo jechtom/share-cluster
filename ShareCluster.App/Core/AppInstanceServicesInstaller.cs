@@ -61,7 +61,7 @@ namespace ShareCluster.Core
             services.AddSingleton<PackageDefinitionSerializer>();
             services.AddSingleton<PackageFolderDataAccessorBuilder>();
             services.AddSingleton<PackageDownloadStatusSerializer>();
-            services.AddSingleton<PackageStatusUpdater>();
+            services.AddSingleton<PeerPackageStatusFetcher>();
             services.AddSingleton<PackageMetadataSerializer>();
             services.AddSingleton<PackageDetailDownloader>();
             services.AddSingleton<HttpCommonHeadersProcessor>();

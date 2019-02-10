@@ -49,11 +49,11 @@ namespace ShareCluster.WebInterface
             if (!_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package) || package.Locks.IsMarkedToDelete) return;
             if (start)
             {
-                _packageDownloadManager.StartDownloadLocalPackage(package);
+                _packageDownloadManager.StartDownload(package.Id);
             }
             else
             {
-                _packageDownloadManager.StopDownloadPackage(package);
+                _packageDownloadManager.StopDownload(package.Id);
             }
         }
 
@@ -101,20 +101,7 @@ namespace ShareCluster.WebInterface
             }
 
             // try start download
-            if (!_packageDownloadManager.StartDownloadRemotePackage(remotePackage.PackageId, out Task startDownloadTask))
-            {
-                return;
-            }
-
-            // create and register task for starting download
-            var task = new LongRunningTask(
-                    $"Starting download of package \"{remotePackage.Name}\" {remotePackage.PackageId:s}",
-                    startDownloadTask,
-                    $"Download has started"
-                );
-
-            // register
-            _tasks.AddTaskToQueue(task);
+            _packageDownloadManager.StartDownload(remotePackage.PackageId);
         }
 
         public void CreateNewPackage(string folder, string name)
