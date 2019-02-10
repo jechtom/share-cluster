@@ -2,6 +2,7 @@
 using ShareCluster.Network.Http;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace ShareCluster.WebInterface
@@ -9,20 +10,30 @@ namespace ShareCluster.WebInterface
     [ServiceFilter(typeof(HttpFilterOnlyLocal))]
     public class HttpWebInterfaceController : Controller
     {
-        private readonly WebFacade facade;
+        private readonly WebFacade _facade;
 
         public HttpWebInterfaceController(WebFacade facade)
         {
-            this.facade = facade ?? throw new ArgumentNullException(nameof(facade));
+            this._facade = facade ?? throw new ArgumentNullException(nameof(facade));
         }
 
-        public IActionResult Index() => View(model: facade.GetStatusViewModel());
+        public IActionResult Index() => View(model: _facade.GetStatusViewModel());
+
+        public IActionResult Test()
+        {
+            return Json(_facade.GetStatusViewModel().Packages.Select(p => new
+            {
+                Id = p.Value.Id.ToString(),
+                Name = p.Value.Metadata.Name,
+                SizeFormatted = SizeFormatter.ToString(p.Value.SplitInfo.PackageSize)
+            }));
+        }
 
         [HttpPost, ValidateAntiForgeryToken]
         public IActionResult StartDownloadDiscoveredPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
-            facade.TryStartDownloadRemotePackage(packageId);
+            _facade.TryStartDownloadRemotePackage(packageId);
             return RedirectToAction(nameof(Index));
         }
 
@@ -30,7 +41,7 @@ namespace ShareCluster.WebInterface
         public IActionResult StartDownloadPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
-            facade.TryChangeDownloadPackage(packageId, start: true);
+            _facade.TryChangeDownloadPackage(packageId, start: true);
             return RedirectToAction(nameof(Index));
         }
 
@@ -38,7 +49,7 @@ namespace ShareCluster.WebInterface
         public IActionResult StopDownloadPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
-            facade.TryChangeDownloadPackage(packageId, start: false);
+            _facade.TryChangeDownloadPackage(packageId, start: false);
             return RedirectToAction(nameof(Index));
         }
 
@@ -46,7 +57,7 @@ namespace ShareCluster.WebInterface
         public IActionResult StartVerifyPackage(Id packageId)
         {
             if (!ModelState.IsValid) return BadRequest();
-            facade.TryVerifyPackage(packageId);
+            _facade.TryVerifyPackage(packageId);
             return RedirectToAction(nameof(Index));
         }
 
@@ -54,7 +65,7 @@ namespace ShareCluster.WebInterface
         {
             if (!ModelState.IsValid) return BadRequest();
             PackageOperationViewModel package;
-            if ((package = facade.GetPackageOrNull(packageId)) == null) return NotFound();
+            if ((package = _facade.GetPackageOrNull(packageId)) == null) return NotFound();
             return View(package);
         }
 
@@ -64,11 +75,11 @@ namespace ShareCluster.WebInterface
             if (!ModelState.IsValid) return BadRequest();
 
             PackageOperationViewModel package;
-            if ((package = facade.GetPackageOrNull(packageId)) == null) return NotFound();
+            if ((package = _facade.GetPackageOrNull(packageId)) == null) return NotFound();
 
             try
             {
-                facade.DeletePackage(package.Id);
+                _facade.DeletePackage(package.Id);
             }
             catch(Exception e)
             {
@@ -83,11 +94,11 @@ namespace ShareCluster.WebInterface
         {
             if (!ModelState.IsValid) return BadRequest();
             PackageOperationViewModel package;
-            if ((package = facade.GetPackageOrNull(packageId)) == null) return NotFound();
+            if ((package = _facade.GetPackageOrNull(packageId)) == null) return NotFound();
             var model = new ExtractPackageViewModel()
             {
                 DoValidate = true,
-                Folder = facade.RecommendFolderForExtraction(),
+                Folder = _facade.RecommendFolderForExtraction(),
                 Package = package
             };
             return View(model);
@@ -99,11 +110,11 @@ namespace ShareCluster.WebInterface
             if (!ModelState.IsValid) return View();
 
             PackageOperationViewModel package;
-            if ((package = facade.GetPackageOrNull(packageId)) == null) return NotFound();
+            if ((package = _facade.GetPackageOrNull(packageId)) == null) return NotFound();
 
             try
             {
-                facade.ExtractPackage(package.Id, viewModel.Folder, viewModel.DoValidate);
+                _facade.ExtractPackage(package.Id, viewModel.Folder, viewModel.DoValidate);
             }
             catch (Exception e)
             {
@@ -125,7 +136,7 @@ namespace ShareCluster.WebInterface
 
             try
             {
-                facade.CreateNewPackage(viewModel.Folder, viewModel.Name);
+                _facade.CreateNewPackage(viewModel.Folder, viewModel.Name);
             }
             catch (Exception e)
             {
@@ -139,7 +150,7 @@ namespace ShareCluster.WebInterface
         [HttpPost, ValidateAntiForgeryToken]
         public IActionResult ClearCompletedTasks()
         {
-            facade.CleanTasksHistory();
+            _facade.CleanTasksHistory();
             return RedirectToAction(nameof(Index));
         }
 

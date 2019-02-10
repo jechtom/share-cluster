@@ -1,6 +1,7 @@
 const HtmlWebPackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 var path = require("path");
+const devMode = process.env.NODE_ENV !== 'production'
 
 module.exports = {
     output: {
@@ -35,11 +36,11 @@ module.exports = {
         },
 
         {
-          test: /\.(scss)$/,
+          test: /\.(sa|sc|c)ss$/,
           use: [
             {
               // // Adds CSS to the DOM by injecting a `<style>` tag
-              // loader: 'style-loader'
+              //loader: 'style-loader'
 
               // separate files with styles
               loader: MiniCssExtractPlugin.loader
@@ -74,8 +75,8 @@ module.exports = {
         filename: "./index.html"
       }),
       new MiniCssExtractPlugin({
-        filename: '[name].css',
-        chunkFilename: '[id].css'
+        filename: devMode ? '[name].css' : '[name].[hash].css',
+        chunkFilename: devMode ? '[id].css' : '[id].[hash].css',
       })
     ]
   };

@@ -1,3 +1,4 @@
 import 'bootstrap';
 import './styles/app.scss';
-import FormContainer from "./components/container/FormContainer.jsx";
+import App from "./components/container/App.jsx";
+
