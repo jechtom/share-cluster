@@ -19,7 +19,7 @@ namespace ShareCluster.Network.Http
         {
             services.AddSingleton<HttpApiControllerHeadersFilter>();
             services.AddSingleton<HttpFilterOnlyLocal>();
-
+            services.AddCors();
             services.AddMvc(c =>
             {
                 c.InputFormatters.Clear();
@@ -38,6 +38,7 @@ namespace ShareCluster.Network.Http
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                app.UseCors(c => c.AllowAnyOrigin()); // for testing we run test web server on different port
             }
 
             app.UseStaticFiles();

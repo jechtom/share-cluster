@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import FormContainer from "./FormContainer.jsx";
+import PackagesMasterView from "./PackagesMasterView.jsx";
+
 class App extends Component {
   constructor() {
     super();
@@ -22,6 +24,9 @@ class App extends Component {
           <FormContainer />
         </div>
 
+        <div class="container-fluid">
+          <PackagesMasterView />
+        </div>
         
       </div>
     );
