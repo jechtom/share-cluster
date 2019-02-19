@@ -7,7 +7,8 @@ class FormContainer extends Component {
   constructor() {
     super();
     this.state = {
-      seo_title: ""
+      seo_title: "",
+      is_connected: false
     };
     this.handleChange = this.handleChange.bind(this);
   }
@@ -20,11 +21,16 @@ class FormContainer extends Component {
     this.setState({ seo_title: data });
   }
 
+  handleOpen() { this.setState({ is_connected: true } ); }
+  handleClose() { this.setState({ is_connected: false } ); }
+
   render() {
     const { seo_title } = this.state;
+    const classNameForConnect = "alert " + (this.state.is_connected ? "alert-success" : "alert-warning");
     return (
       <div>
         <h1>Hello</h1>
+        <div className={ classNameForConnect }>{ this.state.is_connected ? "Connected" : "Disconnected" }</div>
         <strong>{seo_title}</strong>
         <form id="article-form">
           <Input
@@ -38,7 +44,10 @@ class FormContainer extends Component {
         </form>
 
         <Websocket url='ws://localhost:13978/ws'
-              onMessage={this.handleData.bind(this)}/>
+              onMessage={this.handleData.bind(this)}
+              onOpen={this.handleOpen.bind(this)}
+              onClose={this.handleClose.bind(this)}
+              />
 
       </div>
     );

@@ -79,7 +79,7 @@ namespace ShareCluster.Network.Http
         private async Task Echo(HttpContext context, WebSocket webSocket)
         {
             var buffer = Encoding.UTF8.GetBytes("Hi");
-            while (!webSocket.CloseStatus.HasValue)
+            while (webSocket.State == WebSocketState.Open)
             {
                await webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
                await Task.Delay(1000);
