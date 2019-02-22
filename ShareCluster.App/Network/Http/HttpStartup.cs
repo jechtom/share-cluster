@@ -46,45 +46,18 @@ namespace ShareCluster.Network.Http
 
             app.UseStaticFiles();
 
-            app.UseWebSockets();
-
-            app.Use(async (context, next) =>
+            app.UseWebSockets(new WebSocketOptions()
             {
-                if (context.Request.Path == "/ws")
-                {
-                    if (context.WebSockets.IsWebSocketRequest)
-                    {
-                        WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                        await Echo(context, webSocket);
-                    }
-                    else
-                    {
-                        context.Response.StatusCode = 400;
-                    }
-                }
-                else
-                {
-                    await next();
-                }
-
+                KeepAliveInterval = TimeSpan.FromSeconds(20)
             });
+
+            app.MapWhen(p => p.Request.Path == "/ws", appWs => appWs.UseMiddleware<WebSocketHandlerMiddleware>());
 
             app.UseMvc(c =>
             {
                 c.MapRoute("DefaultWebInterface", "{action}", new { controller = "HttpWebInterface", action = "Index" });
                 c.MapRoute("DefaultApi", "api/{action}", new { controller = "HttpApi" });
             });
-        }
-
-        private async Task Echo(HttpContext context, WebSocket webSocket)
-        {
-            var buffer = Encoding.UTF8.GetBytes("Hi");
-            while (webSocket.State == WebSocketState.Open)
-            {
-               await webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
-               await Task.Delay(1000);
-            }
-            await webSocket.CloseAsync(webSocket.CloseStatus.Value, webSocket.CloseStatusDescription, CancellationToken.None);
         }
     }
 }

@@ -87,6 +87,8 @@ namespace ShareCluster.Core
             services.AddSingleton<WebFacade>();
             services.AddSingleton<LongRunningTasksManager>();
             services.AddSingleton<PackageFolderDataValidator>();
+            services.AddTransient<WebSocketHandler>();
+            services.AddSingleton<WebSocketManager>();
         }
 
         private ILoggerFactory CreateLoggerFactory()
