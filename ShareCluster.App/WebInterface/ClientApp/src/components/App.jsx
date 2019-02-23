@@ -14,7 +14,7 @@ const App = () => (
 
       <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <a class="navbar-brand" href="https://github.com/jechtom/share-cluster" target="_blank">
-          <FontAwesomeIcon icon="cubes" /> ShareCluster
+          <FontAwesomeIcon icon="th-large" /> ShareCluster <small><ServerStatus /></small>
         </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -28,7 +28,6 @@ const App = () => (
         </div>
       </nav>
 
-      <ServerStatus />
 
 
       <div class="container-fluid">

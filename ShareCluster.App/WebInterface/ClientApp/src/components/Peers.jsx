@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 const Peers = ({ data }) => (
       <div>
         <h1><FontAwesomeIcon icon="users" /> Peers</h1>
+        { data.peers.length == 0 && <div>No peers found.</div> }
         <table class="table">
           <tbody>
             {data.peers.map(c => <tr key={c.Address}>

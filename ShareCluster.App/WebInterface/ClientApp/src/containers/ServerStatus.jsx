@@ -3,8 +3,12 @@ import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 
 const ServerStatus = ({ serverStatus }) => {
-    const classNameForConnect = "alert " + (serverStatus.connected ? "alert-success" : "alert-warning");
-    return <div className={ classNameForConnect }>{ serverStatus.connected ? "Server online" : "Disconnected" }</div>
+    const classNameForConnect = "badge " + (serverStatus.connected ? "badge-success" : "badge-danger");
+    return (
+        <span class={ classNameForConnect }>
+            { serverStatus.connected ? "Online" : "Disconnected" }
+        </span>
+    )
 }
 
 // ServerStatus.propTypes = {

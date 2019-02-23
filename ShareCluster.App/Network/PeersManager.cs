@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Http;
+using ShareCluster.Synchronization;
 
 namespace ShareCluster.Network
 {
@@ -12,6 +13,8 @@ namespace ShareCluster.Network
     /// </summary>
     public class PeersManager : IDisposable
     {
+        private readonly object _syncLock = new object();
+        private readonly ConcurrentHashSet<PeerId> _recentlyShutDownPeers = new ConcurrentHashSet<PeerId>();
         private readonly ILogger<PeersManager> _logger;
         private readonly PeerInfoFactory _peerFactory;
         private readonly IPeerRegistry _peerRegistry;
@@ -35,6 +38,10 @@ namespace ShareCluster.Network
 
         private void CommonHeadersProcessor_HeaderDataParsed(object sender, CommonHeaderData headerData)
         {
+            // ignore if this peer has announced shutdown - to prevent adding already removed peer
+            //  - we can receive shutdown sooner than last request from client etc.
+            if (_recentlyShutDownPeers.Contains(headerData.PeerId)) return;
+
             // received header from peer - report
             PeerInfo peer = GetOrCreatePeerInfo(headerData.PeerId);
             peer.Status.Catalog.UpdateRemoteVersion(headerData.CatalogVersion);
@@ -47,6 +54,10 @@ namespace ShareCluster.Network
 
             if (e.IsShuttingDown)
             {
+                // remember this peer is shutting down (permanent process)
+                _recentlyShutDownPeers.Add(e.PeerId);
+                if (_recentlyShutDownPeers.Count > 1000) _recentlyShutDownPeers.Clear(); // safety 
+
                 // handle shut-down UDP announce
                 peerInfo.Status.ReportDead(PeerDeadReason.ShutdownAnnounce);
                 RemovePeer(peerInfo);
