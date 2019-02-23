@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import Input from "../presentational/Input.jsx";
+import Input from "./presentational/Input.jsx";
 import Websocket from 'react-websocket';
 
 class FormContainer extends Component {
@@ -26,11 +26,9 @@ class FormContainer extends Component {
 
   render() {
     const { seo_title } = this.state;
-    const classNameForConnect = "alert " + (this.state.is_connected ? "alert-success" : "alert-warning");
     return (
       <div>
         <h1>Hello</h1>
-        <div className={ classNameForConnect }>{ this.state.is_connected ? "Connected" : "Disconnected" }</div>
         <strong>{seo_title}</strong>
         <form id="article-form">
           <Input
@@ -42,12 +40,6 @@ class FormContainer extends Component {
             handleChange={this.handleChange}
           />
         </form>
-
-        <Websocket url='ws://localhost:13978/ws'
-              onMessage={this.handleData.bind(this)}
-              onOpen={this.handleOpen.bind(this)}
-              onClose={this.handleClose.bind(this)}
-              />
 
       </div>
     );

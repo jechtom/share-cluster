@@ -1,7 +1,9 @@
 ﻿using ShareCluster.Core;
 using ShareCluster.Network;
+using ShareCluster.Network.Http;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.PackageFolders;
+using ShareCluster.WebInterface.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;

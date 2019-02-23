@@ -13,6 +13,7 @@ namespace ShareCluster.Synchronization
     public class TaskSemaphoreQueue
     {
         private readonly Queue<Item> _queue = new Queue<Item>();
+        private readonly List<TaskCompletionSource<object>> _notifyAfterCleanQueueAndCompleted;
         private readonly object _syncLock = new object();
         private int _runningTasks;
         
@@ -20,6 +21,7 @@ namespace ShareCluster.Synchronization
         {
             if (runningTasksLimit <= 0) throw new ArgumentException(nameof(runningTasksLimit));
             RunningTasksLimit = runningTasksLimit;
+            _notifyAfterCleanQueueAndCompleted = new List<TaskCompletionSource<object>>();
         }
 
         public int RunningTasksLimit { get; }
@@ -56,11 +58,39 @@ namespace ShareCluster.Synchronization
             }
         }
 
+        public async Task WaitForFinishAllTasksAsync()
+        {
+            var tcs = new TaskCompletionSource<object>();
+
+            lock (_syncLock)
+            {
+                _notifyAfterCleanQueueAndCompleted.Add(tcs);
+                NotifyAfterCleanQueueAndCompleted();
+            }
+
+            await tcs.Task;
+        }
+
         private void AfterTaskFinished(Item item, Task task)
         {
-            // try schedule next
-            Interlocked.Decrement(ref _runningTasks);
-            TryRunningTask();
+            lock (_syncLock)
+            {
+                Interlocked.Decrement(ref _runningTasks);
+
+                // try schedule next
+                TryRunningTask();
+
+                NotifyAfterCleanQueueAndCompleted();
+            }
+        }
+
+        private void NotifyAfterCleanQueueAndCompleted()
+        {
+            if (_notifyAfterCleanQueueAndCompleted.Any() && _runningTasks == 0)
+            {
+                _notifyAfterCleanQueueAndCompleted.ForEach(t => t.TrySetResult(null));
+                _notifyAfterCleanQueueAndCompleted.Clear();
+            }
         }
 
         /// <summary>

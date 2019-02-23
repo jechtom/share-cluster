@@ -14,24 +14,28 @@ namespace ShareCluster.Network.Http
     {
         readonly ILogger<WebSocketManager> _logger;
         readonly object _syncLock = new object();
-        HashSet<WebSocketHandler> _clients = new HashSet<WebSocketHandler>();
+        HashSet<WebSocketClient> _clients = new HashSet<WebSocketClient>();
 
         public WebSocketManager(ILogger<WebSocketManager> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void AddClient(WebSocketHandler client)
+        public event EventHandler<WebSocketClient> OnConnected;
+
+        public void AddClient(WebSocketClient client)
         {
-            lock(_clients)
+            lock(_syncLock)
             {
                 if (!_clients.Add(client)) throw new InvalidCastException("Client already added.");
             }
+
+            OnConnected?.Invoke(this, client);
         }
 
-        public void RemoveClient(WebSocketHandler client)
+        public void RemoveClient(WebSocketClient client)
         {
-            lock (_clients)
+            lock (_syncLock)
             {
                 if (!_clients.Remove(client)) throw new InvalidCastException("Client not found in list. Can't remove it.");
             }
@@ -41,7 +45,7 @@ namespace ShareCluster.Network.Http
         {
             get
             {
-                lock(_clients)
+                lock(_syncLock)
                 {
                     return _clients.Count > 0;
                 }
@@ -50,9 +54,34 @@ namespace ShareCluster.Network.Http
 
         public void PushMessageToAllClients(string message)
         {
-            lock (_clients)
+            lock (_syncLock)
             {
-                throw new NotImplementedException();
+                foreach(WebSocketClient client in _clients)
+                {
+                    try
+                    {
+                        client.PushData(message);
+                    }
+                    catch
+                    {
+                        _logger.LogWarning($"Can't push data to websocket to client: {client}");
+                    }
+                }
+            }
+        }
+
+        public void PushMessageToClient(WebSocketClient client, string message)
+        {
+            lock (_syncLock)
+            {
+                try
+                {
+                    client.PushData(message);
+                }
+                catch
+                {
+                    _logger.LogWarning($"Can't push data to websocket to client: {client}");
+                }
             }
         }
     }

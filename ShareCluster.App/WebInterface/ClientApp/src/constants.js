@@ -1,0 +1,1 @@
+export const uri = "ws://localhost:13978/ws" 

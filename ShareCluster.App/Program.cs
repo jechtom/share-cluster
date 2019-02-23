@@ -62,6 +62,7 @@ namespace ShareCluster
             Stop();
         }
 
+
         private static void Stop()
         {
             Console.WriteLine("Stopping.");
@@ -74,9 +75,11 @@ namespace ShareCluster
 
         private static void CreateInstance(int index, LoggingSettings loggingSettings)
         {
+            Thread.Sleep(index * 5000);
+
             // instance n
             var appSettings = new AppInstanceSettings();
-
+            appSettings.StartBrowserWithPortalOnStart = false;
             appSettings.PackagingSettings.DataRootPath = @"c:\temp\temp" + index;
             appSettings.Logging = loggingSettings;
             appSettings.NetworkSettings.TcpServicePort += (ushort)(index);
@@ -86,6 +89,12 @@ namespace ShareCluster
             var instance = new AppInstance();
             _instances.Add(instance);
             instance.Start(appSettings);
+
+            if(index == 1)
+            {
+                Thread.Sleep(index * 5000);
+                instance.Dispose();
+            }
         }
     }
 }

@@ -17,9 +17,6 @@ namespace ShareCluster.Network
         private readonly NetworkSettings _settings;
         private readonly object _syncLock = new object();
 
-        private TimeSpan _lastTcpToPeerSuccess;
-        private int _failsSinceLastTcpToPeerSuccess;
-
         public PeerStatus(IClock clock, NetworkSettings settings)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));

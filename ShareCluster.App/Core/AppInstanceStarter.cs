@@ -35,7 +35,8 @@ namespace ShareCluster.Core
             PackageFolderRepository packageFolderRepository,
             NetworkSettings networkSettings,
             WebFacade webFacade,
-            InstanceVersion instanceVersion
+            InstanceVersion instanceVersion,
+            ClientPushDispatcher clientPushDispatcher
         )
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -51,13 +52,14 @@ namespace ShareCluster.Core
             NetworkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             WebFacade = webFacade ?? throw new ArgumentNullException(nameof(webFacade));
             InstanceVersion = instanceVersion ?? throw new ArgumentNullException(nameof(instanceVersion));
+            ClientPushDispatcher = clientPushDispatcher ?? throw new ArgumentNullException(nameof(clientPushDispatcher));
         }
 
         public void Stop()
         {
             _logger.LogInformation("Stopping application");
             PeerCatalogUpdater.StopScheduledUpdates();
-            UdpPeerDiscovery.SendShutDownAsync().RunSynchronously();
+            UdpPeerDiscovery.SendShutDownAsync().Wait();
         }
 
         public InstanceId InstanceId { get; }
@@ -72,6 +74,7 @@ namespace ShareCluster.Core
         public NetworkSettings NetworkSettings { get; }
         public WebFacade WebFacade { get; }
         public InstanceVersion InstanceVersion { get; }
+        public ClientPushDispatcher ClientPushDispatcher { get; }
 
         public void Start(AppInstanceSettings settings)
         {
@@ -95,6 +98,9 @@ namespace ShareCluster.Core
 
             // watch network changes
             NetworkChangeNotifier.Start();
+
+            // enable pushing to clients
+            ClientPushDispatcher.Start();
 
             // show portal in browser
             if (settings.StartBrowserWithPortalOnStart)

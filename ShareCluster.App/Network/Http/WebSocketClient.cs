@@ -7,52 +7,102 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using ShareCluster.Synchronization;
 
 namespace ShareCluster.Network.Http
 {
-    public class WebSocketHandler
+    /// <summary>
+    /// Describes connected web socket client and handles communication loop and queueing.
+    /// </summary>
+    public class WebSocketClient
     {
         private bool _handled = false;
+        private HttpContext _context;
+        private WebSocket _socket;
+        private CancellationToken _cancellationToken;
         private object _syncLock = new object();
-        private readonly ILogger<WebSocketHandler> _logger;
+        private readonly ILogger<WebSocketClient> _logger;
         private readonly WebSocketManager _socketManager;
+        private readonly TaskSemaphoreQueue _pushQueue;
 
-        public WebSocketHandler(ILogger<WebSocketHandler> logger, WebSocketManager socketManager)
+        public WebSocketClient(ILogger<WebSocketClient> logger, WebSocketManager socketManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _socketManager = socketManager ?? throw new ArgumentNullException(nameof(socketManager));
+            _pushQueue = new TaskSemaphoreQueue(runningTasksLimit: 1);
         }
+
+        public override string ToString() => _handled ? $"websocket={_context.Connection}" : "N/A";
 
         public async Task HandleAsync(HttpContext context, WebSocket socket)
         {
-            lock(_syncLock)
+            CancellationTokenSource cancellationTokenSource;
+
+            lock (_syncLock)
             {
                 if (_handled) throw new InvalidOperationException("This instance already handled socket.");
+                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _socket = socket ?? throw new ArgumentNullException(nameof(socket));
+                cancellationTokenSource = new CancellationTokenSource();
+                _cancellationToken = cancellationTokenSource.Token;
+
                 _handled = true;
             }
-
+            
             // start sending loop
-            var cancellationTokenSource = new CancellationTokenSource();
-            Task pushTask = PushLoopAsync(context, socket, cancellationTokenSource.Token);
+            _logger.LogDebug($"Starting web socket for {context.Connection}");
+            _socketManager.AddClient(this);
 
             // we do not expect any messages - but it is important to wait for close response
-            await WaitForCloseAsync(socket, CancellationToken.None);
+            try
+            {
+                await WaitForCloseAsync(socket, CancellationToken.None);
+            }
+            finally
+            {
+                _logger.LogDebug($"Closing web socket {context.Connection}");
+                _socketManager.RemoveClient(this);
+            }
 
             // cancel
+            _pushQueue.ClearQueued();
             cancellationTokenSource.Cancel();
-
-            // and wait for finishing push tasks
-            await pushTask;
+            await _pushQueue.WaitForFinishAllTasksAsync();
 
             // do regular close
             await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal closure", CancellationToken.None);
         }
 
+        public void PushData(string message)
+        {
+            lock (_syncLock)
+            {
+                if (!_handled) throw new InvalidOperationException("This instance is not yet ready.");
+                if (_cancellationToken.IsCancellationRequested) return;
+            }
+            _pushQueue.EnqueueTaskFactory(message, PushDataInternalAsync);
+        }
+
+        private async Task PushDataInternalAsync(string message)
+        {
+            // remark: this method is not thread safe
+            try
+            {
+                await _socket.SendAsync(Encoding.UTF8.GetBytes(message), WebSocketMessageType.Text, true, _cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                // cancelled
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Can't send data to web socket client {_context.Connection}", e);
+            }
+        }
+
         private async Task PushLoopAsync(HttpContext context, WebSocket webSocket, CancellationToken cancellationToken)
         {
-            _logger.LogDebug($"Starting push loop for socket {webSocket}");
-            _socketManager.AddClient(this);
-
+            
             try
             {
                 while (webSocket.State == WebSocketState.Open)
@@ -68,8 +118,7 @@ namespace ShareCluster.Network.Http
             }
             finally
             {
-                _socketManager.RemoveClient(this);
-                _logger.LogDebug($"Closing push loop for socket {webSocket}");
+                
             }
         }
 

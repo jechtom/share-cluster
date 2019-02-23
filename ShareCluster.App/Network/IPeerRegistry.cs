@@ -10,5 +10,10 @@ namespace ShareCluster.Network
         IImmutableDictionary<PeerId, PeerInfo> Peers { get; }
         PeerInfo GetOrAddPeer(PeerId peerId, Func<PeerInfo> createFunc);
         void RemovePeer(PeerInfo peer);
+
+        /// <summary>
+        /// Is invoked after peers are updated.
+        /// </summary>
+        event EventHandler PeersChanged;
     }
 }

@@ -2,7 +2,7 @@
   "profiles": {
     "ShareCluster": {
       "commandName": "Project",
-      "commandLineArgs": "debug 1"
+      "commandLineArgs": "debug 2"
     }
   }
 }

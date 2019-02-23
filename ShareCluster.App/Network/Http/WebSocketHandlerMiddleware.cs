@@ -16,7 +16,7 @@ namespace ShareCluster.Network.Http
             _next = next ?? throw new ArgumentNullException(nameof(next));
         }
 
-        public async Task Invoke(HttpContext context, WebSocketHandler webSocketHandler)
+        public async Task Invoke(HttpContext context, WebSocketClient webSocketHandler)
         {
             if (context.WebSockets.IsWebSocketRequest)
             {

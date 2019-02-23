@@ -17,6 +17,8 @@ namespace ShareCluster.Network
         private readonly object _syncLock = new object();
         private readonly ILogger<PeerRegistry> _logger;
 
+        public event EventHandler PeersChanged;
+
         public IImmutableDictionary<PeerId, PeerInfo> Peers { get; private set; }
 
         public PeerInfo GetOrAddPeer(PeerId peerId, Func<PeerInfo> createFunc)
@@ -37,8 +39,10 @@ namespace ShareCluster.Network
 
                 result = createFunc();
                 Peers = Peers.Add(peerId, result);
-                return result;
             }
+
+            PeersChanged?.Invoke(this, EventArgs.Empty);
+            return result;
         }
 
         public void RemovePeer(PeerInfo peer)
@@ -53,6 +57,8 @@ namespace ShareCluster.Network
 
                 Peers = Peers.Remove(peer.PeerId);
             }
+
+            PeersChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

@@ -14,7 +14,7 @@ namespace ShareCluster.WebInterface
 
         public HttpWebInterfaceController(WebFacade facade)
         {
-            this._facade = facade ?? throw new ArgumentNullException(nameof(facade));
+            _facade = facade ?? throw new ArgumentNullException(nameof(facade));
         }
 
         public IActionResult Index() => View(model: _facade.GetStatusViewModel());
