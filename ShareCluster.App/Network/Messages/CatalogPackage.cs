@@ -23,7 +23,7 @@ namespace ShareCluster.Network.Messages
             PackageName = packageInfo.Metadata.Name;
             PackageSize = packageInfo.Definition.PackageSize;
             IsSeeder = packageInfo.DownloadStatus.IsDownloaded;
-            PackageParentId = packageInfo.Metadata.ParentPackageId;
+            GroupId = packageInfo.Metadata.GroupId;
             Created = packageInfo.Metadata.Created;
         }
         
@@ -40,7 +40,7 @@ namespace ShareCluster.Network.Messages
         public virtual bool IsSeeder { get; set; }
 
         [ProtoMember(5)]
-        public virtual Id? PackageParentId { get; set; }
+        public virtual Id GroupId { get; set; }
 
         [ProtoMember(6)]
         public virtual DateTimeOffset Created { get; set; }

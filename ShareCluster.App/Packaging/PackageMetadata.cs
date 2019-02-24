@@ -6,15 +6,15 @@ namespace ShareCluster.Packaging
 {
     public class PackageMetadata
     {
-        public PackageMetadata(string name, DateTimeOffset created, Id? parentPackageId)
+        public PackageMetadata(string name, DateTimeOffset created, Id groupId)
         {
             Name = name;
             Created = created;
-            ParentPackageId = parentPackageId;
+            GroupId = groupId;
         }
 
         public string Name { get; }
         public DateTimeOffset Created { get; }
-        public Id? ParentPackageId { get; } 
+        public Id GroupId { get; } 
     }
 }

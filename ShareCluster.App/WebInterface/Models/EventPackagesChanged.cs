@@ -6,7 +6,7 @@ namespace ShareCluster.WebInterface.Models
 {
     public class EventPackagesChanged : IClientEvent
     {
-        public IEnumerable<PackageInfoDto> Packages { get; set; }
+        public IEnumerable<PackageGroupInfoDto> Groups { get; set; }
 
         public string ResolveEventName() => "PACKAGES_CHANGED";
     }

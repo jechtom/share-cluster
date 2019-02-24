@@ -14,6 +14,7 @@ using ShareCluster.WebInterface;
 using ShareCluster.Network;
 using ShareCluster.Network.Udp;
 using ShareCluster.Network.Http;
+using Newtonsoft.Json;
 
 namespace ShareCluster.Core
 {

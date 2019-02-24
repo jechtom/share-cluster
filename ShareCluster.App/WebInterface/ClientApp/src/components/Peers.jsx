@@ -11,7 +11,6 @@ const Peers = ({ data }) => (
           <tbody>
             {data.peers.map(c => <tr key={c.Address}>
               <td><FontAwesomeIcon icon="user" /> <code>{c.Address}</code></td>
-              <td>{c.Status}</td>
             </tr>)}
           </tbody>
         </table> 

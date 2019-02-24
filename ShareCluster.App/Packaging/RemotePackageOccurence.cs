@@ -4,14 +4,14 @@ namespace ShareCluster.Packaging
 {
     public class RemotePackageOccurence : IEquatable<RemotePackageOccurence>
     {
-        public RemotePackageOccurence(PeerId peerId, Id packageId, long packageSize, string name, DateTimeOffset created, Id? parentPackageId, bool isSeeder)
+        public RemotePackageOccurence(PeerId peerId, Id packageId, long packageSize, string name, DateTimeOffset created, Id groupId, bool isSeeder)
         {
             PackageSize = packageSize;
             PeerId = peerId;
             PackageId = packageId;
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Created = created;
-            ParentPackageId = parentPackageId;
+            GroupId = groupId;
             IsSeeder = isSeeder;
         }
 
@@ -20,7 +20,7 @@ namespace ShareCluster.Packaging
         public Id PackageId { get; }
         public string Name { get; }
         public DateTimeOffset Created { get; }
-        public Id? ParentPackageId { get; }
+        public Id GroupId { get; }
         public bool IsSeeder { get; }
 
         public bool Equals(RemotePackageOccurence other) =>
@@ -29,7 +29,7 @@ namespace ShareCluster.Packaging
             && PackageId == other.PackageId
             && Name == other.Name
             && Created == other.Created
-            && ParentPackageId == other.ParentPackageId
+            && GroupId == other.GroupId
             && IsSeeder == other.IsSeeder;
     }
 }

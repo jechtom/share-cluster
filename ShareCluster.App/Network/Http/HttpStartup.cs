@@ -25,11 +25,11 @@ namespace ShareCluster.Network.Http
             services.AddCors();
             services.AddMvc(c =>
             {
-                c.InputFormatters.Clear();
-                c.OutputFormatters.Clear();
+                //c.InputFormatters.Clear();
+                //c.OutputFormatters.Clear();
                 var httpFormatter = new HttpFormatter();
-                c.InputFormatters.Add(httpFormatter);
-                c.OutputFormatters.Add(httpFormatter);
+                c.InputFormatters.Insert(0,httpFormatter);
+                c.OutputFormatters.Insert(0,httpFormatter);
                 
                 // prevent validation of messages - MVC crashes if hits IPAddress/IPEndPoint class
                 c.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Messages.IMessage)));
@@ -41,7 +41,13 @@ namespace ShareCluster.Network.Http
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseCors(c => c.AllowAnyOrigin()); // for testing we run test web server on different port
+
+                // allow access from nodeJS dev server (if running UI on different port)
+                app.UseCors(options => options
+                     .WithOrigins("http://localhost:8080")
+                     .AllowAnyMethod()
+                     .AllowAnyHeader()
+                );
             }
 
             app.UseStaticFiles();
@@ -57,6 +63,7 @@ namespace ShareCluster.Network.Http
             {
                 c.MapRoute("DefaultWebInterface", "{action}", new { controller = "HttpWebInterface", action = "Index" });
                 c.MapRoute("DefaultApi", "api/{action}", new { controller = "HttpApi" });
+                c.MapRoute("ClientApi", "api-client/{action}", new { controller = "ClientApi" });
             });
         }
     }

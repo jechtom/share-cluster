@@ -20,7 +20,7 @@ namespace ShareCluster.Tests.Packaging
 
             // add
             PeerId peer = Generator.RandomPeerId();
-            var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, null, isSeeder: true);
+            var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
 
             registry.UpdateOcurrencesForPeer(peer, new[] { occurence });
 
@@ -40,7 +40,7 @@ namespace ShareCluster.Tests.Packaging
             PeerId peer = Generator.RandomPeerId();
 
             // add 1
-            var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, null, isSeeder: true);
+            var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
             registry.UpdateOcurrencesForPeer(peer, new[] { occurence });
 
             Assert.Equal(1, registry.RemotePackages.Count);
@@ -60,10 +60,10 @@ namespace ShareCluster.Tests.Packaging
             Id packageId = Generator.RandomId();
 
             PeerId peer1 = Generator.RandomPeerId();
-            var occurence1 = new RemotePackageOccurence(peer1, packageId, 123456, "abc", DateTimeOffset.Now, null, isSeeder: true);
+            var occurence1 = new RemotePackageOccurence(peer1, packageId, 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
 
             PeerId peer2 = Generator.RandomPeerId();
-            var occurence2 = new RemotePackageOccurence(peer2, packageId, 123456, "abc", DateTimeOffset.Now, null, isSeeder: true);
+            var occurence2 = new RemotePackageOccurence(peer2, packageId, 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
 
             registry.UpdateOcurrencesForPeer(peer1, new[] { occurence1 });
             registry.UpdateOcurrencesForPeer(peer2, new[] { occurence2 });
@@ -86,7 +86,7 @@ namespace ShareCluster.Tests.Packaging
 
             Assert.Throws<ArgumentException>(() => {
                 registry.UpdateOcurrencesForPeer(peerId1,
-                    new[] { new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true) });
+                    new[] { new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true) });
             });
         }
 
@@ -105,14 +105,14 @@ namespace ShareCluster.Tests.Packaging
 
             // peer 1 - packages 1, 2
             registry.UpdateOcurrencesForPeer(peerId1, new[] {
-                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true),
-                new RemotePackageOccurence(peerId1, packageId2, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true)
+                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
+                new RemotePackageOccurence(peerId1, packageId2, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
             });
 
             // peer 2 - packages 1, 3
             registry.UpdateOcurrencesForPeer(peerId2, new[] {
-                new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true),
-                new RemotePackageOccurence(peerId2, packageId3, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true)
+                new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
+                new RemotePackageOccurence(peerId2, packageId3, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
             });
 
             // all packages (1,2,3) should be present
@@ -147,8 +147,8 @@ namespace ShareCluster.Tests.Packaging
             PeerId peerId = Generator.RandomPeerId();
             Id packageId1 = Generator.RandomId();
 
-            var occ1 = new RemotePackageOccurence(peerId, packageId1, 123456, "abc", DateTimeOffset.Now, null, isSeeder: true);
-            var occ2 = new RemotePackageOccurence(peerId, packageId1, 123456, "cde", DateTimeOffset.Now, null, isSeeder: false);
+            var occ1 = new RemotePackageOccurence(peerId, packageId1, 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
+            var occ2 = new RemotePackageOccurence(peerId, packageId1, 123456, "cde", DateTimeOffset.Now, Generator.RandomId(), isSeeder: false);
 
             registry.UpdateOcurrencesForPeer(peerId, new[] { occ1 });
             registry.UpdateOcurrencesForPeer(peerId, new[] { occ2 });
@@ -176,14 +176,14 @@ namespace ShareCluster.Tests.Packaging
 
             // peer 1 variant A - packages 1, 2
             registry.UpdateOcurrencesForPeer(peerId1, new[] {
-                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true),
-                new RemotePackageOccurence(peerId1, packageId2, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true)
+                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
+                new RemotePackageOccurence(peerId1, packageId2, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
             });
 
             // peer 2 - packages 1, 3
             registry.UpdateOcurrencesForPeer(peerId2, new[] {
-                new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true),
-                new RemotePackageOccurence(peerId2, packageId3, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true)
+                new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
+                new RemotePackageOccurence(peerId2, packageId3, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
             });
 
             // packages (1,2,3) should be present
@@ -194,8 +194,8 @@ namespace ShareCluster.Tests.Packaging
 
             // peer 1 variant B - packages 1, 4 (replaces 1, 2)
             registry.UpdateOcurrencesForPeer(peerId1, new[] {
-                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true),
-                new RemotePackageOccurence(peerId1, packageId4, 123458, "abc", DateTimeOffset.Now, null, isSeeder: true)
+                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
+                new RemotePackageOccurence(peerId1, packageId4, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
             });
 
             // packages (1,3,4) should be present

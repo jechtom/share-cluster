@@ -66,7 +66,7 @@ namespace ShareCluster.Network
                     peerInfo.HandlePeerCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
                     if (response.Found)
                     {
-                        packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.ParentPackageId);
+                        packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.GroupId);
                         _logger.LogDebug($"Peer {peerInfo} sent us catalog package {remotePackage}");
                         break; // found
                     }

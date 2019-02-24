@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Primitives;
 using System.Collections.Immutable;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace ShareCluster
 {
@@ -14,6 +15,7 @@ namespace ShareCluster
     /// Represents binary identification.
     /// </summary>
     [ProtoContract]
+    [JsonConverter(typeof(IdJsonConverter))]
     [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.IdModelBinder))]
     public struct Id : IEquatable<Id>, IFormattable
     {
@@ -21,6 +23,8 @@ namespace ShareCluster
         public ImmutableArray<byte> Bytes;
 
         public bool IsNullOrEmpty => Bytes == null || Bytes.Length == 0;
+
+        public static Id Empty => new Id(new byte[0]);
 
         public Id(byte[] data)
         {

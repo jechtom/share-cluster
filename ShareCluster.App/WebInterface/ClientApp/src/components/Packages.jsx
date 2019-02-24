@@ -1,47 +1,43 @@
 import React, { Component } from "react";
-import axios from "axios";
+import Link from './presentational/Link.jsx'
+import * as Commands from '../actions/commands'
 import { connect } from 'react-redux'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
-const Packages = ({ data }) => (
-      <div>
-        <h1><FontAwesomeIcon icon="cubes" /> Packages</h1>
-        <table class="table">
-          <tbody>
-            {data.packages.map(c => <tr key={c.Id}>
-              <td><FontAwesomeIcon icon="cube" /> {c.KnownNames} <code class="small">{c.IdShort}</code></td>
-              <td>{c.SizeFormatted}</td>
-            </tr>)}
-          </tbody>
-        </table> 
-      </div>
+const Packages = ({ data, package_delete, package_verify, package_download, package_download_stop }) => (
+    <div>
+      <h1><FontAwesomeIcon icon="cubes" /> Packages</h1>
+      <table class="table">
+        {data.groups.map(g => <tbody key={g.GroupId}>
+          {g.Packages.sort((i1, i2) => i1.CreatedSort > i2.CreatedSort).map(p => <tr key={p.Id}>
+            <td><FontAwesomeIcon icon="cube" /> <code class="small">{g.GroupIdShort}/{p.IdShort}</code></td>
+            <td>{ p.CreatedFormatted }</td>
+            <td>{ p.KnownNames }</td>
+            <td>{ p.SizeFormatted }</td>
+            <td><FontAwesomeIcon icon="cloud-download-alt"/> { p.Leechers } / <FontAwesomeIcon icon="cloud-upload-alt"/> { p.Seeders }</td>
+            <td>
+              <Link onClick={ (e) => package_delete(p.Id) } alt="Delete"><FontAwesomeIcon icon="trash-alt" /></Link>
+              <Link onClick={ (e) => alert("N/A yet") } alt="Extract"><FontAwesomeIcon icon="box-open" /></Link>
+              <Link onClick={ (e) => package_verify(p.Id) } alt="Verify"><FontAwesomeIcon icon="hat-wizard" /></Link>
+              <Link onClick={ (e) => package_download(p.Id) } alt="Download"><FontAwesomeIcon icon="file-download" /></Link>
+              <Link onClick={ (e) => package_download_stop(p.Id) } alt="Stop"><FontAwesomeIcon icon="stop-circle" /></Link>
+            </td>
+          </tr>)}
+        </tbody>)}
+      </table> 
+    </div>
 )
 
-
-  // componentDidMount() {
-  //   axios
-  //     .get("http://localhost:13978/test")
-  //     .then(response => {
-  //       console.log(response);
-  //       // create an array of contacts only with relevant data
-  //       const newPackages = response.data.map(c => {
-  //         return c;
-  //       });
-
-  //       // create a new "State" object without mutating 
-  //       // the original State object. 
-  //       const newState = Object.assign({}, this.state, {
-  //         packages: newPackages
-  //       });
-
-  //       // store the new state object in the component's state
-  //       this.setState(newState);
-  //     })
-  //     .catch(error => console.log(error));
-  // }
 
 const mapStateToProps = state => ({
   data: state.Packages
 })
 
-export default connect(mapStateToProps)(Packages);
+const mapDispatchToProps = dispatch => ({
+  package_delete: id => dispatch(Commands.package_delete(id)),
+  package_verify: id => dispatch(Commands.package_verify(id)),
+  package_download: id => dispatch(Commands.package_download(id)),
+  package_download_stop: id => dispatch(Commands.package_download_stop(id)),
+})
+
+export default connect(mapStateToProps, mapDispatchToProps)(Packages);

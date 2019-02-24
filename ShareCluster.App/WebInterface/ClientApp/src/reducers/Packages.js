@@ -1,7 +1,7 @@
-export default function Packages(state = {packages : []}, action) {
+export default function Packages(state = {groups : []}, action) {
     switch (action.type) {
       case 'PACKAGES_CHANGED':
-        return { packages : action.data.Packages }
+        return { groups: action.data.Groups };
       default:
         return state;
     }

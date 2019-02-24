@@ -30,7 +30,7 @@ namespace ShareCluster.Packaging.IO
                 packageSize: packageDefinition.PackageSize,
                 created: value.Created,
                 name: value.Name,
-                packageParentId: value.ParentPackageId
+                groupId: value.GroupId
             );
             _serializer.Serialize<PackageMetadataDto>(dto, stream);
         }
@@ -67,7 +67,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // create result
-            var result = new PackageMetadata(dto.Name, dto.Created, dto.PackageParentId);
+            var result = new PackageMetadata(dto.Name, dto.Created, dto.GroupId);
             return result;
         }
     }

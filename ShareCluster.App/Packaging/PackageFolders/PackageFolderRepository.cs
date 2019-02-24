@@ -121,7 +121,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 );
         }
     
-        public LocalPackage CreateNewPackageFromStream(PackageSplitBaseInfo defaultSplitInfo, MeasureItem measure, string name, Id? parentPackageId, Action<Stream> writeToStreamAction)
+        public LocalPackage CreateNewPackageFromStream(PackageSplitBaseInfo defaultSplitInfo, MeasureItem measure, string name, Id? groupId, Action<Stream> writeToStreamAction)
         {
             if (defaultSplitInfo == null)
             {
@@ -157,14 +157,14 @@ namespace ShareCluster.Packaging.PackageFolders
             var buildPathReference = new PackageFolderReference(packageDefinition.PackageId, buildDirectory.FullName);
 
             // store package hashes
-            UpdateDefinition(buildPathReference, packageDefinition); ;
+            UpdateDefinition(buildPathReference, packageDefinition);
 
             // store download status
             var downloadStatus = PackageDownloadStatus.CreateForDownloadedPackage(packageDefinition.PackageSplitInfo);
             UpdateDownloadStatus(buildPathReference, downloadStatus, packageDefinition);
 
-            // store metadata
-            var metadata = new PackageMetadata(name, DateTimeOffset.Now, parentPackageId);
+            // store metadata - remark: for root package use package Id as group Id
+            var metadata = new PackageMetadata(name, DateTimeOffset.Now, groupId ?? packageDefinition.PackageId);
             UpdateMetadata(buildPathReference, metadata, packageDefinition);
 
             // rename folder

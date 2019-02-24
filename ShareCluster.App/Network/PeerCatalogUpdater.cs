@@ -110,7 +110,7 @@ namespace ShareCluster.Network
                         catalogItem.PackageSize,
                         catalogItem.PackageName,
                         catalogItem.Created,
-                        catalogItem.PackageParentId,
+                        catalogItem.GroupId,
                         catalogItem.IsSeeder
                     );
                     occurences.Add(occ);

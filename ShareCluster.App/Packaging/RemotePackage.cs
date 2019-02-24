@@ -15,7 +15,7 @@ namespace ShareCluster.Packaging
             Name = string.Join(", ", Peers.Select(p => p.Value.Name).Distinct());
             Created = Peers.Any() ? Peers.First().Value.Created : DateTimeOffset.MinValue;
             Size = Peers.Any() ? Peers.First().Value.PackageSize : -1;
-            ParentPackageId = Peers.Any() ? Peers.First().Value.ParentPackageId : null;
+            GroupId = Peers.Any() ? Peers.First().Value.GroupId : Id.Empty;
         }
 
         public Id PackageId { get; }
@@ -23,7 +23,7 @@ namespace ShareCluster.Packaging
 
         public string Name { get; }
         public long Size { get; }
-        public Id? ParentPackageId { get; }
+        public Id GroupId { get; }
         public DateTimeOffset Created { get; }
 
         public RemotePackage WithPeer(RemotePackageOccurence occurence)
@@ -62,6 +62,6 @@ namespace ShareCluster.Packaging
             );
         }
 
-        public override string ToString() => $"Id={PackageId:s}; name=\"{Name}\"; parent={ParentPackageId:s}; size={SizeFormatter.ToString(Size)}";
+        public override string ToString() => $"Id={PackageId:s}; name=\"{Name}\"; group={GroupId:s}; size={SizeFormatter.ToString(Size)}";
     }
 }
