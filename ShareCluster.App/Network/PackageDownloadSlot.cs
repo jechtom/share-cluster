@@ -19,7 +19,6 @@ namespace ShareCluster.Network
         private readonly PeerInfo _peer;
         private readonly StreamsFactory _streamsFactory;
         private readonly HttpApiClient _client;
-        private readonly PeerPackageStatusFetcher _statusFetcher;
         private readonly NetworkSettings _networkSettings;
         private int[] _segments;
         private bool _isSegmentsReleasedNeeded;
@@ -29,7 +28,7 @@ namespace ShareCluster.Network
 
         private Task _task;
 
-        public PackageDownloadSlot(ILogger<PackageDownloadSlot> logger, PackageDownloadManager parent, PackageDownload download, PeerInfo peer, StreamsFactory streamsFactory, HttpApiClient client, PeerPackageStatusFetcher statusFetcher, NetworkSettings networkSettings)
+        public PackageDownloadSlot(ILogger<PackageDownloadSlot> logger, PackageDownloadManager parent, PackageDownload download, PeerInfo peer, StreamsFactory streamsFactory, HttpApiClient client, NetworkSettings networkSettings)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _parent = parent ?? throw new ArgumentNullException(nameof(parent));
@@ -38,7 +37,6 @@ namespace ShareCluster.Network
             _peer = peer ?? throw new ArgumentNullException(nameof(peer));
             _streamsFactory = streamsFactory ?? throw new ArgumentNullException(nameof(streamsFactory));
             _client = client ?? throw new ArgumentNullException(nameof(client));
-            _statusFetcher = statusFetcher ?? throw new ArgumentNullException(nameof(statusFetcher));
             _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             if (!download.IsLocalPackageAvailable) throw new ArgumentException("Download slot can't accept downloads with definition downloaded.", nameof(download));
         }
@@ -67,7 +65,7 @@ namespace ShareCluster.Network
                 }
 
                 // select random segments to download
-                if (!_statusFetcher.TryGetBitmapOfPeer(LocalPackage, _peer, out byte[] remoteBitmap))
+                if (!TryGetBitmapOfPeer(out byte[] remoteBitmap))
                 {
                     // this peer didn't provided bitmap yet, skip it
                     return PackageDownloadSlotResult.CreateFailed(PackageDownloadSlotResultStatus.NoMatchWithPeer);
@@ -99,6 +97,25 @@ namespace ShareCluster.Network
                     ReleaseLocks();
                 }
             }
+        }
+
+        private bool TryGetBitmapOfPeer(out byte[] remoteBitmap)
+        {
+            if(!_peer.RemotePackages.Items.TryGetValue(LocalPackage.Id, out RemotePackage remotePackage))
+            {
+                remoteBitmap = null;
+                return false;
+            }
+
+            // seeder
+            if(remotePackage.IsSeeder)
+            {
+                remoteBitmap = null;
+                return true;
+            }
+
+            // leecher - with unknown download status
+            aaaaa
         }
 
         private void ReleaseLocks()

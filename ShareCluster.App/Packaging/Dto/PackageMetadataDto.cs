@@ -9,11 +9,11 @@ namespace ShareCluster.Packaging.Dto
     public class PackageMetadataDto
     {
         public PackageMetadataDto() { }
-        public PackageMetadataDto(Id packageId, long packageSize, DateTimeOffset created, string name, Id groupId)
+        public PackageMetadataDto(Id packageId, long packageSize, DateTime createdUtc, string name, Id groupId)
         {
             PackageId = packageId;
             PackageSize = packageSize;
-            Created = created;
+            CreatedUtc = createdUtc;
             Name = name;
             GroupId = groupId;
         }
@@ -25,12 +25,15 @@ namespace ShareCluster.Packaging.Dto
         public virtual long PackageSize { get; set; }
 
         [ProtoMember(4)]
-        public virtual DateTimeOffset Created { get; set; }
+        public virtual DateTime CreatedUtc { get; set; }
 
         [ProtoMember(5)]
         public virtual string Name { get; set; }
 
         [ProtoMember(6)]
         public virtual Id GroupId { get; set; }
+
+        [ProtoMember(7)]
+        public virtual Id ContentHash { get; set; }
     }
 }

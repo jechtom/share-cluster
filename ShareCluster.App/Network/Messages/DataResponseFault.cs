@@ -17,8 +17,17 @@ namespace ShareCluster.Network.Messages
         [ProtoMember(3)]
         public virtual bool PackageSegmentsNotFound { get; set; }
 
+        [ProtoMember(4)]
+        public virtual byte[] PackageSegmentsKnown { get; set; }
+
         public static DataResponseFault CreateDataPackageNotFoundMessage() => new DataResponseFault() { PackageNotFound = true };
-        public static DataResponseFault CreateDataPackageSegmentsNotFoundMessage() => new DataResponseFault() { PackageSegmentsNotFound = true };
+
+        public static DataResponseFault CreateDataPackageSegmentsNotFoundMessage(byte[] packageSegmentsKnown) =>
+            new DataResponseFault() {
+                PackageSegmentsNotFound = true,
+                PackageSegmentsKnown = packageSegmentsKnown ?? throw new ArgumentNullException(nameof(packageSegmentsKnown))
+            };
+
         public static DataResponseFault CreateChokeMessage() => new DataResponseFault() { IsChoked = true };
     }
 }

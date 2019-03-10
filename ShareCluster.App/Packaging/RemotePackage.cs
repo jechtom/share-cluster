@@ -15,7 +15,9 @@ namespace ShareCluster.Packaging
         }
 
         public Id PackageId { get; }
+
         public PackageMetadata PackageMetadata { get; }
+
         public bool IsSeeder { get; }
 
         public override bool Equals(object obj) => Equals((RemotePackage)obj);

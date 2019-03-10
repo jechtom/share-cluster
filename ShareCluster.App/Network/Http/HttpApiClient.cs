@@ -28,16 +28,6 @@ namespace ShareCluster.Network.Http
             _headersProcessor = headersProcessor ?? throw new ArgumentNullException(nameof(headersProcessor));
         }
 
-        public Task<Messages.PackageStatusResponse> GetPackageStatusAsync(IPEndPoint endpoint, Messages.PackageStatusRequest message)
-        {
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
-
-            return SendRequestAndGetResponeAsync<Messages.PackageStatusRequest, Messages.PackageStatusResponse> (endpoint, nameof(HttpApiController.GetPackageStatus), message);
-        }
-
         public Messages.PackageResponse GetPackage(IPEndPoint endpoint, Messages.PackageRequest message)
         {
             if (message == null)

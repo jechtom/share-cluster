@@ -32,7 +32,6 @@ namespace ShareCluster.Network
         private readonly LocalPackageManager _localPackageManager;
         private readonly List<PackageDownloadSlot> _downloadSlots;
         private readonly object _syncLock = new object();
-        private readonly PeerPackageStatusFetcher _packageStatusUpdater;
         private readonly HashSet<Id> _definitionsInDownload;
         private readonly PackageDetailDownloader _packageDetailDownloader;
         private readonly PackageDownloadSlotFactory _slotFactory;
@@ -52,7 +51,6 @@ namespace ShareCluster.Network
             LocalPackageManager localPackageManager,
             PackageDefinitionSerializer packageDefinitionSerializer,
             NetworkThrottling networkThrottling,
-            PeerPackageStatusFetcher packageStatusUpdater,
             PackageDetailDownloader packageDetailDownloader,
             PackageDownloadSlotFactory slotFactory,
             IClock clock
@@ -65,7 +63,6 @@ namespace ShareCluster.Network
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
             _networkThrottling = networkThrottling ?? throw new ArgumentNullException(nameof(networkThrottling));
-            _packageStatusUpdater = packageStatusUpdater ?? throw new ArgumentNullException(nameof(packageStatusUpdater));
             _packageDetailDownloader = packageDetailDownloader ?? throw new ArgumentNullException(nameof(packageDetailDownloader));
             _slotFactory = slotFactory ?? throw new ArgumentNullException(nameof(slotFactory));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -73,8 +70,7 @@ namespace ShareCluster.Network
             _definitionsInDownload = new HashSet<Id>();
             _lastWritingStatus = new Dictionary<Id, TimeSpan>();
             Downloads = ImmutableDictionary<Id, PackageDownload>.Empty;
-            _packageStatusUpdater.NewDataAvailable += ScheduleFreeSlots;
-
+            
             _scheduleTimer = new Timer((_) => {
                 try
                 {

@@ -16,18 +16,18 @@ namespace ShareCluster.Tests.Packaging
             var version = new VersionNumber(1, 0);
             PackageSplitBaseInfo baseInfo = PackageSplitBaseInfo.Default;
             long size = baseInfo.SegmentLength * 18; // bitmap length: 8bits + 8bits + 2bits
-            var downloadStatus = PackageDownloadStatus.CreateForReadyToDownload(new PackageSplitInfo(baseInfo, size));
+            var downloadStatus = ShareCluster.Packaging.PackageDownloadStatus.CreateForReadyToDownload(new PackageSplitInfo(baseInfo, size));
             Assert.Equal(3, downloadStatus.SegmentsBitmap.Length);
 
             // validate
-            downloadStatus.ValidateStatusUpdateFromPeer(new PackageStatusItem()
+            downloadStatus.ValidateStatusUpdateFromPeer(new Network.Messages.PackageDownloadStatus()
             {
                 SegmentsBitmap = new byte[3] { 0x00, 0x00, 0x00 },
                 BytesDownloaded = 0,
                 IsFound = true
             });
 
-            downloadStatus.ValidateStatusUpdateFromPeer(new PackageStatusItem()
+            downloadStatus.ValidateStatusUpdateFromPeer(new Network.Messages.PackageDownloadStatus()
             {
                 SegmentsBitmap = new byte[3] { 0x00, 0x00, 0b00000011 },
                 BytesDownloaded = baseInfo.SegmentLength * 2,
@@ -37,7 +37,7 @@ namespace ShareCluster.Tests.Packaging
             // invalid (third bit is out of range)
             Assert.Throws<InvalidOperationException>(() =>
             {
-                downloadStatus.ValidateStatusUpdateFromPeer(new PackageStatusItem()
+                downloadStatus.ValidateStatusUpdateFromPeer(new Network.Messages.PackageDownloadStatus()
                 {
                     SegmentsBitmap = new byte[3] { 0x00, 0x00, 0b00000111 },
                     BytesDownloaded = baseInfo.SegmentLength * 2,
@@ -48,7 +48,7 @@ namespace ShareCluster.Tests.Packaging
             // invalid bytes downloaded greater than size of package
             Assert.Throws<InvalidOperationException>(() =>
             {
-                downloadStatus.ValidateStatusUpdateFromPeer(new PackageStatusItem()
+                downloadStatus.ValidateStatusUpdateFromPeer(new Network.Messages.PackageDownloadStatus()
                 {
                     SegmentsBitmap = new byte[3] { 0x00, 0x00, 0x00 },
                     BytesDownloaded = baseInfo.SegmentLength * 18 + 1,
@@ -59,7 +59,7 @@ namespace ShareCluster.Tests.Packaging
             // invalid - bitmap is present but package is downloaded
             Assert.Throws<InvalidOperationException>(() =>
             {
-                downloadStatus.ValidateStatusUpdateFromPeer(new PackageStatusItem()
+                downloadStatus.ValidateStatusUpdateFromPeer(new Network.Messages.PackageDownloadStatus()
                 {
                     SegmentsBitmap = new byte[3] { 0x00, 0x00, 0x00 },
                     BytesDownloaded = baseInfo.SegmentLength * 18,

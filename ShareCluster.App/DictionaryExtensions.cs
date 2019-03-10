@@ -61,13 +61,10 @@ namespace ShareCluster
             if(removed != null) items = items.RemoveRange(removed.Select(r => r.Key));
             if(changed != null) items = items.SetItems(changed.Select(c => c.NewItem));
             if(added != null) items = items.AddRange(added);
-        
+
             // notify
-            var changeEvent = new DictionaryChangedEvent<TKey, TValue>(
-                added: added == null ? ImmutableArray<KeyValuePair<TKey,TValue>>.Empty : added.ToImmutableArray(),
-                changed: changed == null ? ImmutableArray<KeyValueChangedPair<TKey, TValue>>.Empty : changed.ToImmutableArray(),
-                removed: removed == null ? ImmutableArray<KeyValuePair<TKey, TValue>>.Empty : removed.ToImmutableArray()
-            );
+            var changeEvent = DictionaryChangedEvent<TKey, TValue>
+                .FromNullableEnumerable(added: added, changed: changed, removed: removed);
 
             return (items, changeEvent);
         }

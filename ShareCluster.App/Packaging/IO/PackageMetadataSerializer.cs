@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging.IO
             var dto = new PackageMetadataDto(
                 packageId: packageDefinition.PackageContentHash,
                 packageSize: packageDefinition.PackageSize,
-                created: value.Created,
+                createdUtc: value.CreatedUtc,
                 name: value.Name,
                 groupId: value.GroupId
             );
@@ -67,7 +67,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // create result
-            var result = new PackageMetadata(dto.Name, dto.Created, dto.GroupId);
+            var result = new PackageMetadata(dto.PackageId, dto.Name, dto.CreatedUtc, dto.GroupId, dto.ContentHash, dto.PackageSize);
             return result;
         }
     }

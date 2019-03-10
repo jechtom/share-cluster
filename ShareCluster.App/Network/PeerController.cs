@@ -90,43 +90,6 @@ namespace ShareCluster.Network
             };
         }
 
-        public PackageStatusResponse GetPackageStatus(PackageStatusRequest request)
-        {
-            if (request == null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-
-            var result = new PackageStatusResponse()
-            {
-                Packages = new PackageStatusItem[request.PackageIds.Length]
-            };
-
-            for (int i = 0; i < request.PackageIds.Length; i++)
-            {
-                Id packageId = request.PackageIds[i];
-
-                if (_localPackageRegistry.LocalPackages.TryGetValue(packageId, out LocalPackage package))
-                {
-                    result.Packages[i] = new PackageStatusItem()
-                    {
-                        IsFound = true,
-                        BytesDownloaded = package.DownloadStatus.BytesDownloaded,
-                        SegmentsBitmap = package.DownloadStatus.SegmentsBitmap
-                    };
-                }
-                else
-                {
-                    result.Packages[i] = new PackageStatusItem()
-                    {
-                        IsFound = false
-                    };
-                }
-            }
-
-            return result;
-        }
-
         public (Stream, DataResponseFault) GetDataStream(DataRequest request)
         {
             // allocate slot
@@ -190,10 +153,10 @@ namespace ShareCluster.Network
             }
 
             // packages ok?
-            if (!package.DownloadStatus.ValidateRequestedParts(request.RequestedParts))
+            if (!package.DownloadStatus.ValidateRequestedPartsOrGetBitmap(request.RequestedParts, out byte[] bitmap))
             {
                 _logger.LogTrace($"Requested segments not valid for {package}: {request.RequestedParts.Format()}");
-                return (null, DataResponseFault.CreateDataPackageSegmentsNotFoundMessage());
+                return (null, DataResponseFault.CreateDataPackageSegmentsNotFoundMessage(bitmap));
             }
 
             // obtain lock

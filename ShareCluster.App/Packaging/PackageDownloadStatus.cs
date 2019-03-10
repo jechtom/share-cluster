@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Synchronization;
 using ShareCluster.Network.Messages;
+using System.Linq;
 
 namespace ShareCluster.Packaging
 {
@@ -99,7 +100,7 @@ namespace ShareCluster.Packaging
 
         /// <summary>
         /// Returns segments indexes available to read from <paramref name="remote"/> up to <paramref name="count"/>.
-        /// Make sure segment is validated with <see cref="ValidateStatusUpdateFromPeer(PackageStatusItem)"/>
+        /// Make sure segment is validated with <see cref="ValidateStatusUpdateFromPeer(Network.Messages.PackageDownloadStatus)"/>
         /// </summary>
         /// <param name="remote">Remote bitmap or null if remote is fully downloaded.</param>
         /// <param name="count">Maximum number of segments to return.</param>
@@ -181,7 +182,7 @@ namespace ShareCluster.Packaging
         /// <summary>
         /// Throws exception if given status detail is invalid for package represented by this instance. This can happen only if data has been manipulated.
         /// </summary>
-        public void ValidateStatusUpdateFromPeer(PackageStatusItem detail)
+        public void ValidateStatusUpdateFromPeer(Network.Messages.PackageDownloadStatus detail)
         {
             if (detail == null)
             {
@@ -220,25 +221,39 @@ namespace ShareCluster.Packaging
         }
 
         /// <summary>
-        /// Gets if request for given segments is valid (if all parts are in bound and downloaded).
+        /// Gets if request for given segments is valid (in bound and downloaded).
+        /// If any of segments is out of bounds, then exception is thrown.
+        /// If any of segments is not valid, then currrent bitmap is returned in out parameter <paramref name="bitmap"/>.
         /// </summary>
-        public bool ValidateRequestedParts(int[] segmentIndexes)
+        /// <param name="bitmap">This value is set only if requested parts are not valid so it can be returned to peer.</param>
+        public bool ValidateRequestedPartsOrGetBitmap(int[] segmentIndexes, out byte[] bitmap)
         {
             lock (_syncLock)
             {
                 foreach (var segmentIndex in segmentIndexes)
                 {
-                    // out of range?
-                    if (segmentIndex < 0 || segmentIndex >= _splitInfo.SegmentsCount) return false;
+                    // out of range? this should not happen
+                    if (segmentIndex < 0 || segmentIndex >= _splitInfo.SegmentsCount)
+                    {
+                        throw new InvalidOperationException($"Segment out of range. Index {0}. Allowed range is between 0 (inclusive) and {_splitInfo.SegmentsCount} (exclusive).");
+                    }
 
                     // is everything downloaded?
                     if (IsDownloaded) continue;
 
                     // is specific segment downloaded?
                     bool isSegmentDownloaded = (SegmentsBitmap[segmentIndex / 8] & (1 << (segmentIndex % 8))) != 0;
-                    if (!isSegmentDownloaded) return false;
+                    if (!isSegmentDownloaded)
+                    {
+                        // report what is downloaded so peer can request correct segments
+                        bitmap = SegmentsBitmap.ToArray();
+                        return false;
+                    }
                 }
             }
+
+            // success - valid
+            bitmap = null;
             return true;
         }
 

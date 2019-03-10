@@ -36,13 +36,6 @@ namespace ShareCluster.Network.Http
         }
 
         [HttpPost]
-        public PackageStatusResponse GetPackageStatus([FromBody]PackageStatusRequest request)
-        {
-            PackageStatusResponse result = _peerController.GetPackageStatus(request);
-            return result;
-        }
-
-        [HttpPost]
         public IActionResult Data([FromBody]DataRequest request)
         {
             // create stream
