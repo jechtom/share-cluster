@@ -50,8 +50,10 @@ namespace ShareCluster
             else
             {
                 // instance 1
-                var appSettings = new AppInstanceSettings();
-                appSettings.Logging = loggingSettings;
+                var appSettings = new AppInstanceSettings
+                {
+                    Logging = loggingSettings
+                };
 
                 var instance = new AppInstance();
                 _instances.Add(instance);

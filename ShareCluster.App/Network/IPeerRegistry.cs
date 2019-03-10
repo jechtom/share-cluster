@@ -8,12 +8,15 @@ namespace ShareCluster.Network
     public interface IPeerRegistry
     {
         IImmutableDictionary<PeerId, PeerInfo> Items { get; }
+
         PeerInfo GetOrAddPeer(PeerId peerId, Func<PeerInfo> createFunc);
+
         void RemovePeer(PeerInfo peer);
 
         /// <summary>
-        /// Is invoked after peers are updated.
+        /// Is invoked after any change of <see cref="Items"/>.
         /// </summary>
-        event EventHandler PeersChanged;
+        event EventHandler<DictionaryChangedEvent<PeerId, PeerInfo>> Changed;
+
     }
 }

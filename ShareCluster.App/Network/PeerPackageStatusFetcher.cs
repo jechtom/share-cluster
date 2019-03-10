@@ -30,27 +30,23 @@ namespace ShareCluster.Network
         private readonly NetworkSettings _settings;
         private readonly HttpApiClient _client;
         private readonly IPeerRegistry _peerRegistry;
-        private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly IClock _clock;
         private readonly TimeSpan _updateTimerInterval = TimeSpan.FromSeconds(5);
         private readonly TimeSpan _intervalBetweenFetching = TimeSpan.FromSeconds(15);
         private readonly Timer _tryScheduleNextTimer;
         public TaskSemaphoreQueue _updateLimitedQueue;
 
-        public PeerPackageStatusFetcher(ILogger<PeerPackageStatusFetcher> logger, NetworkSettings settings, HttpApiClient client, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, IClock clock)
+        public PeerPackageStatusFetcher(ILogger<PeerPackageStatusFetcher> logger, NetworkSettings settings, HttpApiClient client, IPeerRegistry peerRegistry, IClock clock)
         {
             _packages = new Dictionary<Id, PackageItem>();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _inProgressRefresh = new HashSet<PeerId>();
             _updateLimitedQueue = new TaskSemaphoreQueue(_runningTasksLimit);
             _tryScheduleNextTimer = new Timer(TryScheduleNextTimer_Tick, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-            _remotePackageRegistry.PackageRemoved += RemotePackageRegistry_PackageRemoved;
-            _remotePackageRegistry.PackageChanged += RemotePackageRegistry_PackageChanged;
         }
         
         private void RemotePackageRegistry_PackageChanged(object sender, RemotePackage e)

@@ -43,8 +43,8 @@ namespace ShareCluster
             Func<TA, TKey> selectKeyA,
             Func<TB, TKey> selectKeyB,
             Func<TA, TB, TKey, TResult> projection,
-            TA defaultA = default(TA),
-            TB defaultB = default(TB),
+            TA defaultA = default,
+            TB defaultB = default,
             IEqualityComparer<TKey> cmp = null)
         {
             cmp = cmp ?? EqualityComparer<TKey>.Default;

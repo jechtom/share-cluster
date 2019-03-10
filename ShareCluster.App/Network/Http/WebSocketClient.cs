@@ -20,7 +20,7 @@ namespace ShareCluster.Network.Http
         private HttpContext _context;
         private WebSocket _socket;
         private CancellationToken _cancellationToken;
-        private object _syncLock = new object();
+        private readonly object _syncLock = new object();
         private readonly ILogger<WebSocketClient> _logger;
         private readonly WebSocketManager _socketManager;
         private readonly TaskSemaphoreQueue _pushQueue;

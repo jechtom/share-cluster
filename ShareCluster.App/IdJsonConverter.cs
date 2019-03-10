@@ -14,8 +14,7 @@ namespace ShareCluster
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            string str = reader.Value as string;
-            if (str == null) return null;
+            if (!(reader.Value is string str)) return null;
             return Id.Parse(str);
         }
 

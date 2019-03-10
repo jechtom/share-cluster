@@ -18,7 +18,7 @@ namespace ShareCluster.Packaging
         void Update(IEnumerable<RemotePackage> newValues);
 
         /// <summary>
-        /// Is invoked after package is removed.
+        /// Is invoked after any change of <see cref="Items"/>.
         /// </summary>
         event EventHandler<DictionaryChangedEvent<Id, RemotePackage>> Changed;
     }
