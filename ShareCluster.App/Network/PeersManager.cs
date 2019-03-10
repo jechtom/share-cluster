@@ -102,7 +102,7 @@ namespace ShareCluster.Network
 
         private void HousekeepingStep()
         {
-            foreach (PeerInfo peer in _peerRegistry.Peers.Values)
+            foreach (PeerInfo peer in _peerRegistry.Items.Values)
             {
                 // mark timeouted peers as dead
                 if(peer.Status.Communication.ShouldDeleteClient)
@@ -128,7 +128,6 @@ namespace ShareCluster.Network
         private void RemovePeer(PeerInfo peer)
         {
             _peerRegistry.RemovePeer(peer);
-            _peerCatalogUpdater.ForgetPeer(peer);
         }
 
         public void Dispose()

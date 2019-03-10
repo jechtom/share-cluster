@@ -82,7 +82,6 @@ namespace ShareCluster.Core
             services.AddSingleton<LocalPackageManager>();
             services.AddSingleton<PackageManager>();
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
-            services.AddSingleton<IRemotePackageRegistry, RemotePackageRegistry>();
             services.AddSingleton<ILocalPackageRegistry, LocalPackageRegistry>();
             services.AddSingleton<ILocalPackageRegistryVersionProvider>(x => x.GetService<ILocalPackageRegistry>());
             services.AddSingleton<WebFacade>();

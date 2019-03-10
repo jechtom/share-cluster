@@ -5,8 +5,8 @@ using System.Text;
 namespace ShareCluster.Network
 {
     /// <summary>
-    /// Mutable status of slots of the peer.
-    /// Remark: Reason is to prevent repeatable reading from overloaded peers.
+    /// Mutable status of slots counter of the peer.
+    /// Remark: This is just safety to prevent repeatable reading from overloaded peers.
     /// In case peer is choked, just wait some time before trying again.
     /// </summary>
     public class PeerStatusSlots

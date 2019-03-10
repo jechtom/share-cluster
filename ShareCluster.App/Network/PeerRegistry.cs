@@ -10,7 +10,7 @@ namespace ShareCluster.Network
     {
         public PeerRegistry(ILogger<PeerRegistry> logger)
         {
-            Peers = ImmutableDictionary<PeerId, PeerInfo>.Empty;
+            Items = ImmutableDictionary<PeerId, PeerInfo>.Empty;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -19,18 +19,18 @@ namespace ShareCluster.Network
 
         public event EventHandler PeersChanged;
 
-        public IImmutableDictionary<PeerId, PeerInfo> Peers { get; private set; }
+        public IImmutableDictionary<PeerId, PeerInfo> Items { get; private set; }
 
         public PeerInfo GetOrAddPeer(PeerId peerId, Func<PeerInfo> createFunc)
         {
-            if(Peers.TryGetValue(peerId, out PeerInfo result))
+            if(Items.TryGetValue(peerId, out PeerInfo result))
             {
                 return result;
             }
 
             lock (_syncLock)
             {
-                if (Peers.TryGetValue(peerId, out result))
+                if (Items.TryGetValue(peerId, out result))
                 {
                     return result;
                 }
@@ -38,7 +38,7 @@ namespace ShareCluster.Network
                 _logger.LogDebug($"Adding peer {peerId}");
 
                 result = createFunc();
-                Peers = Peers.Add(peerId, result);
+                Items = Items.Add(peerId, result);
             }
 
             PeersChanged?.Invoke(this, EventArgs.Empty);
@@ -47,7 +47,7 @@ namespace ShareCluster.Network
 
         public void RemovePeer(PeerInfo peer)
         {
-            if (!Peers.ContainsKey(peer.PeerId)) return;
+            if (!Items.ContainsKey(peer.PeerId)) return;
 
             if (!peer.Status.IsDead) throw new InvalidOperationException("Cannot remove undead peer.");
 
@@ -55,7 +55,7 @@ namespace ShareCluster.Network
             {
                 _logger.LogDebug($"Removing peer {peer.PeerId}; reason={peer.Status.DeadReason}");
 
-                Peers = Peers.Remove(peer.PeerId);
+                Items = Items.Remove(peer.PeerId);
             }
 
             PeersChanged?.Invoke(this, EventArgs.Empty);

@@ -97,7 +97,7 @@ namespace ShareCluster.WebInterface
 
         public void TryStartDownloadRemotePackage(Id packageId)
         {
-            if(!_remotePackageRegistry.RemotePackages.TryGetValue(packageId, out RemotePackage remotePackage))
+            if(!_remotePackageRegistry.Items.TryGetValue(packageId, out RemotePackage remotePackage))
             {
                 return;
             }
@@ -131,8 +131,8 @@ namespace ShareCluster.WebInterface
             var result = new StatusViewModel
             {
                 Packages = _localPackageRegistry.LocalPackages,
-                Peers = _peerRegistry.Peers.Values,
-                PackagesAvailableToDownload = _remotePackageRegistry.RemotePackages,
+                Peers = _peerRegistry.Items.Values,
+                PackagesAvailableToDownload = _remotePackageRegistry.Items,
                 Instance = _instanceHash,
                 Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
                 UploadSlotsAvailable = _networkThrottling.UploadSlots.Free,

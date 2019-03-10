@@ -107,7 +107,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 throw new ArgumentNullException(nameof(reference));
             }
 
-            PackageDefinition packageDefinition = ReadPackageDefinitionFile(reference);
+            PackageContentDefinition packageDefinition = ReadPackageDefinitionFile(reference);
             PackageMetadata packageMatadata = ReadPackageMetadata(reference, packageDefinition);
             PackageDownloadStatus packageDownload = ReadPackageDownloadStatus(reference, packageDefinition);
 
@@ -138,7 +138,7 @@ namespace ShareCluster.Packaging.PackageFolders
             DirectoryInfo buildDirectory = Directory.CreateDirectory(CreateBuildPath());
 
             // create package archive
-            PackageDefinition packageDefinition;
+            PackageContentDefinition packageDefinition;
 
             var computeHashBehavior = new HashStreamComputeBehavior(_loggerFactory, defaultSplitInfo.SegmentLength);
 
@@ -152,9 +152,9 @@ namespace ShareCluster.Packaging.PackageFolders
                         writeToStreamAction.Invoke(hashStream);
                     }
                 }
-                packageDefinition = PackageDefinition.Build(_crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
+                packageDefinition = PackageContentDefinition.Build(_crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
             }
-            var buildPathReference = new PackageFolderReference(packageDefinition.PackageId, buildDirectory.FullName);
+            var buildPathReference = new PackageFolderReference(packageDefinition.PackageContentHash, buildDirectory.FullName);
 
             // store package hashes
             UpdateDefinition(buildPathReference, packageDefinition);
@@ -164,15 +164,15 @@ namespace ShareCluster.Packaging.PackageFolders
             UpdateDownloadStatus(buildPathReference, downloadStatus, packageDefinition);
 
             // store metadata - remark: for root package use package Id as group Id
-            var metadata = new PackageMetadata(name, DateTimeOffset.Now, groupId ?? packageDefinition.PackageId);
+            var metadata = new PackageMetadata(name, DateTimeOffset.Now, groupId ?? packageDefinition.PackageContentHash);
             UpdateMetadata(buildPathReference, metadata, packageDefinition);
 
             // rename folder
-            string packagePath = CreatePackagePath(packageDefinition.PackageId);
-            var outputPathReference = new PackageFolderReference(packageDefinition.PackageId, packagePath);
+            string packagePath = CreatePackagePath(packageDefinition.PackageContentHash);
+            var outputPathReference = new PackageFolderReference(packageDefinition.PackageContentHash, packagePath);
             if (Directory.Exists(packagePath))
             {
-                throw new InvalidOperationException($"Folder for package {packageDefinition.PackageId:s} already exists. {packagePath}");
+                throw new InvalidOperationException($"Folder for package {packageDefinition.PackageContentHash:s} already exists. {packagePath}");
             }
             Directory.Move(buildDirectory.FullName, packagePath);
 
@@ -244,42 +244,42 @@ namespace ShareCluster.Packaging.PackageFolders
             }
         }
 
-        public PackageDefinition ReadPackageDefinitionFile(IPackageFolderReference reference) =>
-            ReadPackageFile<PackageDefinition>(
+        public PackageContentDefinition ReadPackageDefinitionFile(IPackageFolderReference reference) =>
+            ReadPackageFile<PackageContentDefinition>(
                 reference,
                 PackageDefinitionFileName,
                 stream => _serializerFacade.DefinitionSerializer.Deserialize(stream, reference.Id)
             );
 
-        public PackageDownloadStatus ReadPackageDownloadStatus(IPackageFolderReference reference, PackageDefinition packageDefinition) =>
+        public PackageDownloadStatus ReadPackageDownloadStatus(IPackageFolderReference reference, PackageContentDefinition packageDefinition) =>
             ReadPackageFile<PackageDownloadStatus>(
                 reference,
                 PackageDownloadFileName,
                 stream => _serializerFacade.DownloadStatusSerializer.Deserialize(stream, packageDefinition)
             );
 
-        public PackageMetadata ReadPackageMetadata(IPackageFolderReference reference, PackageDefinition packageDefinition) =>
+        public PackageMetadata ReadPackageMetadata(IPackageFolderReference reference, PackageContentDefinition packageDefinition) =>
             ReadPackageFile<PackageMetadata>(
                 reference,
                 PackageMetaFileName,
                 stream => _serializerFacade.MetadataSerializer.Deserialize(stream, packageDefinition)
             );
 
-        public void UpdateDownloadStatus(IPackageFolderReference reference, PackageDownloadStatus status, PackageDefinition packageDefinition) =>
+        public void UpdateDownloadStatus(IPackageFolderReference reference, PackageDownloadStatus status, PackageContentDefinition packageDefinition) =>
             WritePackageFile(
                 reference,
                 PackageDownloadFileName,
                 (stream) => _serializerFacade.DownloadStatusSerializer.Serialize(status, packageDefinition, stream)
             );
 
-        public void UpdateMetadata(IPackageFolderReference reference, PackageMetadata metadata, PackageDefinition packageDefinition) =>
+        public void UpdateMetadata(IPackageFolderReference reference, PackageMetadata metadata, PackageContentDefinition packageDefinition) =>
             WritePackageFile(
                 reference,
                 PackageMetaFileName,
                 (stream) => _serializerFacade.MetadataSerializer.Serialize(metadata, packageDefinition, stream)
             );
 
-        public void UpdateDefinition(IPackageFolderReference reference, PackageDefinition definition) =>
+        public void UpdateDefinition(IPackageFolderReference reference, PackageContentDefinition definition) =>
             WritePackageFile(
                 reference,
                 PackageDefinitionFileName,
@@ -298,7 +298,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Folder deleted {packageReference.FolderPath}.");
         }
 
-        public LocalPackage AllocatePackageForDownload(PackageDefinition packageDefinition, PackageMetadata metadata)
+        public LocalPackage AllocatePackageForDownload(PackageContentDefinition packageDefinition, PackageMetadata metadata)
         {
             if (packageDefinition == null)
             {
@@ -312,11 +312,11 @@ namespace ShareCluster.Packaging.PackageFolders
 
             // create directory
             EnsurePath();
-            string packagePath = CreatePackagePath(packageDefinition.PackageId);
-            var pathReference = new PackageFolderReference(packageDefinition.PackageId, packagePath);
+            string packagePath = CreatePackagePath(packageDefinition.PackageContentHash);
+            var pathReference = new PackageFolderReference(packageDefinition.PackageContentHash, packagePath);
             if (Directory.Exists(packagePath))
             {
-                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", packageDefinition.PackageId);
+                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", packageDefinition.PackageContentHash);
                 throw new InvalidOperationException("Package already exists in local repository.");
             }
             Directory.CreateDirectory(packagePath);
@@ -332,7 +332,7 @@ namespace ShareCluster.Packaging.PackageFolders
             allocator.Allocate(packagePath, packageDefinition.PackageSplitInfo, overwrite: false);
 
             // log and build result
-            _logger.LogInformation($"New package {packageDefinition.PackageId:s4} added to repository and allocated. Size: {SizeFormatter.ToString(packageDefinition.PackageSize)}");
+            _logger.LogInformation($"New package {packageDefinition.PackageContentHash:s4} added to repository and allocated. Size: {SizeFormatter.ToString(packageDefinition.PackageSize)}");
 
             // build result
             return new LocalPackage(

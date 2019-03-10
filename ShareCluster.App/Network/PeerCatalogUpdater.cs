@@ -20,16 +20,14 @@ namespace ShareCluster.Network
         private bool _stop;
         private readonly object _syncLock = new object();
         private readonly ILogger<PeerCatalogUpdater> _logger;
-        private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly HttpApiClient _apiClient;
         private readonly TaskSemaphoreQueue _updateLimitedQueue;
         private readonly HashSet<PeerId> _processing;
         const int _runningTasksLimit = 3;
 
-        public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, IRemotePackageRegistry remotePackageRegistry, HttpApiClient apiClient)
+        public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, HttpApiClient apiClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _updateLimitedQueue = new TaskSemaphoreQueue(runningTasksLimit: _runningTasksLimit);
             _processing = new HashSet<PeerId>();
@@ -93,36 +91,25 @@ namespace ShareCluster.Network
                 return;
             }
 
-            if (catalogResult.Packages == null || catalogResult.Packages.Length == 0)
-            {
-                // empty catalog
-                _remotePackageRegistry.RemovePeer(peer.PeerId);
-            }
-            else
-            {
-                // merge
-                var occurences = new List<RemotePackageOccurence>(catalogResult.Packages.Length);
-                foreach (CatalogPackage catalogItem in catalogResult.Packages)
-                {
-                    var occ = new RemotePackageOccurence(
-                        peer.PeerId,
-                        catalogItem.PackageId,
-                        catalogItem.PackageSize,
-                        catalogItem.PackageName,
-                        catalogItem.Created,
-                        catalogItem.GroupId,
-                        catalogItem.IsSeeder
-                    );
-                    occurences.Add(occ);
-                }
-                _remotePackageRegistry.UpdateOcurrencesForPeer(peer.PeerId, occurences);
-            }
-            peer.Status.Catalog.UpdateLocalVersion(catalogResult.CatalogVersion);
-        }
+            // TODO: validate package metadata hash - we can compute hash from metadata object
 
-        public void ForgetPeer(PeerInfo peer)
-        {
-            _remotePackageRegistry.RemovePeer(peer.PeerId);
+            IEnumerable<CatalogPackage> source = catalogResult.Packages ?? Enumerable.Empty<CatalogPackage>();
+            IEnumerable<RemotePackage> remotePackageSource = source.Select(
+                catalogItem => new RemotePackage(
+                        packageId: catalogItem.PackageId,
+                        isSeeder: catalogItem.IsSeeder,
+                        packageMetadata: new PackageMetadata(
+                            packageId: catalogItem.PackageId,
+                            name: catalogItem.PackageName,
+                            createdUtc: catalogItem.CreatedUtc,
+                            groupId: catalogItem.GroupId,
+                            contentHash: catalogItem.ContentHash,
+                            packageSize: catalogItem.PackageSize
+                        )
+                    ));
+
+            peer.RemotePackages.Update(remotePackageSource);
+            peer.Status.Catalog.UpdateLocalVersion(catalogResult.CatalogVersion);
         }
     }
 }

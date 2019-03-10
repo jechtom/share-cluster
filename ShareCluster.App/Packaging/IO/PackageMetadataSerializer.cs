@@ -21,12 +21,12 @@ namespace ShareCluster.Packaging.IO
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Serialize(PackageMetadata value, PackageDefinition packageDefinition, Stream stream)
+        public void Serialize(PackageMetadata value, PackageContentDefinition packageDefinition, Stream stream)
         {
             _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
 
             var dto = new PackageMetadataDto(
-                packageId: packageDefinition.PackageId,
+                packageId: packageDefinition.PackageContentHash,
                 packageSize: packageDefinition.PackageSize,
                 created: value.Created,
                 name: value.Name,
@@ -35,7 +35,7 @@ namespace ShareCluster.Packaging.IO
             _serializer.Serialize<PackageMetadataDto>(dto, stream);
         }
 
-        public PackageMetadata Deserialize(Stream stream, PackageDefinition packageDefinition)
+        public PackageMetadata Deserialize(Stream stream, PackageContentDefinition packageDefinition)
         {
             if (stream == null)
             {
@@ -55,7 +55,7 @@ namespace ShareCluster.Packaging.IO
             }
 
             // verify
-            Id packageId = packageDefinition.PackageId;
+            Id packageId = packageDefinition.PackageContentHash;
             if (packageId != dto.PackageId)
             {
                 throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {dto.PackageId:s}", packageId, dto.PackageId);

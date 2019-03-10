@@ -16,7 +16,7 @@ namespace ShareCluster.Tests.Packaging
         public void MergeAddOnePackageOnePeer()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             // add
             PeerId peer = Generator.RandomPeerId();
@@ -25,17 +25,17 @@ namespace ShareCluster.Tests.Packaging
             registry.UpdateOcurrencesForPeer(peer, new[] { occurence });
 
             // verify
-            Assert.Equal(1, registry.RemotePackages.Count);
-            Assert.Equal(occurence.PackageId, registry.RemotePackages[occurence.PackageId].PackageId);
-            Assert.Equal(occurence.Name, registry.RemotePackages[occurence.PackageId].Name);
-            Assert.Equal(1, registry.RemotePackages[occurence.PackageId].Peers.Count);
+            Assert.Equal(1, registry.Items.Count);
+            Assert.Equal(occurence.PackageId, registry.Items[occurence.PackageId].PackageId);
+            Assert.Equal(occurence.Name, registry.Items[occurence.PackageId].Name);
+            Assert.Equal(1, registry.Items[occurence.PackageId].Peers.Count);
         }
 
         [Fact]
         public void ReplaceWithEmptyShouldRemove()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             PeerId peer = Generator.RandomPeerId();
 
@@ -43,19 +43,19 @@ namespace ShareCluster.Tests.Packaging
             var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
             registry.UpdateOcurrencesForPeer(peer, new[] { occurence });
 
-            Assert.Equal(1, registry.RemotePackages.Count);
+            Assert.Equal(1, registry.Items.Count);
 
             // remove 1
             registry.UpdateOcurrencesForPeer(peer, new RemotePackageOccurence[0]);
 
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
         }
 
         [Fact]
         public void MergeOnePackageTwoPeers()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             Id packageId = Generator.RandomId();
 
@@ -69,15 +69,15 @@ namespace ShareCluster.Tests.Packaging
             registry.UpdateOcurrencesForPeer(peer2, new[] { occurence2 });
 
             // verify
-            Assert.Equal(1, registry.RemotePackages.Count);
-            Assert.Equal(2, registry.RemotePackages[packageId].Peers.Count);
+            Assert.Equal(1, registry.Items.Count);
+            Assert.Equal(2, registry.Items[packageId].Peers.Count);
         }
 
         [Fact]
         public void ValidateConsistentPeerId()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             PeerId peerId1 = Generator.RandomPeerId();
             PeerId peerId2 = Generator.RandomPeerId();
@@ -94,7 +94,7 @@ namespace ShareCluster.Tests.Packaging
         public void RemovePeerCombined()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             PeerId peerId1 = Generator.RandomPeerId();
             PeerId peerId2 = Generator.RandomPeerId();
@@ -116,33 +116,33 @@ namespace ShareCluster.Tests.Packaging
             });
 
             // all packages (1,2,3) should be present
-            Assert.True(registry.RemotePackages.ContainsKey(packageId1));
-            Assert.Equal(2, registry.RemotePackages[packageId1].Peers.Count);
+            Assert.True(registry.Items.ContainsKey(packageId1));
+            Assert.Equal(2, registry.Items[packageId1].Peers.Count);
 
-            Assert.True(registry.RemotePackages.ContainsKey(packageId2));
-            Assert.Equal(1, registry.RemotePackages[packageId2].Peers.Count);
+            Assert.True(registry.Items.ContainsKey(packageId2));
+            Assert.Equal(1, registry.Items[packageId2].Peers.Count);
 
-            Assert.True(registry.RemotePackages.ContainsKey(packageId3));
-            Assert.Equal(1, registry.RemotePackages[packageId3].Peers.Count);
+            Assert.True(registry.Items.ContainsKey(packageId3));
+            Assert.Equal(1, registry.Items[packageId3].Peers.Count);
 
             // forget peer 1
             registry.RemovePeer(peerId1);
 
             // package 2 should be gone as only peer 1 references it
-            Assert.True(registry.RemotePackages.ContainsKey(packageId1));
-            Assert.Equal(1, registry.RemotePackages[packageId1].Peers.Count);
+            Assert.True(registry.Items.ContainsKey(packageId1));
+            Assert.Equal(1, registry.Items[packageId1].Peers.Count);
 
-            Assert.False(registry.RemotePackages.ContainsKey(packageId2));
+            Assert.False(registry.Items.ContainsKey(packageId2));
 
-            Assert.True(registry.RemotePackages.ContainsKey(packageId3));
-            Assert.Equal(1, registry.RemotePackages[packageId3].Peers.Count);
+            Assert.True(registry.Items.ContainsKey(packageId3));
+            Assert.Equal(1, registry.Items[packageId3].Peers.Count);
         }
 
         [Fact]
         public void MergeUpdateOnePacakgeOnePeer()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             PeerId peerId = Generator.RandomPeerId();
             Id packageId1 = Generator.RandomId();
@@ -154,17 +154,17 @@ namespace ShareCluster.Tests.Packaging
             registry.UpdateOcurrencesForPeer(peerId, new[] { occ2 });
 
             // verify
-            Assert.Equal(1, registry.RemotePackages.Count);
-            Assert.Equal(1, registry.RemotePackages[packageId1].Peers.Count);
-            Assert.Equal("cde", registry.RemotePackages[packageId1].Peers[peerId].Name);
-            Assert.False(registry.RemotePackages[packageId1].Peers[peerId].IsSeeder);
+            Assert.Equal(1, registry.Items.Count);
+            Assert.Equal(1, registry.Items[packageId1].Peers.Count);
+            Assert.Equal("cde", registry.Items[packageId1].Peers[peerId].Name);
+            Assert.False(registry.Items[packageId1].Peers[peerId].IsSeeder);
         }
 
         [Fact]
         public void ReplacePeerCombined()
         {
             IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.RemotePackages.Count);
+            Assert.Equal(0, registry.Items.Count);
 
             PeerId peerId1 = Generator.RandomPeerId();
             PeerId peerId2 = Generator.RandomPeerId();
@@ -187,10 +187,10 @@ namespace ShareCluster.Tests.Packaging
             });
 
             // packages (1,2,3) should be present
-            Assert.True(registry.RemotePackages.ContainsKey(packageId1));
-            Assert.True(registry.RemotePackages.ContainsKey(packageId2));
-            Assert.True(registry.RemotePackages.ContainsKey(packageId3));
-            Assert.False(registry.RemotePackages.ContainsKey(packageId4));
+            Assert.True(registry.Items.ContainsKey(packageId1));
+            Assert.True(registry.Items.ContainsKey(packageId2));
+            Assert.True(registry.Items.ContainsKey(packageId3));
+            Assert.False(registry.Items.ContainsKey(packageId4));
 
             // peer 1 variant B - packages 1, 4 (replaces 1, 2)
             registry.UpdateOcurrencesForPeer(peerId1, new[] {
@@ -199,10 +199,10 @@ namespace ShareCluster.Tests.Packaging
             });
 
             // packages (1,3,4) should be present
-            Assert.True(registry.RemotePackages.ContainsKey(packageId1));
-            Assert.False(registry.RemotePackages.ContainsKey(packageId2));
-            Assert.True(registry.RemotePackages.ContainsKey(packageId3));
-            Assert.True(registry.RemotePackages.ContainsKey(packageId4));
+            Assert.True(registry.Items.ContainsKey(packageId1));
+            Assert.False(registry.Items.ContainsKey(packageId2));
+            Assert.True(registry.Items.ContainsKey(packageId3));
+            Assert.True(registry.Items.ContainsKey(packageId4));
         }
     }
 }

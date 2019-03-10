@@ -23,7 +23,7 @@ namespace ShareCluster.Packaging.IO
         public HashStreamController CreateHashStreamController(HashStreamVerifyBehavior behavior, Stream nestedStream)
             => new HashStreamController(_loggerFactory, _cryptoFacade, behavior, nestedStream);
 
-        public HashStreamVerifyBehavior CreateHashStreamBehavior(PackageDefinition definition, int[] parts)
+        public HashStreamVerifyBehavior CreateHashStreamBehavior(PackageContentDefinition definition, int[] parts)
             => new HashStreamVerifyBehavior(_loggerFactory, definition, parts);
     }
 }

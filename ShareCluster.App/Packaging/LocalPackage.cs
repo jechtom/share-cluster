@@ -10,7 +10,7 @@ namespace ShareCluster.Packaging
 {
     public class LocalPackage
     {
-        public LocalPackage(PackageDefinition definition, PackageDownloadStatus downloadStatus, PackageMetadata metadata, IPackageDataAccessor dataAccessor)
+        public LocalPackage(PackageContentDefinition definition, PackageDownloadStatus downloadStatus, PackageMetadata metadata, IPackageDataAccessor dataAccessor)
         {
             DownloadMeasure = new MeasureItem(MeasureType.Throughput);
             UploadMeasure = new MeasureItem(MeasureType.Throughput);
@@ -20,9 +20,9 @@ namespace ShareCluster.Packaging
             DataAccessor = dataAccessor ?? throw new ArgumentNullException(nameof(dataAccessor));
         }
 
-        public Id Id => Definition.PackageId;
+        public Id Id => Definition.PackageContentHash;
         public PackageDownloadStatus DownloadStatus { get; }
-        public PackageDefinition Definition { get; }
+        public PackageContentDefinition Definition { get; }
         public PackageMetadata Metadata { get; }
         public IPackageDataAccessor DataAccessor { get; }
 

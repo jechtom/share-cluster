@@ -13,14 +13,14 @@ namespace ShareCluster.Packaging.IO
     public class HashStreamVerifyBehavior : IHashStreamBehavior
     {
         private readonly ILogger<HashStreamVerifyBehavior> _logger;
-        private readonly PackageDefinition _definition;
+        private readonly PackageContentDefinition _definition;
         private readonly int[] _partsToValidate;
         private readonly bool _verifyAll;
 
         /// <summary>
         /// Creates validation for specific parts of package.
         /// </summary>
-        public HashStreamVerifyBehavior(ILoggerFactory loggerFactory, PackageDefinition definition, int[] partsToValidate)
+        public HashStreamVerifyBehavior(ILoggerFactory loggerFactory, PackageContentDefinition definition, int[] partsToValidate)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<HashStreamVerifyBehavior>();
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
@@ -32,7 +32,7 @@ namespace ShareCluster.Packaging.IO
         /// <summary>
         /// Creates validation for all segments of package.
         /// </summary>
-        public HashStreamVerifyBehavior(ILoggerFactory loggerFactory, PackageDefinition definition)
+        public HashStreamVerifyBehavior(ILoggerFactory loggerFactory, PackageContentDefinition definition)
         {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<HashStreamVerifyBehavior>();
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));

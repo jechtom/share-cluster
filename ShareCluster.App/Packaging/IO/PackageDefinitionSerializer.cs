@@ -26,14 +26,14 @@ namespace ShareCluster.Packaging.IO
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Serialize(PackageDefinition value, Stream stream)
+        public void Serialize(PackageContentDefinition value, Stream stream)
         {
             _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
             PackageDefinitionDto dto = SerializeToDto(value);
             _serializer.Serialize<PackageDefinitionDto>(dto, stream);
         }
 
-        public PackageDefinition Deserialize(Stream stream, Id packageId)
+        public PackageContentDefinition Deserialize(Stream stream, Id packageId)
         {
             if (stream == null)
             {
@@ -52,12 +52,12 @@ namespace ShareCluster.Packaging.IO
                 throw new InvalidOperationException("No valid data in stream.");
             }
 
-            PackageDefinition result = DeserializeDto(dto, packageId);
+            PackageContentDefinition result = DeserializeDto(dto, packageId);
             
             return result;
         }
 
-        public PackageDefinition DeserializeDto(PackageDefinitionDto dto, Id packageId)
+        public PackageContentDefinition DeserializeDto(PackageDefinitionDto dto, Id packageId)
         {
             var splitInfo = new PackageSplitInfo(
                 baseInfo: new PackageSplitBaseInfo(
@@ -67,7 +67,7 @@ namespace ShareCluster.Packaging.IO
                 packageSize: dto.PackageSize
             );
 
-            var result = new PackageDefinition(
+            var result = new PackageContentDefinition(
                 packageId: dto.PackageId,
                 packageSegmentsHashes: dto.PackageSegmentsHashes.ToImmutableArray(),
                 packageSplitInfo: splitInfo
@@ -75,24 +75,24 @@ namespace ShareCluster.Packaging.IO
 
             // verify
             Id expectedId = _cryptoProvider.HashFromHashes(result.PackageSegmentsHashes);
-            if (expectedId != result.PackageId)
+            if (expectedId != result.PackageContentHash)
             {
-                throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);
+                throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageContentHash:s}", expectedId, result.PackageContentHash);
             }
 
-            if (packageId != result.PackageId)
+            if (packageId != result.PackageContentHash)
             {
-                throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {result.PackageId:s}", expectedId, result.PackageId);
+                throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {result.PackageContentHash:s}", expectedId, result.PackageContentHash);
             }
 
             return result;
         }
 
-        public PackageDefinitionDto SerializeToDto(PackageDefinition value)
+        public PackageDefinitionDto SerializeToDto(PackageContentDefinition value)
         {
             var dto = new PackageDefinitionDto(
                 version: SerializerVersion,
-                packageId: value.PackageId,
+                packageId: value.PackageContentHash,
                 packageSize: value.PackageSize,
                 packageSegmentsHashes: value.PackageSegmentsHashes,
                 segmentLength: value.PackageSplitInfo.SegmentLength,

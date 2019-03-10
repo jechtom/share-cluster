@@ -24,7 +24,7 @@ namespace ShareCluster.Network.Messages
             PackageSize = packageInfo.Definition.PackageSize;
             IsSeeder = packageInfo.DownloadStatus.IsDownloaded;
             GroupId = packageInfo.Metadata.GroupId;
-            Created = packageInfo.Metadata.Created;
+            CreatedUtc = packageInfo.Metadata.CreatedUtc;
         }
         
         [ProtoMember(1)]
@@ -41,8 +41,11 @@ namespace ShareCluster.Network.Messages
 
         [ProtoMember(5)]
         public virtual Id GroupId { get; set; }
-
+        
         [ProtoMember(6)]
-        public virtual DateTimeOffset Created { get; set; }
+        public virtual DateTime CreatedUtc { get; set; }
+
+        [ProtoMember(7)]
+        public virtual Id ContentHash { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Messages;
+using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
 using System;
 using System.Collections.Generic;
@@ -39,12 +40,14 @@ namespace ShareCluster.Network
             PeerId = peerId;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             Status = new PeerStatus(clock, networkSettings);
+            RemotePackages = new RemotePackageRegistry();
         }
 
         // identification
         public IPEndPoint EndPoint => PeerId.EndPoint;
         public PeerStatus Status { get; }
         public PeerId PeerId { get; }
+        public IRemotePackageRegistry RemotePackages { get; }
 
         public override int GetHashCode() => PeerId.GetHashCode();
 

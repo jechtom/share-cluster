@@ -93,7 +93,7 @@ namespace ShareCluster.Network
 
         private void UpdatePeers(PackageItem packageState)
         {
-            if (!_remotePackageRegistry.RemotePackages.TryGetValue(packageState.Package.Id, out RemotePackage remotePackage))
+            if (!_remotePackageRegistry.Items.TryGetValue(packageState.Package.Id, out RemotePackage remotePackage))
             {
                 // already removed from package registry - ignore
                 return;
@@ -115,7 +115,7 @@ namespace ShareCluster.Network
 
             foreach (PeerId peerId in newPeers)
             {
-                if (!_peerRegistry.Peers.TryGetValue(peerId, out PeerInfo peerInfo)) continue;
+                if (!_peerRegistry.Items.TryGetValue(peerId, out PeerInfo peerInfo)) continue;
                 packageState.Peers.Add(peerId, new PackagePeerStatus(peerInfo));
             }
 
@@ -236,7 +236,7 @@ namespace ShareCluster.Network
         {
             lock (_syncLock)
             {
-                if(_remotePackageRegistry.RemotePackages.TryGetValue(package.Id, out RemotePackage remotePackage)
+                if(_remotePackageRegistry.Items.TryGetValue(package.Id, out RemotePackage remotePackage)
                     && remotePackage.Peers.TryGetValue(peer.PeerId, out RemotePackageOccurence remotePackageOccurence)
                     && remotePackageOccurence.IsSeeder)
                 {

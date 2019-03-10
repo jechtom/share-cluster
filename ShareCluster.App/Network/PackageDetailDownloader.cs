@@ -12,22 +12,20 @@ namespace ShareCluster.Network
 {
     public class PackageDetailDownloader
     {
-        IRemotePackageRegistry _remotePackageRegistry;
         ILogger<PackageDetailDownloader> _logger;
         IPeerRegistry _peerRegistry;
         HttpApiClient _client;
         PackageDefinitionSerializer _packageDefinitionSerializer;
 
-        public PackageDetailDownloader(IRemotePackageRegistry remotePackageRegistry, ILogger<PackageDetailDownloader> logger, IPeerRegistry peerRegistry, HttpApiClient apiClient, PackageDefinitionSerializer packageDefinitionSerializer)
+        public PackageDetailDownloader(ILogger<PackageDetailDownloader> logger, IPeerRegistry peerRegistry, HttpApiClient apiClient, PackageDefinitionSerializer packageDefinitionSerializer)
         {
-            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
             _client = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
         }
 
-        public (PackageDefinition,PackageMetadata) DownloadDetailsForPackage(Id packageId)
+        public PackageContentDefinition DownloadDetailsForPackage(PackageMetadata packageMetadata)
         {
             PackageResponse response = null;
             PackageMetadata packageMeta = null;
@@ -42,49 +40,46 @@ namespace ShareCluster.Network
                     throw new InvalidOperationException("Retry limit reached without finding peer with package data. Try again later.");
                 }
 
-                if (!_remotePackageRegistry.RemotePackages.TryGetValue(packageId, out RemotePackage remotePackage)
-                    || !remotePackage.Peers.Any())
+                // who got this?
+                var peersSource =
+                    _peerRegistry.Items.Values
+                    .Where(p => p.RemotePackages.Items.ContainsKey(packageMeta.PackageId))
+                    .ToList();
+
+                if (!peersSource.Any())
                 {
                     throw new InvalidOperationException("No peers left to download package data.");
                 }
 
                 // pick random
-                RemotePackageOccurence occurence = remotePackage.Peers.ElementAt(ThreadSafeRandom.Next(0, remotePackage.Peers.Count)).Value;
-
-                if (!_peerRegistry.Peers.TryGetValue(occurence.PeerId, out PeerInfo peerInfo))
-                {
-                    // peer not found - probably some leftover
-                    _remotePackageRegistry.RemovePeer(occurence.PeerId);
-                    continue;
-                }
+                PeerInfo peer = peersSource.ElementAt(ThreadSafeRandom.Next(0, peersSource.Count));
 
                 // download package
-                _logger.LogInformation($"Downloading definition of package \"{remotePackage.Name}\" {remotePackage.PackageId:s} from peer {peerInfo.EndPoint}.");
+                _logger.LogInformation($"Downloading definition of package \"{packageMeta.Name}\" {packageMeta.PackageId:s} from peer {peer.EndPoint}.");
                 try
                 {
-                    response = _client.GetPackage(peerInfo.EndPoint, new PackageRequest(remotePackage.PackageId));
-                    peerInfo.HandlePeerCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
+                    response = _client.GetPackage(peer.EndPoint, new PackageRequest(packageMeta.PackageId));
+                    peer.HandlePeerCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
                     if (response.Found)
                     {
-                        packageMeta = new PackageMetadata(occurence.Name, occurence.Created, occurence.GroupId);
-                        _logger.LogDebug($"Peer {peerInfo} sent us catalog package {remotePackage}");
+                        _logger.LogDebug($"Peer {peer} sent us catalog package {packageMeta}");
                         break; // found
                     }
 
                     // this mean we don't have current catalog from peer - it will be updated soon, so just try again
-                    _logger.LogDebug($"Peer {peerInfo} don't know about catalog package {remotePackage}");
+                    _logger.LogDebug($"Peer {peer} don't know about catalog package {packageMeta}");
                     continue;
                 }
                 catch (Exception e)
                 {
-                    peerInfo.HandlePeerCommunicationException(e, PeerCommunicationDirection.TcpOutgoing);
-                    _logger.LogTrace(e, $"Error contacting client {peerInfo.EndPoint}");
+                    peer.HandlePeerCommunicationException(e, PeerCommunicationDirection.TcpOutgoing);
+                    _logger.LogTrace(e, $"Error contacting client {peer.EndPoint}");
                 }
             }
 
             // save to local storage
-            PackageDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition, packageId);
-            return (packageDefinition, packageMeta);
+            PackageContentDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition, packageMeta.PackageId);
+            return packageDefinition;
         }
     }
 }

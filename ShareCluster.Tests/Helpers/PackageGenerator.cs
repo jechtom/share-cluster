@@ -47,7 +47,7 @@ namespace ShareCluster.Tests.Helpers
                 _bytes.CopyTo(computeStream);
             }
 
-            var packageDefinition = PackageDefinition.Build(
+            var packageDefinition = PackageContentDefinition.Build(
                 DefaultServices.DefaultCrypto,
                 hashComputeBehavior.BuildPackageHashes(),
                 new PackageSplitInfo(_splitBaseInfo, _bytes.Length)
@@ -64,7 +64,7 @@ namespace ShareCluster.Tests.Helpers
         public class Result
         {
             public byte[] Data { get; set; }
-            public PackageDefinition PackageDefinition { get; set; }
+            public PackageContentDefinition PackageDefinition { get; set; }
 
             public byte[] GetDataOfParts(int[] parts)
             {

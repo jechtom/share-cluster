@@ -70,7 +70,7 @@ namespace ShareCluster.WebInterface
 
             // get source data (thread safe - immutable)
             IEnumerable<LocalPackage> localPackages = _localPackageRegistry.LocalPackages.Values;
-            IEnumerable<RemotePackage> remotePackages = _remotePackageRegistry.RemotePackages.Values;
+            IEnumerable<RemotePackage> remotePackages = _remotePackageRegistry.Items.Values;
 
             IEnumerable<(Id groupId, PackageInfoDto dto)> source = localPackages.FullOuterJoin(
                 remotePackages,
@@ -146,7 +146,7 @@ namespace ShareCluster.WebInterface
             if (!_webSocketManager.AnyClients) return;
             PushEventToClients(new EventPeersChanged()
             {
-                Peers = _peersRegistry.Peers.Values.Select(p => new PeerInfoDto()
+                Peers = _peersRegistry.Items.Values.Select(p => new PeerInfoDto()
                 {
                     Address = $"{p.PeerId.EndPoint}/{p.PeerId.InstanceId:s3}"
                 })

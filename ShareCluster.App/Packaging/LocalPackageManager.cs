@@ -58,7 +58,7 @@ namespace ShareCluster.Packaging
             return result;
         }
 
-        public LocalPackage CreateForDownload(PackageDefinition definition, PackageMetadata metadata)
+        public LocalPackage CreateForDownload(PackageContentDefinition definition, PackageMetadata metadata)
         {
             LocalPackage result = _packageFolderRepository.AllocatePackageForDownload(definition, metadata);
             return result;

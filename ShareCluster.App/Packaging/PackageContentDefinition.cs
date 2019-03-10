@@ -6,13 +6,13 @@ using System.Text;
 namespace ShareCluster.Packaging
 {
     /// <summary>
-    /// Immutable identification of package.
+    /// Immutable identification of package content.
     /// </summary>
-    public class PackageDefinition
+    public class PackageContentDefinition
     {
-        public PackageDefinition(Id packageId, ImmutableArray<Id> packageSegmentsHashes, PackageSplitInfo packageSplitInfo)
+        public PackageContentDefinition(Id packageId, ImmutableArray<Id> packageSegmentsHashes, PackageSplitInfo packageSplitInfo)
         {
-            PackageId = packageId;
+            PackageContentHash = packageId;
             PackageSegmentsHashes = packageSegmentsHashes;
             PackageSplitInfo = packageSplitInfo ?? throw new ArgumentNullException(nameof(packageSplitInfo));
 
@@ -22,23 +22,23 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public static PackageDefinition Build(CryptoFacade cryptoProvider, IEnumerable<Id> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
+        public static PackageContentDefinition Build(CryptoFacade cryptoProvider, IEnumerable<Id> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
         {
             var packageSegmentsHashes = packageSegmentsHashesSource.ToImmutableArray();
             Id packageId = cryptoProvider.HashFromHashes(packageSegmentsHashes);
 
-            return new PackageDefinition(
+            return new PackageContentDefinition(
                 packageId,
                 packageSegmentsHashes,
                 packageSplitInfo
             );
         }
 
-        public Id PackageId { get; }
+        public Id PackageContentHash { get; }
         public ImmutableArray<Id> PackageSegmentsHashes { get; }
         public PackageSplitInfo PackageSplitInfo { get; }
         public long PackageSize => PackageSplitInfo.PackageSize;
 
-        public override string ToString() => $"Package size={SizeFormatter.ToString(PackageSize)}; id={PackageId:s}; segments={PackageSegmentsHashes.Length}";
+        public override string ToString() => $"Content size={SizeFormatter.ToString(PackageSize)}; contentHash={PackageContentHash:s}; segments={PackageSegmentsHashes.Length}";
     }
 }

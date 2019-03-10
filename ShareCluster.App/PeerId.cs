@@ -5,6 +5,9 @@ using System.Text;
 
 namespace ShareCluster
 {
+    /// <summary>
+    /// Immutable identification of remote peer - instance Id and endpoint.
+    /// </summary>
     public struct PeerId : IEquatable<PeerId>
     {
         public PeerId(Id instanceId, IPEndPoint endPoint)
@@ -18,10 +21,7 @@ namespace ShareCluster
         public Id InstanceId { get; }
         public IPEndPoint EndPoint { get; }
 
-        public override bool Equals(object obj)
-        {
-            return ((PeerId)obj).Equals(this);
-        }
+        public override bool Equals(object obj) => Equals((PeerId)obj);
 
         public void Validate()
         {
@@ -37,13 +37,7 @@ namespace ShareCluster
             return true;
         }
 
-        public override int GetHashCode()
-        {
-            // get value of first max 4 bytes
-            int result = InstanceId.GetHashCode();
-            result ^= EndPoint.GetHashCode();
-            return result;
-        }
+        public override int GetHashCode() => HashCode.Combine(InstanceId, EndPoint);
 
         public static bool operator ==(PeerId left, PeerId right) => left.Equals(right);
         public static bool operator !=(PeerId left, PeerId right) => !left.Equals(right);
