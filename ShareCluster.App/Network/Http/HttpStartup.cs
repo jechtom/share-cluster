@@ -20,7 +20,7 @@ namespace ShareCluster.Network.Http
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<HttpApiControllerHeadersFilter>();
+            services.AddSingleton<HttpApiMvcHeadersFilter>();
             services.AddSingleton<HttpFilterOnlyLocal>();
             services.AddCors();
             services.AddMvc(c =>

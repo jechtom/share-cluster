@@ -11,7 +11,11 @@ namespace ShareCluster.Network.Messages
         [ProtoMember(1)]
         public virtual Id PackageId { get; set; }
 
+        /// <summary>
+        /// Gets or sets bitmap of segments we already have.
+        /// This is used by peer to choose which segments it should send in response.
+        /// </summary>
         [ProtoMember(2)]
-        public virtual int[] RequestedParts { get; set; }
+        public virtual byte[] DownloadedSegmentsBitmap { get; set; }
     }
 }

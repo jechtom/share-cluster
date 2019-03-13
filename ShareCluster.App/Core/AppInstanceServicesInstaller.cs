@@ -52,7 +52,7 @@ namespace ShareCluster.Core
             services.AddSingleton(PackageSplitBaseInfo.Default);
             services.AddSingleton<IClock, Clock>();
             services.AddSingleton<NetworkThrottling>();
-            services.AddSingleton<PeerController>();
+            services.AddSingleton<IApiService, ApiService>();
             services.AddSingleton<PeerInfoFactory>();
             services.AddSingleton<FolderStreamSerializer>();
             services.AddSingleton<UdpPeerDiscovery>();

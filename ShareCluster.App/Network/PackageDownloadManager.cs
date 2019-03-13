@@ -182,9 +182,6 @@ namespace ShareCluster.Network
 
                 // stop
                 Downloads = Downloads.Remove(packageDownload.PackageId);
-
-                // not interested in package anymore
-                _packageStatusUpdater.NotInterestedInPackage(packageDownload.PackageId);
             }
 
             DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = packageDownload, HasStopped = true });
@@ -229,9 +226,6 @@ namespace ShareCluster.Network
                 // start download
                 packageDownload = packageDownload.WithLocalPackage(localPackage);
                 Downloads = Downloads.SetItem(packageDownload.PackageId, packageDownload);
-
-                // interested in package
-                _packageStatusUpdater.InterestedInPackage(localPackage);
             }
 
             DownloadStatusChange?.Invoke(new DownloadStatusChange() { Package = packageDownload });
@@ -257,7 +251,7 @@ namespace ShareCluster.Network
             // start
             lock (_syncLock)
             {
-                if (_definitionsInDownload.Contains(packageId)) return;
+                if (!_definitionsInDownload.Add(packageId)) return;
             }
 
             Task.Run(() => DownloadPackageContentDefinitionFor(packageMetadata))
