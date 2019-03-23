@@ -24,9 +24,7 @@ namespace ShareCluster.Network
         private readonly StreamsFactory _streamsFactory;
         private readonly HttpApiClient _client;
         private readonly NetworkSettings _networkSettings;
-        private int[] _segmentsFromPeer;
-        private bool[] _segmentsFromPeerValidMap;
-        private int[] _segmentsFromPeerValidAndLocked;
+        private SegmentsReceivingLock _segmentsLock;
 
         private object _lockToken;
         private bool _isPackageLockReleaseNeeded;
@@ -118,7 +116,7 @@ namespace ShareCluster.Network
                 _segmentsFromPeerValidAndLocked = null;
 
                 // finish successful download
-                _logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", LocalPackage.Metadata.Name, LocalPackage.Id, _peer.EndPoint, _segmentsFromPeer.Format());
+                _logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", LocalPackage.Metadata.Name, LocalPackage.Id, _peer.EndPoint, _segmentsExpectedFromPeer.Format());
 
                 if (!LocalPackage.DownloadStatus.IsDownloaded)
                 {
@@ -159,19 +157,21 @@ namespace ShareCluster.Network
 
         void IDownloadDataStreamTarget.Prepare(int[] segments)
         {
-            if (_segmentsFromPeer != null)
+            if (_segmentsLock != null)
             {
                 throw new InvalidOperationException("This method has been already invoked.");
             }
 
-            _segmentsFromPeer = segments ?? throw new ArgumentNullException(nameof(segments));
+            _segmentsLock = new SegmentsReceivingLock(
+                segments ?? throw new ArgumentNullException(nameof(segments)),
+
 
             // try lock all segments from client
-            _segmentsFromPeerValidMap = LocalPackage.DownloadStatus.ValidateAndTryLockSegments(_segmentsFromPeer);
+            _segmentsExpectedFromPeerInterestingMap = LocalPackage.DownloadStatus.ValidateAndTryLockSegments(_segmentsExpectedFromPeer);
 
             // select only valid locked segments to unlock later
-            _segmentsFromPeerValidAndLocked = _segmentsFromPeer
-                .Where((seg, index) => _segmentsFromPeerValidMap[index]).ToArray();
+            _segmentsFromPeerValidAndLocked = _segmentsExpectedFromPeer
+                .Where((seg, index) => _segmentsExpectedFromPeerInterestingMap[index]).ToArray();
         }
 
         Task IDownloadDataStreamTarget.WriteAsync(Stream stream)
@@ -192,7 +192,7 @@ namespace ShareCluster.Network
             // - streamWrite writes data to data files
 
             // TODO: how to ignore invalid parts? we want to ignore them completely
-            using (IStreamController controllerWriter = LocalPackage.DataAccessor.CreateWriteSpecificPackageData(_segmentsFromPeer, _segmentsFromPeerValidMap))
+            using (IStreamController controllerWriter = LocalPackage.DataAccessor.CreateWriteSpecificPackageData(_segmentsExpectedFromPeer, _segmentsExpectedFromPeerInterestingMap))
             {
                 HashStreamVerifyBehavior hashValidateBehavior
                     = _streamsFactory.CreateHashStreamBehavior(LocalPackage.Definition, parts);
