@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using ShareCluster.Packaging;
 
 namespace ShareCluster.Network.Http
@@ -12,12 +14,47 @@ namespace ShareCluster.Network.Http
     /// </summary>
     public class HttpCommonHeadersProcessor
     {
+        /// <summary>
+        /// Name of header that identifies version of client.
+        /// Usage: Compatibility check.
+        /// </summary>
         public const string VersionHeaderName = "X-ShareClusterVersion";
+
+        /// <summary>
+        /// Name of header that identifies peer random instance Id.
+        /// Usage: Sent with all requests and responses.
+        /// </summary>
         public const string InstanceHeaderName = "X-ShareClusterInstance";
+
+        /// <summary>
+        /// Name of header that defines data type sent in request/response body.
+        /// Usage: In some cases it is not clear as multiple types can be returned to single request - for example either data stream or fault reason.
+        /// </summary>
         public const string TypeHeaderName = "X-ShareClusterType";
+
+        /// <summary>
+        /// Reserved keyword used as <see cref="TypeHeaderName"/> value to identify that response body contains data stream.
+        /// </summary>
         public const string TypeHeaderForStream = "stream";
+
+        /// <summary>
+        /// Name of header with HTTP service port.
+        /// Usage: In all HTTP requests to notify peer what is our HTTP service port.
+        /// </summary>
         public const string ServicePortHeaderName = "X-ShareClusterPort";
+
+        /// <summary>
+        /// Name of header with version of peers catalog.
+        /// Usage: In all HTTP requests and responses to notify peer about current catalog version.
+        /// </summary>
         public const string CatalogVersionHeaderName = "X-ShareClusterCatalog";
+
+        /// <summary>
+        /// Name of header with identification of data segments sent in body stream.
+        /// Usage: In data request response.
+        /// </summary>
+        public const string SegmentsHeaderName = "X-ShareClusterSegments";
+
         private readonly ILogger<HttpCommonHeadersProcessor> _logger;
         private readonly PeerAppVersionCompatibility _compatibility;
         private readonly InstanceId _instanceId;
@@ -31,6 +68,41 @@ namespace ShareCluster.Network.Http
             _instanceId = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
             _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
+        }
+
+        public void AddSegmentsHeader(IHttpHeaderWriter headerWriter, IEnumerable<int> segments)
+        {
+            if (segments == null)
+            {
+                throw new ArgumentNullException(nameof(segments));
+            }
+
+            if (!segments.Any())
+            {
+                throw new ArgumentException("Empty collection is not allowed.", nameof(segments));
+            }
+
+            string segmentsString = JsonConvert.SerializeObject(segments);
+            headerWriter.WriteHeader(SegmentsHeaderName, segmentsString);
+        }
+
+
+        public int[] ReadAndValidateSegmentsHeader(IPAddress remoteAddress, IHttpHeaderReader headerReader)
+        {
+            // read
+            if (!headerReader.TryReadHeader(SegmentsHeaderName, out string valueStringSegments))
+            {
+                ThrowHeaderError(remoteAddress, $"Missing header {SegmentsHeaderName}");
+            }
+
+            // deserialize
+            int[] segments = JsonConvert.DeserializeObject<int[]>(valueStringSegments);
+            if(segments.Length == 0)
+            {
+                ThrowHeaderError(remoteAddress, $"Header {SegmentsHeaderName} contains unsupported empty array.");
+            }
+
+            return segments;
         }
 
         public void AddCommonHeaders(IHttpHeaderWriter headerWriter, string typeString)

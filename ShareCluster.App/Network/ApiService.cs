@@ -12,26 +12,31 @@ using ShareCluster.Packaging.IO;
 
 namespace ShareCluster.Network
 {
-    public class PeerController
+    /// <summary>
+    /// Implementation of API processing.
+    /// </summary>
+    public class ApiService : IApiService
     {
         private readonly object _syncLock = new object();
-        private readonly ILogger<PeerController> _logger;
+        private readonly ILogger<ApiService> _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ConcurrentDictionary<Id, PackageDefinitionDto> _packageDefinitions;
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly PackageDefinitionSerializer _packageDefinitionSerializer;
         private readonly NetworkThrottling _throttling;
         private readonly PeersManager _peerManager;
+        private readonly NetworkSettings _networkSettings;
         private VersionNumber _catalogMessageVersion = VersionNumber.Zero;
         private CatalogDataResponse _catalogUpToDateMessage;
         private CatalogDataResponse _catalogMessage;
 
-        public PeerController(
-            ILogger<PeerController> logger, ILoggerFactory loggerFactory,
+        public ApiService(
+            ILogger<ApiService> logger, ILoggerFactory loggerFactory,
             ILocalPackageRegistry localPackageRepository,
             PackageDefinitionSerializer packageDefinitionSerializer,
             NetworkThrottling throttling,
-            PeersManager peerManager
+            PeersManager peerManager,
+            NetworkSettings networkSettings
             )
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -40,6 +45,7 @@ namespace ShareCluster.Network
             _packageDefinitionSerializer = packageDefinitionSerializer ?? throw new ArgumentNullException(nameof(packageDefinitionSerializer));
             _throttling = throttling ?? throw new ArgumentNullException(nameof(throttling));
             _peerManager = peerManager ?? throw new ArgumentNullException(nameof(peerManager));
+            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             _packageDefinitions = new ConcurrentDictionary<Id, PackageDefinitionDto>();
         }
 
@@ -90,7 +96,7 @@ namespace ShareCluster.Network
             };
         }
 
-        public (Stream, DataResponseFault) GetDataStream(DataRequest request)
+        public (DataResponseSuccess, DataResponseFault) GetDataStream(DataRequest request)
         {
             // allocate slot
             if (!_throttling.UploadSlots.TryUseSlot())
@@ -99,17 +105,17 @@ namespace ShareCluster.Network
                 return (null, DataResponseFault.CreateChokeMessage());
             }
 
-            ControlledStream stream;
+            DataResponseSuccess success;
             DataResponseFault fault;
 
             try
             {
                 // create stream or get fault
-                (stream, fault) = GetDataStreamWithSlot(request);
+                (success, fault) = GetDataStreamWithSlot(request);
 
-                if(stream != null)
+                if(success != null)
                 {
-                    stream.Disposing += () =>
+                    success.Stream.Disposing += () =>
                     {
                         // release slot after disposing of stream
                         _throttling.UploadSlots.ReleaseSlot();
@@ -132,19 +138,19 @@ namespace ShareCluster.Network
                 throw;
             }
 
-            return (stream, fault);
+            return (success, fault);
         }
 
-        private (ControlledStream, DataResponseFault) GetDataStreamWithSlot(DataRequest request)
+        private (DataResponseSuccess, DataResponseFault) GetDataStreamWithSlot(DataRequest request)
         {
             if (request == null)
             {
                 throw new ArgumentNullException(nameof(request));
             }
 
-            if (request.RequestedParts == null || !request.RequestedParts.Any())
+            if (request.DownloadedSegmentsBitmap == null)
             {
-                throw new ArgumentException($"Null reference in or empty array in property {nameof(request.RequestedParts)}", nameof(request));
+                throw new ArgumentException($"Null reference or empty array in property {nameof(request.DownloadedSegmentsBitmap)}", nameof(request));
             }
 
             if (!_localPackageRegistry.LocalPackages.TryGetValue(request.PackageId, out LocalPackage package))
@@ -152,11 +158,10 @@ namespace ShareCluster.Network
                 return (null, DataResponseFault.CreateDataPackageNotFoundMessage());
             }
 
-            // packages ok?
-            if (!package.DownloadStatus.ValidateRequestedPartsOrGetBitmap(request.RequestedParts, out byte[] bitmap))
+            // create list of segments we will offer to peer
+            if(!package.DownloadStatus.TryCreateOfferForPeer(request.DownloadedSegmentsBitmap, _networkSettings.SegmentsPerRequest, out int[] segments))
             {
-                _logger.LogTrace($"Requested segments not valid for {package}: {request.RequestedParts.Format()}");
-                return (null, DataResponseFault.CreateDataPackageSegmentsNotFoundMessage(bitmap));
+                return (null, DataResponseFault.CreateDataPackageSegmentsNoMatchMessage());
             }
 
             // obtain lock
@@ -166,15 +171,15 @@ namespace ShareCluster.Network
             }
 
             // create reader stream
-            _logger.LogTrace($"Uploading for {package} segments: {request.RequestedParts.Format()}");
+            _logger.LogTrace($"Uploading for {package} segments: {segments.Format()}");
             ControlledStream stream = package.DataAccessor
-                .CreateReadSpecificPackageData(request.RequestedParts)
+                .CreateReadSpecificPackageData(segments)
                 .CreateStream(_loggerFactory, package.UploadMeasure);
 
             stream.Disposing += () => {
                 package.Locks.ReleaseSharedLock(lockToken);
             };
-            return (stream, null);
+            return (new DataResponseSuccess(stream, segments), null);
 
         }
 

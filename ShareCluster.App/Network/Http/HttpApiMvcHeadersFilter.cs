@@ -9,12 +9,12 @@ using System.Net;
 
 namespace ShareCluster.Network.Http
 {
-    public class HttpApiControllerHeadersFilter : IActionFilter
+    public class HttpApiMvcHeadersFilter : IActionFilter
     {
-        private readonly ILogger<HttpApiControllerHeadersFilter> _logger;
+        private readonly ILogger<HttpApiMvcHeadersFilter> _logger;
         private readonly HttpCommonHeadersProcessor _headersProcessor;
 
-        public HttpApiControllerHeadersFilter(ILogger<HttpApiControllerHeadersFilter> logger, HttpCommonHeadersProcessor headersProcessor)
+        public HttpApiMvcHeadersFilter(ILogger<HttpApiMvcHeadersFilter> logger, HttpCommonHeadersProcessor headersProcessor)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _headersProcessor = headersProcessor ?? throw new ArgumentNullException(nameof(headersProcessor));

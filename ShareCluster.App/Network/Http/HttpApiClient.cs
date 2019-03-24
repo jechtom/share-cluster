@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace ShareCluster.Network.Http
 {
-    public class HttpApiClient
+    public class HttpApiClient : IApiClient
     {
         private readonly HttpClient _appClient = new HttpClient();
         private readonly IMessageSerializer _serializer;
@@ -35,7 +35,7 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return SendRequestAndGetResponse<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiController.GetPackage), message);
+            return SendRequestAndGetResponse<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiMvcController.GetPackage), message);
         }
 
         public async Task<Messages.CatalogDataResponse> GetCatalogAsync(IPEndPoint endpoint, Messages.CatalogDataRequest message)
@@ -45,18 +45,23 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return await SendRequestAndGetResponeAsync<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiController.GetCatalog), message);
+            return await SendRequestAndGetResponeAsync<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiMvcController.GetCatalog), message);
         }
 
-        public async Task<Messages.DataResponseFault> DownloadPartsAsync(IPEndPoint endpoint, Messages.DataRequest message, Lazy<Stream> streamToWriteLazy)
+        public async Task<Messages.DataResponseFault> GetDataStreamAsync(IPEndPoint endpoint, Messages.DataRequest message, IDownloadDataStreamTarget target)
         {
             if (message == null)
             {
                 throw new ArgumentNullException(nameof(message));
             }
 
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
             (HttpResponseMessage resultMessage, CommonHeaderData resultHeaders)
-                = await SendRequestAsync(endpoint, nameof(HttpApiController.Data), message, stream: true);
+                = await SendRequestAsync(endpoint, nameof(HttpApiMvcController.Data), message, stream: true);
 
             using(resultMessage)
             {
@@ -67,10 +72,13 @@ namespace ShareCluster.Network.Http
                     {
                         return _serializer.Deserialize<Messages.DataResponseFault>(stream);
                     }
+                    
+                    // read which segments are returned in stream
+                    int[] segments = _headersProcessor.ReadAndValidateSegmentsHeader(endpoint.Address, new HttpContentHeadersWrapper(resultMessage.Headers));
 
-                    // write to target stream
-                    Stream streamToWrite = streamToWriteLazy.Value;
-                    await stream.CopyToAsync(streamToWrite);
+                    // proccess
+                    target.Prepare(segments);
+                    await target.WriteAsync(stream);
                 }
                 return null; // success
             }
