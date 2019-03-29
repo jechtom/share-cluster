@@ -24,9 +24,9 @@ namespace ShareCluster.Packaging.IO
             _closeNested = closeNested;
         }
 
-        public bool CanWrite => false;
+        public bool CanWrite => true;
 
-        public bool CanRead => true;
+        public bool CanRead => false;
 
         public long? Length => _nestedStream.Length;
 
@@ -65,6 +65,9 @@ namespace ShareCluster.Packaging.IO
                 }
 
             }
+
+            // writing more data to stream is ignored
+            yield return new CurrentPart(Stream.Null, int.MaxValue);
         }
 
         public void OnStreamPartChange(IStreamPart oldPart, IStreamPart newPart)

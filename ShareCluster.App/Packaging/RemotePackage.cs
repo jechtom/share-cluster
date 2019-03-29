@@ -7,14 +7,13 @@ namespace ShareCluster.Packaging
 {
     public class RemotePackage : IEquatable<RemotePackage>
     {
-        public RemotePackage(Id packageId, PackageMetadata packageMetadata, bool isSeeder)
+        public RemotePackage(PackageMetadata packageMetadata, bool isSeeder)
         {
-            PackageId = packageId;
             PackageMetadata = packageMetadata ?? throw new ArgumentNullException(nameof(packageMetadata));
             IsSeeder = isSeeder;
         }
 
-        public Id PackageId { get; }
+        public Id PackageId => PackageMetadata.PackageId;
 
         public PackageMetadata PackageMetadata { get; }
 

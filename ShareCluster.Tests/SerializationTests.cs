@@ -1,6 +1,7 @@
 ﻿using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
+using ShareCluster.Tests.Helpers;
 using System;
 using System.Collections.Immutable;
 using System.IO;
@@ -74,6 +75,9 @@ namespace ShareCluster.Tests
                 {
                     new CatalogPackage()
                     {
+                        ContentHash = new Id(new byte[] { 7, 8, 9 }),
+                        CreatedUtc = DateTime.UtcNow,
+                        IsSeeder = false,
                         PackageId = new Id(new byte[] { 1, 2, 3 }),
                         PackageName = "abc",
                         PackageSize = 456,

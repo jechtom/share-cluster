@@ -19,16 +19,13 @@ namespace ShareCluster.Tests.Packaging
             Assert.Equal(0, registry.Items.Count);
 
             // add
-            PeerId peer = Generator.RandomPeerId();
-            var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
-
-            registry.UpdateOcurrencesForPeer(peer, new[] { occurence });
+            var occurence = new RemotePackage(Generator.RandomMetadata(), isSeeder: true);
+            registry.Update(new[] { occurence });
 
             // verify
             Assert.Equal(1, registry.Items.Count);
             Assert.Equal(occurence.PackageId, registry.Items[occurence.PackageId].PackageId);
-            Assert.Equal(occurence.Name, registry.Items[occurence.PackageId].Name);
-            Assert.Equal(1, registry.Items[occurence.PackageId].Peers.Count);
+            Assert.Same(occurence.PackageMetadata, registry.Items[occurence.PackageId].PackageMetadata);
         }
 
         [Fact]
@@ -37,172 +34,16 @@ namespace ShareCluster.Tests.Packaging
             IRemotePackageRegistry registry = Create();
             Assert.Equal(0, registry.Items.Count);
 
-            PeerId peer = Generator.RandomPeerId();
-
             // add 1
-            var occurence = new RemotePackageOccurence(peer, Generator.RandomId(), 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
-            registry.UpdateOcurrencesForPeer(peer, new[] { occurence });
+            var occurence = new RemotePackage(Generator.RandomMetadata(), isSeeder: true);
+            registry.Update(new[] { occurence });
 
             Assert.Equal(1, registry.Items.Count);
 
             // remove 1
-            registry.UpdateOcurrencesForPeer(peer, new RemotePackageOccurence[0]);
+            registry.Update(new RemotePackage[0]);
 
             Assert.Equal(0, registry.Items.Count);
-        }
-
-        [Fact]
-        public void MergeOnePackageTwoPeers()
-        {
-            IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.Items.Count);
-
-            Id packageId = Generator.RandomId();
-
-            PeerId peer1 = Generator.RandomPeerId();
-            var occurence1 = new RemotePackageOccurence(peer1, packageId, 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
-
-            PeerId peer2 = Generator.RandomPeerId();
-            var occurence2 = new RemotePackageOccurence(peer2, packageId, 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
-
-            registry.UpdateOcurrencesForPeer(peer1, new[] { occurence1 });
-            registry.UpdateOcurrencesForPeer(peer2, new[] { occurence2 });
-
-            // verify
-            Assert.Equal(1, registry.Items.Count);
-            Assert.Equal(2, registry.Items[packageId].Peers.Count);
-        }
-
-        [Fact]
-        public void ValidateConsistentPeerId()
-        {
-            IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.Items.Count);
-
-            PeerId peerId1 = Generator.RandomPeerId();
-            PeerId peerId2 = Generator.RandomPeerId();
-
-            Id packageId1 = Generator.RandomId();
-
-            Assert.Throws<ArgumentException>(() => {
-                registry.UpdateOcurrencesForPeer(peerId1,
-                    new[] { new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true) });
-            });
-        }
-
-        [Fact]
-        public void RemovePeerCombined()
-        {
-            IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.Items.Count);
-
-            PeerId peerId1 = Generator.RandomPeerId();
-            PeerId peerId2 = Generator.RandomPeerId();
-
-            Id packageId1 = Generator.RandomId();
-            Id packageId2 = Generator.RandomId();
-            Id packageId3 = Generator.RandomId();
-
-            // peer 1 - packages 1, 2
-            registry.UpdateOcurrencesForPeer(peerId1, new[] {
-                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
-                new RemotePackageOccurence(peerId1, packageId2, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
-            });
-
-            // peer 2 - packages 1, 3
-            registry.UpdateOcurrencesForPeer(peerId2, new[] {
-                new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
-                new RemotePackageOccurence(peerId2, packageId3, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
-            });
-
-            // all packages (1,2,3) should be present
-            Assert.True(registry.Items.ContainsKey(packageId1));
-            Assert.Equal(2, registry.Items[packageId1].Peers.Count);
-
-            Assert.True(registry.Items.ContainsKey(packageId2));
-            Assert.Equal(1, registry.Items[packageId2].Peers.Count);
-
-            Assert.True(registry.Items.ContainsKey(packageId3));
-            Assert.Equal(1, registry.Items[packageId3].Peers.Count);
-
-            // forget peer 1
-            registry.RemovePeer(peerId1);
-
-            // package 2 should be gone as only peer 1 references it
-            Assert.True(registry.Items.ContainsKey(packageId1));
-            Assert.Equal(1, registry.Items[packageId1].Peers.Count);
-
-            Assert.False(registry.Items.ContainsKey(packageId2));
-
-            Assert.True(registry.Items.ContainsKey(packageId3));
-            Assert.Equal(1, registry.Items[packageId3].Peers.Count);
-        }
-
-        [Fact]
-        public void MergeUpdateOnePacakgeOnePeer()
-        {
-            IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.Items.Count);
-
-            PeerId peerId = Generator.RandomPeerId();
-            Id packageId1 = Generator.RandomId();
-
-            var occ1 = new RemotePackageOccurence(peerId, packageId1, 123456, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true);
-            var occ2 = new RemotePackageOccurence(peerId, packageId1, 123456, "cde", DateTimeOffset.Now, Generator.RandomId(), isSeeder: false);
-
-            registry.UpdateOcurrencesForPeer(peerId, new[] { occ1 });
-            registry.UpdateOcurrencesForPeer(peerId, new[] { occ2 });
-
-            // verify
-            Assert.Equal(1, registry.Items.Count);
-            Assert.Equal(1, registry.Items[packageId1].Peers.Count);
-            Assert.Equal("cde", registry.Items[packageId1].Peers[peerId].Name);
-            Assert.False(registry.Items[packageId1].Peers[peerId].IsSeeder);
-        }
-
-        [Fact]
-        public void ReplacePeerCombined()
-        {
-            IRemotePackageRegistry registry = Create();
-            Assert.Equal(0, registry.Items.Count);
-
-            PeerId peerId1 = Generator.RandomPeerId();
-            PeerId peerId2 = Generator.RandomPeerId();
-
-            Id packageId1 = Generator.RandomId();
-            Id packageId2 = Generator.RandomId();
-            Id packageId3 = Generator.RandomId();
-            Id packageId4 = Generator.RandomId();
-
-            // peer 1 variant A - packages 1, 2
-            registry.UpdateOcurrencesForPeer(peerId1, new[] {
-                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
-                new RemotePackageOccurence(peerId1, packageId2, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
-            });
-
-            // peer 2 - packages 1, 3
-            registry.UpdateOcurrencesForPeer(peerId2, new[] {
-                new RemotePackageOccurence(peerId2, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
-                new RemotePackageOccurence(peerId2, packageId3, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
-            });
-
-            // packages (1,2,3) should be present
-            Assert.True(registry.Items.ContainsKey(packageId1));
-            Assert.True(registry.Items.ContainsKey(packageId2));
-            Assert.True(registry.Items.ContainsKey(packageId3));
-            Assert.False(registry.Items.ContainsKey(packageId4));
-
-            // peer 1 variant B - packages 1, 4 (replaces 1, 2)
-            registry.UpdateOcurrencesForPeer(peerId1, new[] {
-                new RemotePackageOccurence(peerId1, packageId1, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true),
-                new RemotePackageOccurence(peerId1, packageId4, 123458, "abc", DateTimeOffset.Now, Generator.RandomId(), isSeeder: true)
-            });
-
-            // packages (1,3,4) should be present
-            Assert.True(registry.Items.ContainsKey(packageId1));
-            Assert.False(registry.Items.ContainsKey(packageId2));
-            Assert.True(registry.Items.ContainsKey(packageId3));
-            Assert.True(registry.Items.ContainsKey(packageId4));
         }
     }
 }

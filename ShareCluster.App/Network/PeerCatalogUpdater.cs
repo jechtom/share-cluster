@@ -96,7 +96,6 @@ namespace ShareCluster.Network
             IEnumerable<CatalogPackage> source = catalogResult.Packages ?? Enumerable.Empty<CatalogPackage>();
             IEnumerable<RemotePackage> remotePackageSource = source.Select(
                 catalogItem => new RemotePackage(
-                        packageId: catalogItem.PackageId,
                         isSeeder: catalogItem.IsSeeder,
                         packageMetadata: new PackageMetadata(
                             packageId: catalogItem.PackageId,

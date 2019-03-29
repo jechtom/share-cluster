@@ -53,7 +53,7 @@ namespace ShareCluster.WebInterface
             _sendOnlyToClient = e;
             try
             {
-                PushPeersChanged();
+                //PushPeersChanged();
                 PushPackagesChanged();
             }
             finally
@@ -65,47 +65,47 @@ namespace ShareCluster.WebInterface
         private void PushPackagesChanged()
         {
 
-            PushEventToClients(new EventPackagesChanged()
-            {
-                Groups = source
-                .GroupBy(s => s.groupId)
-                .Select(g => new PackageGroupInfoDto()
-                {
-                    GroupId = g.Key.ToString(),
-                    GroupIdShort = g.Key.ToString("s"),
-                    Packages = g.Select(gi => gi.dto)
-                })
-            });
+            //PushEventToClients(new EventPackagesChanged()
+            //{
+            //    Groups = source
+            //    .GroupBy(s => s.groupId)
+            //    .Select(g => new PackageGroupInfoDto()
+            //    {
+            //        GroupId = g.Key.ToString(),
+            //        GroupIdShort = g.Key.ToString("s"),
+            //        Packages = g.Select(gi => gi.dto)
+            //    })
+            //});
         }
 
-        private (Id groupId, PackageInfoDto dto) BuildPackageInfoDto(Id id, LocalPackage lp, RemotePackage rp)
-        {
-            PackageMetadata meta = (lp?.Metadata ?? rp.PackageMetadata);
+        //private (Id groupId, PackageInfoDto dto) BuildPackageInfoDto(Id id, LocalPackage lp, RemotePackage rp)
+        //{
+        //    PackageMetadata meta = (lp?.Metadata ?? rp.PackageMetadata);
 
-            long size = lp?.SplitInfo.PackageSize ?? rp.PackageMetadata.PackageSize;
-            (int seeders, int leechers) = rp == null ? (0, 0) : _peersRegistry.Items.Values.Aggregate((seeders: 0, leechers: 0),
-                    (ag, pi) => pi.RemotePackages.Items.TryGetValue(id, out RemotePackage rp) ? (ag.seeders + (rp.IsSeeder ? 1 : 0), ag.leechers + (!rp.IsSeeder ? 1 : 0)) : ag
-                );
-            if (lp != null && lp.DownloadStatus.IsDownloaded) seeders++;
-            if (lp != null && !lp.DownloadStatus.IsDownloaded) leechers++;
+        //    long size = lp?.SplitInfo.PackageSize ?? rp.PackageMetadata.PackageSize;
+        //    (int seeders, int leechers) = rp == null ? (0, 0) : _peersRegistry.Items.Values.Aggregate((seeders: 0, leechers: 0),
+        //            (ag, pi) => pi.RemotePackages.Items.TryGetValue(id, out RemotePackage rp) ? (ag.seeders + (rp.IsSeeder ? 1 : 0), ag.leechers + (!rp.IsSeeder ? 1 : 0)) : ag
+        //        );
+        //    if (lp != null && lp.DownloadStatus.IsDownloaded) seeders++;
+        //    if (lp != null && !lp.DownloadStatus.IsDownloaded) leechers++;
 
-            var dto = new PackageInfoDto()
-            {
-                Id = meta.PackageId.ToString(),
-                IdShort = meta.PackageId.ToString("s"),
-                GroupIdShort = meta.GroupId.ToString("s"),
-                SizeBytes = size,
-                SizeFormatted = SizeFormatter.ToString(size),
-                Seeders = seeders,
-                Leechers = leechers,
-                KnownNames = meta.Name,
-                CreatedSortValue = meta.CreatedUtc.Ticks,
-                CreatedFormatted = meta.CreatedUtc.ToLocalTime().ToString("g")
-            };
+        //    var dto = new PackageInfoDto()
+        //    {
+        //        Id = meta.PackageId.ToString(),
+        //        IdShort = meta.PackageId.ToString("s"),
+        //        GroupIdShort = meta.GroupId.ToString("s"),
+        //        SizeBytes = size,
+        //        SizeFormatted = SizeFormatter.ToString(size),
+        //        Seeders = seeders,
+        //        Leechers = leechers,
+        //        KnownNames = meta.Name,
+        //        CreatedSortValue = meta.CreatedUtc.Ticks,
+        //        CreatedFormatted = meta.CreatedUtc.ToLocalTime().ToString("g")
+        //    };
 
 
-            return (meta.GroupId, dto);
-        }
+        //    return (meta.GroupId, dto);
+        //}
 
         class PackageGroupMerge
         {

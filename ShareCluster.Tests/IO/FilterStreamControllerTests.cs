@@ -31,6 +31,7 @@ namespace ShareCluster.Tests.IO
                 {
                     srcStream.WriteByte((byte)(i % 256));
                 }
+                srcStream.Position = 0;
 
                 // copy thru controlled stream
                 var controller = new FilterStreamController(new[] { new RangeLong(0, 50) }, dstStream, closeNested: false);
@@ -60,6 +61,7 @@ namespace ShareCluster.Tests.IO
                 {
                     srcStream.WriteByte((byte)(i % 256));
                 }
+                srcStream.Position = 0;
 
                 // copy thru controlled stream
                 RangeLong[] ranges = new[] {
@@ -96,6 +98,7 @@ namespace ShareCluster.Tests.IO
                 {
                     srcStream.WriteByte((byte)(i % 256));
                 }
+                srcStream.Position = 0;
 
                 // copy thru controlled stream
                 RangeLong[] ranges = new[] {
@@ -128,6 +131,7 @@ namespace ShareCluster.Tests.IO
                 {
                     srcStream.WriteByte((byte)(i % 256));
                 }
+                srcStream.Position = 0;
 
                 // copy thru controlled stream
                 var controller = new FilterStreamController(new RangeLong[0], dstStream, closeNested: false);
