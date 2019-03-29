@@ -4,9 +4,13 @@ using System.Text;
 using ShareCluster.Synchronization;
 using ShareCluster.Network.Messages;
 using System.Linq;
+using System.Collections.Immutable;
 
 namespace ShareCluster.Packaging
 {
+    /// <summary>
+    /// TODO refactoring: Split and make thread safe - accessing long properties and segments is not thread safe - we can just provide these in immutable manner when needed.
+    /// </summary>
     public class PackageDownloadStatus
     {
         private readonly object _syncLock = new object();
@@ -52,14 +56,33 @@ namespace ShareCluster.Packaging
         public long BytesDownloaded => _bytesDownloaded;
         public long BytesTotal => _splitInfo.PackageSize;
         public bool IsDownloaded => SegmentsBitmap == null;
-        public byte[] SegmentsBitmap { get; set; }
-        public bool IsDownloading { get; set; }
-        public bool IsMoreToDownload => BytesDownloaded + _progressBytesReserved < BytesTotal;
 
-        private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
+        public bool IsMoreToDownload
+        {
+            get
+            {
+                lock (_syncLock)
+                {
+                    return BytesDownloaded + _progressBytesReserved < BytesTotal;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets segments bitmap. If null, download is finished.
+        /// </summary>
+        public byte[] SegmentsBitmap { get; private set; }
+
+        /// <summary>
+        /// Gets or sets if this package is now marked as for downloading.
+        /// </summary>
+        public bool IsDownloading { get; set; }
 
         public int BitmapSizeInBytes => GetBitmapSizeForPackage(_splitInfo.SegmentsCount);
 
+        /// <summary>
+        /// Gets progress on scale 0 to 1.
+        /// </summary>
         public double Progress
         {
             get
@@ -124,16 +147,15 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public void ReturnLockedSegments(int[] segments, bool areDownloaded)
+        public void ReturnLockedSegments(IEnumerable<int> segments, bool areDownloaded)
         {
             lock (_syncLock)
             {
                 if (IsDownloaded) throw new InvalidOperationException("Already downloaded.");
 
                 _partsInProgress.ExceptWith(segments);
-                for (int i = 0; i < segments.Length; i++)
+                foreach (var segmentIndex in segments)
                 {
-                    int segmentIndex = segments[i];
                     long segmentSize = _splitInfo.GetSizeOfSegment(segmentIndex);
                     if (areDownloaded)
                     {
@@ -162,7 +184,7 @@ namespace ShareCluster.Packaging
         /// <param name="remoteBitmap">Bitmap of segments already downloaded by peer.</param>
         /// <param name="segments">Offered segments (non-empty array) or null of no segment can be offered.</param>
         /// <param name="maximumCount">Maximum number of selected segments.</param>
-        /// <returns></returns>
+        /// <returns>True if operation is success.</returns>
         public bool TryCreateOfferForPeer(byte[] remoteBitmap, int maximumCount, out int[] segments)
         {
             if (remoteBitmap == null)
@@ -259,5 +281,7 @@ namespace ShareCluster.Packaging
                 SegmentsBitmap = null; // downloaded
             }
         }
+
+        private static int GetBitmapSizeForPackage(long segmentsCount) => (int)((segmentsCount + 7) / 8);
     }
 }

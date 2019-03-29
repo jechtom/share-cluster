@@ -319,6 +319,13 @@ namespace ShareCluster.Network
                 .Where(p => p.RemotePackages.Items.ContainsKey(packageDownload.PackageId))
                 .ToList();
 
+            // precheck
+            if(packageDownload.LocalPackage.DownloadStatus.IsDownloaded || packageDownload.LocalPackage.Locks.IsMarkedToDelete)
+            {
+                // already downloaded or marked to delete from local registry
+                StopDownload(packageDownload.PackageId);
+            }
+
             while (_downloadSlots.Count < _networkThrottling.DownloadSlots.Limit && eligiblePeers.Any())
             {
                 // pick random peer
@@ -332,45 +339,33 @@ namespace ShareCluster.Network
                     continue;
                 }
 
-                // create slot and try download
-                PackageDownloadSlot slot = _slotFactory.Create(this, packageDownload, peer);
-                PackageDownloadSlotResult result = slot.TryStartAsync();
-
-                // release status slot of this peer
-                result.DownloadTask.ContinueWith(t => { peer.Status.Slots.ReleaseSlot(); });
-
-                switch (result.Status)
-                {
-                    case PackageDownloadSlotResultStatus.MarkedForDelete:
-                    case PackageDownloadSlotResultStatus.NoMoreToDownload:
-                        StopDownload(packageDownload.PackageId);
-                        return; // exit now (cannot continue for package) - package has been deleted or we're waiting for last part to finish download
-                    case PackageDownloadSlotResultStatus.Error:
-                    case PackageDownloadSlotResultStatus.NoMatchWithPeer:
-                        continue; // cannot allocate for other reasons - continue
-                    case PackageDownloadSlotResultStatus.Started:
-                        // schedule next check to deploy slots.
-                        _downloadSlots.Add(slot);
-                        result.DownloadTask.ContinueWith(t => OnSlotFinished(slot));
-                        continue;
-                    default:
-                        throw new InvalidOperationException($"Unexpected enum value: {result.Status}");
-                }
+                // create slot and download (don't wait for response)
+                Task _ = AllocateSlowAndDownloadAsync(packageDownload, peer);
             }
         }
 
-        private void OnSlotFinished(PackageDownloadSlot slot)
+        private async Task AllocateSlowAndDownloadAsync(PackageDownload packageDownload, PeerInfo peer)
         {
-            lock (_syncLock)
+            PackageDownloadSlot slot = _slotFactory.Create(this, packageDownload, peer);
+            _downloadSlots.Add(slot);
+
+            try
             {
-                _downloadSlots.Remove(slot);
-
-                if(slot.LocalPackage.DownloadStatus.IsDownloaded)
+                await slot.StartAsync();
+            }
+            finally
+            {
+                lock (_syncLock)
                 {
-                    StopDownload(slot.Download.PackageId);
-                }
+                    _downloadSlots.Remove(slot);
 
-                ScheduleFreeSlots();
+                    if (slot.LocalPackage.DownloadStatus.IsDownloaded)
+                    {
+                        StopDownload(slot.Download.PackageId);
+                    }
+
+                    ScheduleFreeSlots();
+                }
             }
         }
 

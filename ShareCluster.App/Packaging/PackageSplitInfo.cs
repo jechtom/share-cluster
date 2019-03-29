@@ -72,12 +72,12 @@ namespace ShareCluster.Packaging
         /// </summary>
         /// <param name="parts"></param>
         /// <returns></returns>
-        public long GetSizeOfSegments(Span<int> parts)
+        public long GetSizeOfSegments(IEnumerable<int> parts)
         {
             long result = 0;
-            for (int i = 0; i < parts.Length; i++)
+            foreach (var i in parts)
             {
-                result += (parts[i] == SegmentsCount - 1) ? SegmentLastLength : SegmentLength;
+                result += (i == SegmentsCount - 1) ? SegmentLastLength : SegmentLength;
             }
             return result;
         }

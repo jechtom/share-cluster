@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,24 +15,25 @@ using ShareCluster.Packaging.PackageFolders;
 namespace ShareCluster.Network
 {
     /// <summary>
-    /// Describes one download job running in one download slot. 
+    /// Describes one download job running in one download slot for specific package and peer.
+    /// Slot is recreated every time after it is used.
     /// </summary>
-    public class PackageDownloadSlot : IDownloadDataStreamTarget
+    public class PackageDownloadSlot
     {
         private readonly ILogger<PackageDownloadSlot> _logger;
         private readonly PackageDownloadManager _parent;
         private readonly PeerInfo _peer;
         private readonly StreamsFactory _streamsFactory;
         private readonly HttpApiClient _client;
-        private readonly NetworkSettings _networkSettings;
-        private SegmentsReceivingLock _segmentsLock;
+        private SegmentsReceivingInfo _segmentsLock;
 
         private object _lockToken;
         private bool _isPackageLockReleaseNeeded;
+        private bool _success;
 
-        private Task _task;
+        public long FinalDownloadedBytes { get; private set; }
 
-        public PackageDownloadSlot(ILogger<PackageDownloadSlot> logger, PackageDownloadManager parent, PackageDownload download, PeerInfo peer, StreamsFactory streamsFactory, HttpApiClient client, NetworkSettings networkSettings)
+        public PackageDownloadSlot(ILogger<PackageDownloadSlot> logger, PackageDownloadManager parent, PackageDownload download, PeerInfo peer, StreamsFactory streamsFactory, HttpApiClient client)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _parent = parent ?? throw new ArgumentNullException(nameof(parent));
@@ -40,23 +42,22 @@ namespace ShareCluster.Network
             _peer = peer ?? throw new ArgumentNullException(nameof(peer));
             _streamsFactory = streamsFactory ?? throw new ArgumentNullException(nameof(streamsFactory));
             _client = client ?? throw new ArgumentNullException(nameof(client));
-            _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
             if (!download.IsLocalPackageAvailable) throw new ArgumentException("Download slot can't accept downloads with definition downloaded.", nameof(download));
         }
 
         public PackageDownload Download { get; }
         public LocalPackage LocalPackage { get; }
 
-        public PackageDownloadSlotResult TryStartAsync()
+        public async Task StartAsync()
         {
-            bool hasStarted = false;
             try
             {
                 // try allocate lock (make sure it will be release if allocation is approved)
                 if (!LocalPackage.Locks.TryObtainSharedLock(out _lockToken))
                 {
                     // already marked for deletion
-                    return PackageDownloadSlotResult.CreateFailed(PackageDownloadSlotResultStatus.MarkedForDelete);
+                    _logger.LogTrace("Package {0} already marked for deletion.", LocalPackage);
+                    return;
                 }
 
                 _isPackageLockReleaseNeeded = true;
@@ -65,227 +66,260 @@ namespace ShareCluster.Network
                 if (!LocalPackage.DownloadStatus.IsMoreToDownload)
                 {
                     _logger.LogTrace("No more work for package {0}", LocalPackage);
-                    return PackageDownloadSlotResult.CreateFailed(PackageDownloadSlotResultStatus.NoMoreToDownload);
+                    return;
                 }
-                
+
                 // we're ready to download
-                hasStarted = true;
-                return PackageDownloadSlotResult.CreateStarted((_task = DownloadAsync()));
+                await DownloadAsync();
             }
             catch (Exception error)
             {
                 _logger.LogError(error, "Unexpected download failure.");
-                return PackageDownloadSlotResult.CreateFailed(PackageDownloadSlotResultStatus.Error);
+                throw new PackageDownloadSlotException(error);
             }
             finally
             {
-                // if we're not ready to start, release all locks
-                if (!hasStarted)
-                {
-                    ReleaseLocks();
-                }
+                // release all locks and stuff
+                OnDownloadEnd();
             }
         }
         
-        private async Task<bool> DownloadAsync()
+        private async Task DownloadAsync()
         {
+            // start download
+            byte[] currentBitmap = LocalPackage.DownloadStatus.SegmentsBitmap;
+            if (currentBitmap == null) return; // race condition - it has just been downloaded
+            var dataRequest = new DataRequest()
+            {
+                PackageId = LocalPackage.Id,
+                // TODO: race condition possible - maybe it is already downloaded now and it is NULL - how to synchronize access to this bitmap? immutable?
+                DownloadedSegmentsBitmap = currentBitmap
+            };
+
             try
             {
-                // start download
-                var dataRequest = new DataRequest()
-                {
-                    PackageId = LocalPackage.Id,
-                    // TODO: race condition possible - maybe it is already downloaded now and it is NULL - how to synchronize access to this bitmap? immutable?
-                    DownloadedSegmentsBitmap = LocalPackage.DownloadStatus.SegmentsBitmap 
-                };
+                // download
+                DataResponseFault faultResponse = await _client.GetDataStreamAsync(_peer.EndPoint, dataRequest, processStreamDelegate: ProcessIncomingStreamAsync);
 
-                try
-                {
-                    // download
-                    await _client.GetDataStreamAsync(_peer.EndPoint, dataRequest, target: this);
-                }
-                catch(Exception e)
-                {
-                    // failed - handle
-                    _peer.HandlePeerCommunicationException(e, PeerCommunicationDirection.TcpOutgoing);
-                    return false;
-                }
+                // if fault has been returned from peer, throw it as exception
+                if(faultResponse != null) throw TranslateFaultToExecption(faultResponse);
 
-                // success, segments are downloaded
-                LocalPackage.DownloadStatus.ReturnLockedSegments(_segmentsFromPeerValidAndLocked, areDownloaded: true);
-                _segmentsFromPeerValidAndLocked = null;
-
-                // finish successful download
-                _logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", LocalPackage.Metadata.Name, LocalPackage.Id, _peer.EndPoint, _segmentsExpectedFromPeer.Format());
-
-                if (!LocalPackage.DownloadStatus.IsDownloaded)
-                {
-                    // update download status, but don't do it too often (not after each segment)
-                    // - for sure we will save it when download is completed
-                    // - worst scenario is that we would loose track about few segments that has been downloaded if app crashes
-                    if (_parent.CanUpdateDownloadStatusForPackage(Download.PackageId))
-                    {
-                        LocalPackage.DataAccessor.UpdatePackageDownloadStatus(LocalPackage.DownloadStatus);
-                    }
-                }
+                // mark success                   
+                _success = true;
             }
-            finally
+            catch (Exception e)
             {
-                ReleaseLocks();
+                // failed - handle
+                _peer.HandlePeerCommunicationException(e, PeerCommunicationDirection.TcpOutgoing);
+                throw;
             }
-
-            return true; // success
         }
 
-
-        private void ReleaseLocks()
+        private void OnDownloadEnd()
         {
+            // log
+            if(_success)
+            {
+                _logger.LogTrace("Downloaded \"{0}\" {1:s} - from {2} - segments {3}", LocalPackage.Metadata.Name, LocalPackage.Id, _peer.EndPoint, _segmentsLock.AcceptParts.Format());
+            }
+
+            // return locked segments
+            if (_segmentsLock != null)
+            {
+                LocalPackage.DownloadStatus.ReturnLockedSegments(segments: _segmentsLock.AcceptParts, areDownloaded: _success);
+                _segmentsLock = null;
+            }
+
+            if (_success && !LocalPackage.DownloadStatus.IsDownloaded)
+            {
+                // update download status, but don't do it too often (not after each segment)
+                // - for sure we will save it when download is completed
+                // - worst scenario is that we would loose track about few segments that has been downloaded if app crashes
+                if (_parent.CanUpdateDownloadStatusForPackage(Download.PackageId))
+                {
+                    LocalPackage.DataAccessor.UpdatePackageDownloadStatus(LocalPackage.DownloadStatus);
+                }
+            }
+
             // release package lock
             if (_isPackageLockReleaseNeeded)
             {
                 LocalPackage.Locks.ReleaseSharedLock(_lockToken);
                 _isPackageLockReleaseNeeded = false;
             }
+        }
 
-            // release locked segments
-            if (_segmentsFromPeerValidAndLocked != null)
+        private Exception TranslateFaultToExecption(DataResponseFault faultResponse)
+        {
+            switch (faultResponse)
             {
-                LocalPackage.DownloadStatus.ReturnLockedSegments(_segmentsFromPeerValidAndLocked, areDownloaded: false);
-                _segmentsFromPeerValidAndLocked = null;
+                case var f when f.IsChoked:
+                    // overloaded peer
+                    _logger.LogTrace($"Choke response from {_peer.PeerId}.");
+                    _peer.Status.Slots.MarkChoked();
+                    return new PeerChokeException();
+                case var f when f.PackageNotFound || f.PackageSegmentsNoMatch:
+                    // not found (client probably deleted package)
+                    _logger.LogTrace($"Received not found data message from {_peer.PeerId}.");
+                    return new PackageNotFoundException(LocalPackage.Id);
+                default:
+                    // this should not happen (just in case I forget something to check in response)
+                    return new InvalidOperationException("Unknown result state.");
             }
         }
 
-        void IDownloadDataStreamTarget.Prepare(int[] segments)
+        async Task ProcessIncomingStreamAsync(int[] incmoingSegments, Stream incomingStream)
         {
-            if (_segmentsLock != null)
+            if (_logger.IsEnabled(LogLevel.Trace))
             {
-                throw new InvalidOperationException("This method has been already invoked.");
+                _logger.LogTrace("Incoming stream: packageId={1:s}; peer={2}; segments={3}", LocalPackage.Id, _peer.PeerId, incmoingSegments.Format());
             }
 
-            _segmentsLock = new SegmentsReceivingLock(
-                segments ?? throw new ArgumentNullException(nameof(segments)),
-
-
-            // try lock all segments from client
-            _segmentsExpectedFromPeerInterestingMap = LocalPackage.DownloadStatus.ValidateAndTryLockSegments(_segmentsExpectedFromPeer);
-
-            // select only valid locked segments to unlock later
-            _segmentsFromPeerValidAndLocked = _segmentsExpectedFromPeer
-                .Where((seg, index) => _segmentsExpectedFromPeerInterestingMap[index]).ToArray();
-        }
-
-        Task IDownloadDataStreamTarget.WriteAsync(Stream stream)
-        {
-            _logger.LogTrace("Writing stream of package \"{0}\" {1:s} - from {2}", LocalPackage.Metadata.Name, LocalPackage.Id, peer.EndPoint);
-
+            // build request
             var message = new DataRequest()
             {
                 PackageId = LocalPackage.Id,
                 DownloadedSegmentsBitmap = LocalPackage.DownloadStatus.SegmentsBitmap
             };
 
-            long totalSizeOfParts = LocalPackage.SplitInfo.GetSizeOfSegments(_segmentsFromPeerValidAndLocked);
+            // package already downloaded
+            if (message.DownloadedSegmentsBitmap == null) return;
 
-            // remarks:
-            // - write incoming stream to streamValidate
-            // - streamValidate validates data and writes it to nested streamWrite
-            // - streamWrite writes data to data files
+            // lock parts we can receive and remember what to unlock
+            LockSegmentsAndBuildInfo(incmoingSegments);
 
-            // TODO: how to ignore invalid parts? we want to ignore them completely
-            using (IStreamController controllerWriter = LocalPackage.DataAccessor.CreateWriteSpecificPackageData(_segmentsExpectedFromPeer, _segmentsExpectedFromPeerInterestingMap))
+            if (_logger.IsEnabled(LogLevel.Trace))
             {
-                HashStreamVerifyBehavior hashValidateBehavior
-                    = _streamsFactory.CreateHashStreamBehavior(LocalPackage.Definition, parts);
+                _logger.LogTrace("segment_incoming={0}; accept_segments={1}; accept_size={2}",
+                    _segmentsLock.IncomingParts.Format(), _segmentsLock.AcceptParts.Format(), SizeFormatter.ToString(_segmentsLock.TotalBytesAccepted));
+            }
 
+            // process:
+            // +----------+    +--------+    +----------+    +----------------+
+            // | incoming | => | filter | => | validate | => | package writer |
+            // |  stream  |    | stream |    |  stream  |    |     stream     |
+            // +----------+    +--------+    +----------+    +----------------+
+            //
+            // read  => incoming stream - read stream of data from peer
+            // write <= filter stream - write stream to ignore parts we can't lock
+            // write <= validate stream - write stream to validate incoming data hashes 
+            // write <= package writer stream - write stream to data files
 
-                var sequencer = new PackageFolderPartsSequencer();
+            HashStreamVerifyBehavior hashValidateBehavior = _streamsFactory.CreateHashStreamBehavior(LocalPackage.Definition, _segmentsLock.AcceptParts);
 
-                using (Stream streamWrite = _streamsFactory.CreateControlledStreamFor(controllerWriter))
-                using (HashStreamController controllerValidate = _streamsFactory.CreateHashStreamController(hashValidateBehavior, streamWrite))
-                using (Stream streamValidate = _streamsFactory.CreateControlledStreamFor(controllerValidate, LocalPackage.DownloadMeasure))
+            using (IStreamController packageWriterController = LocalPackage.DataAccessor.CreateWriteSpecificPackageData(_segmentsLock.AcceptParts))
+            {
+
+                IEnumerable<RangeLong> filterRanges = BuildFilterRanges();
+
+                using (Stream packageWriterStream = _streamsFactory.CreateControlledStreamFor(packageWriterController))
+                using (HashStreamController validateController = _streamsFactory.CreateHashStreamController(hashValidateBehavior, packageWriterStream))
+                using (Stream validateStream = _streamsFactory.CreateControlledStreamFor(validateController, LocalPackage.DownloadMeasure))
+                using (FilterStreamController filterController = _streamsFactory.CreateFilterPartsStreamController(filterRanges, validateStream, closeNested: false))
+                using (Stream filterStream = _streamsFactory.CreateControlledStreamFor(filterController/* TODO measure peer download here with measure param*/))
                 {
-                    var result = new DownloadSegmentResult()
-                    {
-                        TotalSizeDownloaded = totalSizeOfParts,
-                        IsSuccess = false
-                    };
-
-                    DataResponseFault errorResponse = null;
-                    long bytes = -1;
+                    long bytesDownloaded = -1;
 
                     try
                     {
-                        try
+                        // receive
+                        await incomingStream.CopyToAsync(filterStream);
+                        bytesDownloaded = validateStream?.Position ?? -1;
+
+                        // received all data?
+                        if (_segmentsLock.TotalBytesAccepted != bytesDownloaded)
                         {
-                            await stream.CopyToAsync(createStream);
-                            bytes = streamValidate?.Position ?? -1;
+                            string invalidLengthMessage = $"Stream ended too soon from {_peer.EndPoint}. Expected {_segmentsLock.TotalBytesAccepted}B but received just {validateStream.Position}B.";
+                            _logger.LogWarning(invalidLengthMessage);
+                            throw new InvalidOperationException(invalidLengthMessage);
                         }
-                        finally
-                        {
-                            if (streamValidate != null) streamValidate.Dispose();
-                            if (controllerValidate != null) controllerValidate.Dispose();
-                            if (streamWrite != null) streamWrite.Dispose();
-                            if (controllerWriter != null) controllerWriter.Dispose();
-                        }
+
+                        // success
+                        FinalDownloadedBytes = bytesDownloaded;
+                        return;
                     }
                     catch (HashMismatchException e)
                     {
-                        _logger.LogWarning($"Client {peer.EndPoint} failed to provide valid data segment: {e.Message}");
-                        result.Exception = e;
-                        return result;
+                        _logger.LogWarning($"Client {_peer.PeerId} failed to provide valid data segment: {e.Message}");
+                        throw;
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, $"Failed to download data segment from {peer.EndPoint}.");
-                        result.Exception = e;
-                        return result;
+                        _logger.LogError(e, $"Failed to download data segment from {_peer.EndPoint}.");
+                        throw;
+                    }
+                    finally
+                    {
+                        if (filterStream != null) filterStream.Dispose();
+                        if (filterController != null) filterController.Dispose();
+
+                        if (validateStream != null) validateStream.Dispose();
+                        if (validateController != null) validateController.Dispose();
+
+                        if (packageWriterStream != null) packageWriterStream.Dispose();
+                        if (packageWriterController != null) packageWriterController.Dispose();
                     }
                 }
             }
-            
-
-            if (errorResponse != null)
-            {
-                // choked response?
-                if (errorResponse.IsChoked)
-                {
-                    _logger.LogTrace($"Choke response from {peer.EndPoint}.");
-                    result.Exception = new PeerChokeException();
-                    peer.Status.Slots.MarkChoked();
-                    return result;
-                }
-
-                // not found (client probably deleted package)
-                if (errorResponse.PackageNotFound || errorResponse.PackageSegmentsNotFound)
-                {
-                    _logger.LogTrace($"Received not found data message from {peer.EndPoint}.");
-                    result.Exception = new PackageNotFoundException(LocalPackage.Id);
-                    return result;
-                }
-
-                // this should not happen (just in case I forget something to check in response)
-                throw new InvalidOperationException("Unknown result state.");
-            }
-
-            // received all data?
-            if (totalSizeOfParts != bytes)
-            {
-                string invalidLengthMessage = $"Stream ended too soon from {peer.EndPoint}. Expected {totalSizeOfParts}B but received just {streamValidate.Position}B.";
-                _logger.LogWarning(invalidLengthMessage);
-                result.Exception = new InvalidOperationException(invalidLengthMessage);
-                return result;
-            }
-
-            // success
-            result.IsSuccess = true;
-            return result;
         }
 
-        private class DownloadSegmentResult
+        private IEnumerable<RangeLong> BuildFilterRanges()
         {
-            public Exception Exception { get; set; }
-            public bool IsSuccess { get; set; }
-            public long TotalSizeDownloaded { get; set; }
+            throw new NotImplementedException();
+        }
+
+        private void LockSegmentsAndBuildInfo(int[] incomingSegments)
+        {
+            bool[] acceptingSegmentsBitmap = LocalPackage.DownloadStatus.ValidateAndTryLockSegments(incomingSegments);
+
+            // build new list of only segments to accept
+            var acceptSegments = new List<int>(incomingSegments.Length);
+
+            // and its positions in incoming stream to filter unwanted parts
+            var acceptRanges = new List<RangeLong>(incomingSegments.Length);
+
+            long incomingStreamPosition = 0;
+            long totalAcceptingSize = 0;
+            for (int i = 0; i < acceptingSegmentsBitmap.Length; i++)
+            {
+                long partLength = LocalPackage.SplitInfo.GetSizeOfSegment(incomingSegments[i]);
+
+                // if part is accepted, add it to lists
+                if (acceptingSegmentsBitmap[i])
+                {
+                    acceptSegments.Add(i);
+                    acceptRanges.Add(new RangeLong(incomingStreamPosition, partLength));
+                    totalAcceptingSize += partLength;
+                }
+
+                incomingStreamPosition += partLength;
+            }
+
+            _segmentsLock = new SegmentsReceivingInfo(
+                incomingParts: incomingSegments,
+                acceptParts: acceptSegments.ToArray(),
+                acceptRanges: acceptRanges,
+                totalBytesAccepted: totalAcceptingSize
+            );
+        }
+
+        /// <summary>
+        /// Describes what segments are expected to receive from peer, which of these segments are interesting for us.
+        /// </summary>
+        public class SegmentsReceivingInfo
+        {
+            public SegmentsReceivingInfo(int[] incomingParts, int[] acceptParts, long totalBytesAccepted, IEnumerable<RangeLong> acceptRanges)
+            {
+                IncomingParts = incomingParts ?? throw new ArgumentNullException(nameof(incomingParts));
+                AcceptParts = acceptParts ?? throw new ArgumentNullException(nameof(acceptParts));
+                AcceptRanges = acceptRanges ?? throw new ArgumentNullException(nameof(acceptRanges));
+                TotalBytesAccepted = totalBytesAccepted;
+            }
+
+            public int[] IncomingParts { get; }
+            public long TotalBytesAccepted { get; }
+            public int[] AcceptParts { get; }
+            public IEnumerable<RangeLong> AcceptRanges { get; }
         }
     }
 }

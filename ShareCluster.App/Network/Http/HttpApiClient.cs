@@ -48,16 +48,18 @@ namespace ShareCluster.Network.Http
             return await SendRequestAndGetResponeAsync<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiMvcController.GetCatalog), message);
         }
 
-        public async Task<Messages.DataResponseFault> GetDataStreamAsync(IPEndPoint endpoint, Messages.DataRequest message, IDownloadDataStreamTarget target)
+
+
+        public async Task<Messages.DataResponseFault> GetDataStreamAsync(IPEndPoint endpoint, Messages.DataRequest message, ProcessStreamAsyncDelegate processStreamDelegate)
         {
             if (message == null)
             {
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (target == null)
+            if (processStreamDelegate == null)
             {
-                throw new ArgumentNullException(nameof(target));
+                throw new ArgumentNullException(nameof(processStreamDelegate));
             }
 
             (HttpResponseMessage resultMessage, CommonHeaderData resultHeaders)
@@ -77,8 +79,7 @@ namespace ShareCluster.Network.Http
                     int[] segments = _headersProcessor.ReadAndValidateSegmentsHeader(endpoint.Address, new HttpContentHeadersWrapper(resultMessage.Headers));
 
                     // proccess
-                    target.Prepare(segments);
-                    await target.WriteAsync(stream);
+                    await processStreamDelegate.Invoke(segments, stream);
                 }
                 return null; // success
             }

@@ -26,7 +26,7 @@ namespace ShareCluster.Packaging.IO
         public HashStreamVerifyBehavior CreateHashStreamBehavior(PackageContentDefinition definition, int[] parts)
             => new HashStreamVerifyBehavior(_loggerFactory, definition, parts);
 
-        public IStreamController CreateFilterPartsStreamController(PackageContentDefinition definition, int[] parts, bool[] partsToKeep, Stream nestedStream)
-            => new FilterPartsStreamController(_loggerFactory, parts, partsToKeep, nestedStream);
+        public FilterStreamController CreateFilterPartsStreamController(IEnumerable<RangeLong> ranges, Stream nestedStream, bool closeNested)
+            => new FilterStreamController(ranges, nestedStream, closeNested);
     }
 }
