@@ -23,6 +23,8 @@ namespace ShareCluster.WebInterface
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private bool _isStarted;
 
+        private PackageViewState _state = new PackageViewState();
+
         public ClientPushDispatcher(ILogger<ClientPushDispatcher> logger, WebSocketManager webSocketManager, IPeerRegistry peersRegistry, ILocalPackageRegistry localPackageRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -36,9 +38,8 @@ namespace ShareCluster.WebInterface
             if (_isStarted) throw new InvalidOperationException("Already started");
             _isStarted = true;
 
-            _peersRegistry.Changed += (s, e) => Sync(PushPeersChanged);
+            _peersRegistry.Changed += (s, e) => Sync(() => _state.PushPeersChanged(e));
             _localPackageRegistry.VersionChanged += (e) => Sync(PushPackagesChanged);
-            _remotePackageRegistry.Changed += (s,e) => Sync(PushPackagesChanged);
             _webSocketManager.OnConnected += (s, e) => Sync(() => WebSocketManager_OnConnected(e));
         }
 
@@ -63,18 +64,6 @@ namespace ShareCluster.WebInterface
 
         private void PushPackagesChanged()
         {
-            if (!_webSocketManager.AnyClients) return;
-
-            // get source data (thread safe - immutable)
-            IEnumerable<LocalPackage> localPackages = _localPackageRegistry.LocalPackages.Values;
-            IEnumerable<RemotePackage> remotePackages = _remotePackageRegistry.Items.Values;
-
-            IEnumerable<(Id groupId, PackageInfoDto dto)> source = localPackages.FullOuterJoin(
-                remotePackages,
-                lp => lp.Id,
-                rp => rp.PackageId,
-                (lp, rp, id) => BuildPackageInfoDto(id, lp, rp)
-            );
 
             PushEventToClients(new EventPackagesChanged()
             {
@@ -136,8 +125,10 @@ namespace ShareCluster.WebInterface
             public RemotePackage RemotePackage { get; set; }
         }
 
-        private void PushPeersChanged()
+        private void PushPeersChanged(DictionaryChangedEvent<PeerId, PeerInfo> e)
         {
+            
+
             if (!_webSocketManager.AnyClients) return;
             PushEventToClients(new EventPeersChanged()
             {
