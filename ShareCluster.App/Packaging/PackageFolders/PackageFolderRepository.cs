@@ -29,6 +29,7 @@ namespace ShareCluster.Packaging.PackageFolders
         private readonly CryptoFacade _crypto;
         private readonly PackageSerializerFacade _serializerFacade;
         private readonly PackageFolderDataAccessorBuilder _accessorBuilder;
+        private readonly PackageHashBuilder _packageHashBuilder;
 
         public PackageFolderRepository(
             ILogger<PackageFolderRepository> logger,
@@ -36,7 +37,8 @@ namespace ShareCluster.Packaging.PackageFolders
             CryptoFacade crypto,
             PackageFolderRepositorySettings settings,
             PackageSerializerFacade serializerFacade,
-            PackageFolderDataAccessorBuilder accessorBuilder
+            PackageFolderDataAccessorBuilder accessorBuilder,
+            PackageHashBuilder packageHashBuilder
             )
         {
             if (settings == null)
@@ -49,6 +51,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _crypto = crypto ?? throw new ArgumentNullException(nameof(crypto));
             _serializerFacade = serializerFacade ?? throw new ArgumentNullException(nameof(serializerFacade));
             _accessorBuilder = accessorBuilder ?? throw new ArgumentNullException(nameof(accessorBuilder));
+            _packageHashBuilder = packageHashBuilder ?? throw new ArgumentNullException(nameof(packageHashBuilder));
             PackageRepositoryPath = settings.Path;
         }
 
@@ -163,8 +166,9 @@ namespace ShareCluster.Packaging.PackageFolders
             var downloadStatus = PackageDownloadStatus.CreateForDownloadedPackage(packageDefinition.PackageSplitInfo);
             UpdateDownloadStatus(buildPathReference, downloadStatus, packageDefinition);
 
-            // store metadata - remark: for root package use package Id as group Id
-            var metadata = new PackageMetadata(name, DateTimeOffset.Now, groupId ?? packageDefinition.PackageContentHash);
+            // store metadata - remark: for root packages use content hash as group Id
+            var metadata = new PackageMetadata(Id.Empty, name, DateTime.UtcNow, groupId ?? packageDefinition.PackageContentHash, packageDefinition.PackageContentHash, packageDefinition.PackageSize);
+            metadata = _packageHashBuilder.CalculatePackageId(metadata);
             UpdateMetadata(buildPathReference, metadata, packageDefinition);
 
             // rename folder

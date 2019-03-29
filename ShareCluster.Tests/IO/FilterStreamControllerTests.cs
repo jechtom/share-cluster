@@ -33,7 +33,7 @@ namespace ShareCluster.Tests.IO
                 }
 
                 // copy thru controlled stream
-                var controller = new FilterStreamController(loggerFactory, new[] { new RangeLong(0, 50) }, dstStream, closeNested: false);
+                var controller = new FilterStreamController(new[] { new RangeLong(0, 50) }, dstStream, closeNested: false);
                 using (var stream = new ControlledStream(loggerFactory, controller))
                 {
                     srcStream.CopyTo(stream);
@@ -69,7 +69,7 @@ namespace ShareCluster.Tests.IO
                     new RangeLong(30, 1),       // 30
                     new RangeLong(31, 2)        // 31,32
                 };
-                var controller = new FilterStreamController(loggerFactory, ranges, dstStream, closeNested: false);
+                var controller = new FilterStreamController(ranges, dstStream, closeNested: false);
                 using (var stream = new ControlledStream(loggerFactory, controller))
                 {
                     srcStream.CopyTo(stream);
@@ -102,7 +102,7 @@ namespace ShareCluster.Tests.IO
                     new RangeLong(10, 5),       // 10,11,12,13,14
                     new RangeLong(12, 5)       // 12,13,14,15,16
                 };
-                var controller = new FilterStreamController(loggerFactory, ranges, dstStream, closeNested: false);
+                var controller = new FilterStreamController(ranges, dstStream, closeNested: false);
 
                 // exception expected - ranges overlaps
                 Assert.Throws<InvalidOperationException>(() =>
@@ -130,7 +130,7 @@ namespace ShareCluster.Tests.IO
                 }
 
                 // copy thru controlled stream
-                var controller = new FilterStreamController(loggerFactory, new RangeLong[0], dstStream, closeNested: false);
+                var controller = new FilterStreamController(new RangeLong[0], dstStream, closeNested: false);
                 using (var stream = new ControlledStream(loggerFactory, controller))
                 {
                     srcStream.CopyTo(stream);

@@ -21,16 +21,14 @@ namespace ShareCluster.WebInterface
         private readonly WebSocketManager _webSocketManager;
         private readonly IPeerRegistry _peersRegistry;
         private readonly ILocalPackageRegistry _localPackageRegistry;
-        private readonly IRemotePackageRegistry _remotePackageRegistry;
         private bool _isStarted;
 
-        public ClientPushDispatcher(ILogger<ClientPushDispatcher> logger, WebSocketManager webSocketManager, IPeerRegistry peersRegistry, ILocalPackageRegistry localPackageRegistry, IRemotePackageRegistry remotePackageRegistry)
+        public ClientPushDispatcher(ILogger<ClientPushDispatcher> logger, WebSocketManager webSocketManager, IPeerRegistry peersRegistry, ILocalPackageRegistry localPackageRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
             _peersRegistry = peersRegistry ?? throw new ArgumentNullException(nameof(peersRegistry));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
-            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
         }
 
         public void Start()
@@ -38,10 +36,9 @@ namespace ShareCluster.WebInterface
             if (_isStarted) throw new InvalidOperationException("Already started");
             _isStarted = true;
 
-            _peersRegistry.PeersChanged += (s, e) => Sync(PushPeersChanged);
+            _peersRegistry.Changed += (s, e) => Sync(PushPeersChanged);
             _localPackageRegistry.VersionChanged += (e) => Sync(PushPackagesChanged);
-            _remotePackageRegistry.PackageChanged += (s,e) => Sync(PushPackagesChanged);
-            _remotePackageRegistry.PackageRemoved += (s,e) => Sync(PushPackagesChanged);
+            _remotePackageRegistry.Changed += (s,e) => Sync(PushPackagesChanged);
             _webSocketManager.OnConnected += (s, e) => Sync(() => WebSocketManager_OnConnected(e));
         }
 
@@ -94,33 +91,31 @@ namespace ShareCluster.WebInterface
 
         private (Id groupId, PackageInfoDto dto) BuildPackageInfoDto(Id id, LocalPackage lp, RemotePackage rp)
         {
-            Id groupId = lp?.Metadata.GroupId ?? rp.GroupId;
-            Id packageId = lp?.Id ?? rp.PackageId;
-            long size = lp?.SplitInfo.PackageSize ?? rp.Size;
-            (int seeders, int leechers) = rp == null ? (0, 0) : rp.Peers.Aggregate((seeders: 0, leechers: 0),
-                    (ag, occ) => (ag.seeders + (occ.Value.IsSeeder ? 1 : 0), ag.leechers + (!occ.Value.IsSeeder ? 1 : 0))
+            PackageMetadata meta = (lp?.Metadata ?? rp.PackageMetadata);
+
+            long size = lp?.SplitInfo.PackageSize ?? rp.PackageMetadata.PackageSize;
+            (int seeders, int leechers) = rp == null ? (0, 0) : _peersRegistry.Items.Values.Aggregate((seeders: 0, leechers: 0),
+                    (ag, pi) => pi.RemotePackages.Items.TryGetValue(id, out RemotePackage rp) ? (ag.seeders + (rp.IsSeeder ? 1 : 0), ag.leechers + (!rp.IsSeeder ? 1 : 0)) : ag
                 );
             if (lp != null && lp.DownloadStatus.IsDownloaded) seeders++;
             if (lp != null && !lp.DownloadStatus.IsDownloaded) leechers++;
-            string name = lp != null ? lp.Metadata.Name : rp.Name;
-            DateTimeOffset created = lp != null ? lp.Metadata.Created : rp.Created;
 
             var dto = new PackageInfoDto()
             {
-                Id = packageId.ToString(),
-                IdShort = packageId.ToString("s"),
-                GroupIdShort = groupId.ToString("s"),
+                Id = meta.PackageId.ToString(),
+                IdShort = meta.PackageId.ToString("s"),
+                GroupIdShort = meta.GroupId.ToString("s"),
                 SizeBytes = size,
                 SizeFormatted = SizeFormatter.ToString(size),
                 Seeders = seeders,
                 Leechers = leechers,
-                KnownNames = name,
-                CreatedSortValue = created.Ticks,
-                CreatedFormatted = created.ToLocalTime().ToString("g")
+                KnownNames = meta.Name,
+                CreatedSortValue = meta.CreatedUtc.Ticks,
+                CreatedFormatted = meta.CreatedUtc.ToLocalTime().ToString("g")
             };
 
 
-            return (groupId, dto);
+            return (meta.GroupId, dto);
         }
 
         class PackageGroupMerge
@@ -136,7 +131,7 @@ namespace ShareCluster.WebInterface
             }
 
             public Id PackageId => LocalPackage != null ? RemotePackage.PackageId : LocalPackage.Id;
-            public Id GroupId => LocalPackage != null ? RemotePackage.GroupId : LocalPackage.Metadata.GroupId;
+            public Id GroupId => LocalPackage != null ? RemotePackage.PackageMetadata.GroupId : LocalPackage.Metadata.GroupId;
             public LocalPackage LocalPackage { get; set; }
             public RemotePackage RemotePackage { get; set; }
         }

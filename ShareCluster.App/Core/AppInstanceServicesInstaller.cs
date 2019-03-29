@@ -71,6 +71,7 @@ namespace ShareCluster.Core
             services.AddSingleton<INetworkChangeNotifier, NetworkChangeNotifier>();
             services.AddSingleton<HttpApiClient>();
             services.AddSingleton<PackageFolderRepository>();
+            services.AddSingleton<PackageHashBuilder>();
             services.AddSingleton<IPeerCatalogUpdater, PeerCatalogUpdater>();
             services.AddSingleton<PackageDownloadManager>();
             services.AddSingleton<PackageDownloadSlotFactory>();

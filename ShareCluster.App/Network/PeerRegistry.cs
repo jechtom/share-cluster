@@ -17,7 +17,7 @@ namespace ShareCluster.Network
         private readonly object _syncLock = new object();
         private readonly ILogger<PeerRegistry> _logger;
 
-        public event EventHandler PeersChanged;
+        public event EventHandler<DictionaryChangedEvent<PeerId, PeerInfo>> Changed;
 
         public IImmutableDictionary<PeerId, PeerInfo> Items { get; private set; }
 
@@ -41,7 +41,11 @@ namespace ShareCluster.Network
                 Items = Items.Add(peerId, result);
             }
 
-            PeersChanged?.Invoke(this, EventArgs.Empty);
+            Changed?.Invoke(this, new DictionaryChangedEvent<PeerId, PeerInfo>(
+                added: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty.Add(new KeyValuePair<PeerId, PeerInfo>(peerId, result)),
+                removed: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty,
+                changed: ImmutableList<KeyValueChangedPair<PeerId, PeerInfo>>.Empty
+            ));
             return result;
         }
 
@@ -49,16 +53,21 @@ namespace ShareCluster.Network
         {
             if (!Items.ContainsKey(peer.PeerId)) return;
 
-            if (!peer.Status.IsDead) throw new InvalidOperationException("Cannot remove undead peer.");
-
-            lock(_syncLock)
+            lock (_syncLock)
             {
+                if (!Items.ContainsKey(peer.PeerId)) return;
+                if (!peer.Status.IsDead) throw new InvalidOperationException("Cannot remove undead peer.");
+
                 _logger.LogDebug($"Removing peer {peer.PeerId}; reason={peer.Status.DeadReason}");
 
                 Items = Items.Remove(peer.PeerId);
             }
 
-            PeersChanged?.Invoke(this, EventArgs.Empty);
+            Changed?.Invoke(this, new DictionaryChangedEvent<PeerId, PeerInfo>(
+                added: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty,
+                removed: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty.Add(new KeyValuePair<PeerId, PeerInfo>(peer.PeerId, peer)),
+                changed: ImmutableList<KeyValueChangedPair<PeerId, PeerInfo>>.Empty
+            ));
         }
     }
 }
