@@ -18,14 +18,13 @@ namespace ShareCluster.Packaging
         private readonly FolderStreamSerializer _folderStreamSerializer;
         private readonly LocalPackageManager _localPackageManager;
 
-        public PackageManager(ILogger<PackageManager> logger, ILoggerFactory loggerFactory, FolderStreamSerializer folderStreamSerializer, LocalPackageManager localPackageManager, ILocalPackageRegistry localPackageRegistry, IRemotePackageRegistry remotePackageRegistry)
+        public PackageManager(ILogger<PackageManager> logger, ILoggerFactory loggerFactory, FolderStreamSerializer folderStreamSerializer, LocalPackageManager localPackageManager, ILocalPackageRegistry localPackageRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _folderStreamSerializer = folderStreamSerializer;
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             LocalPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
-            RemotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
         }
 
         public void Init()
@@ -114,6 +113,5 @@ namespace ShareCluster.Packaging
         }
 
         public ILocalPackageRegistry LocalPackageRegistry { get; }
-        public IRemotePackageRegistry RemotePackageRegistry { get; }
     }
 }

@@ -19,7 +19,6 @@ namespace ShareCluster.WebInterface
         private readonly LocalPackageManager _localPackageManager;
         private readonly IPeerRegistry _peerRegistry;
         private readonly ILocalPackageRegistry _localPackageRegistry;
-        private readonly IRemotePackageRegistry _remotePackageRegistry;
         private readonly InstanceId _instanceHash;
         private readonly LongRunningTasksManager _tasks;
         private readonly NetworkThrottling _networkThrottling;
@@ -29,12 +28,11 @@ namespace ShareCluster.WebInterface
         private readonly object _syncLock = new object();
         private readonly HashSet<Id> _packagesInVerify = new HashSet<Id>();
 
-        public WebFacade(PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, IRemotePackageRegistry remotePackageRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling, PackageManager packageManger, NetworkSettings networkSettings, PackagingSettings packagingSettings)
+        public WebFacade(PackageDownloadManager packageDownloadManager, LocalPackageManager localPackageManager, IPeerRegistry peerRegistry, ILocalPackageRegistry localPackageRegistry, InstanceId instanceHash, LongRunningTasksManager tasks, NetworkThrottling networkThrottling, PackageManager packageManger, NetworkSettings networkSettings, PackagingSettings packagingSettings)
         {
             _packageDownloadManager = packageDownloadManager ?? throw new ArgumentNullException(nameof(packageDownloadManager));
             _localPackageManager = localPackageManager ?? throw new ArgumentNullException(nameof(localPackageManager));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
-            _remotePackageRegistry = remotePackageRegistry ?? throw new ArgumentNullException(nameof(remotePackageRegistry));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _instanceHash = instanceHash ?? throw new ArgumentNullException(nameof(instanceHash));
             _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
@@ -97,13 +95,26 @@ namespace ShareCluster.WebInterface
 
         public void TryStartDownloadRemotePackage(Id packageId)
         {
-            if(!_remotePackageRegistry.Items.TryGetValue(packageId, out RemotePackage remotePackage))
+            if(!TryFindAnyRemotePackage(packageId, out RemotePackage remotePackage))
             {
                 return;
             }
 
             // try start download
             _packageDownloadManager.StartDownload(remotePackage.PackageId);
+        }
+
+        private bool TryFindAnyRemotePackage(Id packageId, out RemotePackage remotePackage)
+        {
+            RemotePackage result = _peerRegistry.Items.Values.SelectMany(v => v.RemotePackages.Items.Values).FirstOrDefault(p => p.PackageId == packageId);
+            if(result == null)
+            {
+                remotePackage = null;
+                return false;
+            }
+
+            remotePackage = result;
+            return true;
         }
 
         public void CreateNewPackage(string folder, string name)
@@ -132,7 +143,6 @@ namespace ShareCluster.WebInterface
             {
                 Packages = _localPackageRegistry.LocalPackages,
                 Peers = _peerRegistry.Items.Values,
-                PackagesAvailableToDownload = _remotePackageRegistry.Items,
                 Instance = _instanceHash,
                 Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
                 UploadSlotsAvailable = _networkThrottling.UploadSlots.Free,

@@ -7,8 +7,9 @@ import WebSocketHandler from '../containers/WebSocketHandler.jsx';
 import ServerStatus from '../containers/ServerStatus.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import NavLink from "./NavLink.jsx";
+import { connect } from 'react-redux'
 
-const App = () => (
+const App = ({ peers_count }) => (
   <HashRouter>
     <div>
 
@@ -23,7 +24,7 @@ const App = () => (
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav mr-auto">
             <NavLink to={`/packages`}>Packages</NavLink>
-            <NavLink to={`/peers`}>Peers</NavLink>
+            <NavLink to={`/peers`}>Peers <span class="badge badge-secondary"><FontAwesomeIcon icon="users" /> {peers_count}</span></NavLink>
           </ul>
         </div>
       </nav>
@@ -43,4 +44,8 @@ const App = () => (
   </HashRouter>
 )
 
-export default App;
+const mapStateToProps = state => ({
+  peers_count: state.Peers.peers_count
+})
+
+export default connect(mapStateToProps)(App);

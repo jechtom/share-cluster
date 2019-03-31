@@ -92,11 +92,11 @@ namespace ShareCluster
             _instances.Add(instance);
             instance.Start(appSettings);
 
-            if(index == 1)
-            {
-                Thread.Sleep(index * 5000);
-                instance.Dispose();
-            }
+            //if(index == 1)
+            //{
+            //    Thread.Sleep(index * 5000);
+            //    instance.Dispose();
+            //}
         }
     }
 }

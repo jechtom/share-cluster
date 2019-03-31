@@ -11,36 +11,29 @@ using ShareCluster.WebInterface.Models;
 namespace ShareCluster.WebInterface
 {
     /// <summary>
-    /// Pushes new UI data to client.
+    /// Aggregates push sources and do push to browser client.
     /// </summary>
-    public class ClientPushDispatcher
+    public class BrowserPushTarget : IBrowserPushTarget
     {
         private readonly object _syncLock = new object();
-        private WebSocketClient _sendOnlyToClient;
-        private readonly ILogger<ClientPushDispatcher> _logger;
+        private readonly ILogger<BrowserPushTarget> _logger;
         private readonly WebSocketManager _webSocketManager;
-        private readonly IPeerRegistry _peersRegistry;
-        private readonly ILocalPackageRegistry _localPackageRegistry;
-        private bool _isStarted;
+        private readonly Func<IBrowserPushSource[]> _sourcesFunc;
+        private IBrowserPushSource[] _allSources;
+        private WebSocketClient _sendOnlyToClient;
 
-        private PackageViewState _state = new PackageViewState();
-
-        public ClientPushDispatcher(ILogger<ClientPushDispatcher> logger, WebSocketManager webSocketManager, IPeerRegistry peersRegistry, ILocalPackageRegistry localPackageRegistry)
+        public BrowserPushTarget(ILogger<BrowserPushTarget> logger, WebSocketManager webSocketManager, Func<IBrowserPushSource[]> sourcesFunc)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
-            _peersRegistry = peersRegistry ?? throw new ArgumentNullException(nameof(peersRegistry));
-            _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
+            _sourcesFunc = sourcesFunc ?? throw new ArgumentNullException(nameof(sourcesFunc));
         }
 
         public void Start()
         {
-            if (_isStarted) throw new InvalidOperationException("Already started");
-            _isStarted = true;
-
-            _peersRegistry.Changed += (s, e) => Sync(() => _state.PushPeersChanged(e));
-            _localPackageRegistry.VersionChanged += (e) => Sync(PushPackagesChanged);
+            _allSources = _sourcesFunc.Invoke();
             _webSocketManager.OnConnected += (s, e) => Sync(() => WebSocketManager_OnConnected(e));
+            _webSocketManager.OnDisconnectedAll += (s, e) => Sync(() => WebSocketManager_OnDisconnectedAll());
         }
 
         private void Sync(Action a)
@@ -48,13 +41,23 @@ namespace ShareCluster.WebInterface
             lock(_syncLock) { a(); }
         }
 
+        private void WebSocketManager_OnDisconnectedAll()
+        {
+            foreach (IBrowserPushSource source in _allSources)
+            {
+                source.OnAllClientsDisconnected();
+            }
+        }
+
         private void WebSocketManager_OnConnected(WebSocketClient e)
         {
             _sendOnlyToClient = e;
             try
             {
-                //PushPeersChanged();
-                PushPackagesChanged();
+                foreach (IBrowserPushSource source in _allSources)
+                {
+                    source.PushForNewClient();
+                }
             }
             finally
             {
@@ -107,44 +110,32 @@ namespace ShareCluster.WebInterface
         //    return (meta.GroupId, dto);
         //}
 
-        class PackageGroupMerge
-        {
-            public PackageGroupMerge(LocalPackage p)
-            {
-                LocalPackage = p;
-            }
+        //class PackageGroupMerge
+        //{
+        //    public PackageGroupMerge(LocalPackage p)
+        //    {
+        //        LocalPackage = p;
+        //    }
 
-            public PackageGroupMerge(RemotePackage p)
-            {
-                RemotePackage = p;
-            }
+        //    public PackageGroupMerge(RemotePackage p)
+        //    {
+        //        RemotePackage = p;
+        //    }
 
-            public Id PackageId => LocalPackage != null ? RemotePackage.PackageId : LocalPackage.Id;
-            public Id GroupId => LocalPackage != null ? RemotePackage.PackageMetadata.GroupId : LocalPackage.Metadata.GroupId;
-            public LocalPackage LocalPackage { get; set; }
-            public RemotePackage RemotePackage { get; set; }
-        }
+        //    public Id PackageId => LocalPackage != null ? RemotePackage.PackageId : LocalPackage.Id;
+        //    public Id GroupId => LocalPackage != null ? RemotePackage.PackageMetadata.GroupId : LocalPackage.Metadata.GroupId;
+        //    public LocalPackage LocalPackage { get; set; }
+        //    public RemotePackage RemotePackage { get; set; }
+        //}
 
-        private void PushPeersChanged(DictionaryChangedEvent<PeerId, PeerInfo> e)
-        {
-            
-
-            if (!_webSocketManager.AnyClients) return;
-            PushEventToClients(new EventPeersChanged()
-            {
-                Peers = _peersRegistry.Items.Values.Select(p => new PeerInfoDto()
-                {
-                    Address = $"{p.PeerId.EndPoint}/{p.PeerId.InstanceId:s3}"
-                })
-            });
-        }
-
-        private void PushEventToClients<T>(T eventData) where T : IClientEvent
+        public void PushEventToClients<T>(T eventData) where T : IClientEvent
         {
             lock (_syncLock)
             {
                 var container = new EventContainer<T>(eventData.ResolveEventName(), eventData);
                 string payload = Newtonsoft.Json.JsonConvert.SerializeObject(container);
+
+                _logger.LogDebug("Pushing event {event} with JSON text payload size {payload_size} chars", container.EventName, payload.Length);
 
                 if (_sendOnlyToClient == null)
                 {

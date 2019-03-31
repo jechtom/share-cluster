@@ -46,7 +46,6 @@ namespace ShareCluster.Network
             ILogger<PackageDownloadManager> logger,
             HttpApiClient client,
             ILocalPackageRegistry localPackageRegistry,
-            IRemotePackageRegistry remotePackageRegistry,
             IPeerRegistry peerRegistry,
             LocalPackageManager localPackageManager,
             PackageDefinitionSerializer packageDefinitionSerializer,

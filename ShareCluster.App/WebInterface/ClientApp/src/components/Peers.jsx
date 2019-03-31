@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 const Peers = ({ data }) => (
       <div>
-        <h1><FontAwesomeIcon icon="users" /> Peers</h1>
+        <h1>Peers <span class="badge badge-secondary"><FontAwesomeIcon icon="users" /> {data.peers_count}</span></h1>
         { data.peers.length == 0 && <div>No peers found.</div> }
         <table class="table">
           <tbody>

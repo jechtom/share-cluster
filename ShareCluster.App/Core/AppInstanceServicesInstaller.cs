@@ -83,13 +83,20 @@ namespace ShareCluster.Core
             services.AddSingleton<PackageManager>();
             services.AddSingleton<IPeerRegistry, PeerRegistry>();
             services.AddSingleton<ILocalPackageRegistry, LocalPackageRegistry>();
-            services.AddSingleton<ILocalPackageRegistryVersionProvider>(x => x.GetService<ILocalPackageRegistry>());
+            services.AddSingleton<ILocalPackageRegistryVersionProvider>(x => x.GetRequiredService<ILocalPackageRegistry>());
             services.AddSingleton<WebFacade>();
             services.AddSingleton<LongRunningTasksManager>();
             services.AddSingleton<PackageFolderDataValidator>();
+
+            // web sockets
             services.AddTransient<WebSocketClient>();
             services.AddSingleton<WebSocketManager>();
-            services.AddSingleton<ClientPushDispatcher>();
+            services.AddSingleton<BrowserPushTarget>();
+            services.AddSingleton<IBrowserPushTarget>(x => x.GetRequiredService<BrowserPushTarget>());
+            services.AddSingleton<BrowserPeersPushSource>();
+            services.AddSingleton(x => new Func<IBrowserPushSource[]>(() => new IBrowserPushSource[] {
+                x.GetRequiredService<BrowserPeersPushSource>()
+            }));
         }
 
         private ILoggerFactory CreateLoggerFactory()
