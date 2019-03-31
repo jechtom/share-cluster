@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace ShareCluster
@@ -20,6 +21,13 @@ namespace ShareCluster
             Added = added;
             Removed = removed;
             Changed = changed;
+        }
+
+        public DictionaryChangedEvent(
+            IImmutableList<KeyValuePair<TKey, TValue>> added,
+            IImmutableList<KeyValuePair<TKey, TValue>> removed)
+            : this (added: added, removed: removed, changed: ImmutableList<KeyValueChangedPair<TKey, TValue>>.Empty)
+        {
         }
 
         /// <summary>
@@ -44,5 +52,7 @@ namespace ShareCluster
         public IImmutableList<KeyValuePair<TKey, TValue>> Added { get; }
         public IImmutableList<KeyValuePair<TKey, TValue>> Removed { get; }
         public IImmutableList<KeyValueChangedPair<TKey, TValue>> Changed { get; }
+        public IEnumerable<KeyValuePair<TKey, TValue>> RemovedAndBeforeChanged => Removed.Concat(Changed.Select(item => new KeyValuePair<TKey, TValue>(item.NewItem.Key, item.OldValue)));
+        public IEnumerable<KeyValuePair<TKey, TValue>> AddedAndAfterChanged => Added.Concat(Changed.Select(item => item.NewItem));
     }
 }

@@ -10,7 +10,7 @@ namespace ShareCluster.Tests.Packaging
 {
     public class RemotePackageRegistryTests
     {
-        private IRemotePackageRegistry Create() => new RemotePackageRegistry();
+        private IRemotePackageRegistry Create() => new RemotePackageRegistry(Generator.RandomPeerId());
 
         [Fact]
         public void MergeAddOnePackageOnePeer()

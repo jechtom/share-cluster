@@ -10,6 +10,8 @@ namespace ShareCluster.Packaging
     /// </summary>
     public interface IRemotePackageRegistry
     {
+        PeerId Owner { get; }
+
         IImmutableDictionary<Id, RemotePackage> Items { get; }
 
         /// <summary>

@@ -39,13 +39,12 @@ namespace ShareCluster.Network
 
                 result = createFunc();
                 Items = Items.Add(peerId, result);
-            }
 
-            Changed?.Invoke(this, new DictionaryChangedEvent<PeerId, PeerInfo>(
-                added: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty.Add(new KeyValuePair<PeerId, PeerInfo>(peerId, result)),
-                removed: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty,
-                changed: ImmutableList<KeyValueChangedPair<PeerId, PeerInfo>>.Empty
-            ));
+                Changed?.Invoke(this, new DictionaryChangedEvent<PeerId, PeerInfo>(
+                    added: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty.Add(new KeyValuePair<PeerId, PeerInfo>(peerId, result)),
+                    removed: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty
+                ));
+            }
             return result;
         }
 
@@ -61,13 +60,12 @@ namespace ShareCluster.Network
                 _logger.LogDebug($"Removing peer {peer.PeerId}; reason={peer.Status.DeadReason}");
 
                 Items = Items.Remove(peer.PeerId);
-            }
 
-            Changed?.Invoke(this, new DictionaryChangedEvent<PeerId, PeerInfo>(
-                added: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty,
-                removed: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty.Add(new KeyValuePair<PeerId, PeerInfo>(peer.PeerId, peer)),
-                changed: ImmutableList<KeyValueChangedPair<PeerId, PeerInfo>>.Empty
-            ));
+                Changed?.Invoke(this, new DictionaryChangedEvent<PeerId, PeerInfo>(
+                    added: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty,
+                    removed: ImmutableList<KeyValuePair<PeerId, PeerInfo>>.Empty.Add(new KeyValuePair<PeerId, PeerInfo>(peer.PeerId, peer))
+                ));
+            }
         }
     }
 }

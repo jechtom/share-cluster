@@ -4,9 +4,15 @@ import * as Commands from '../actions/commands'
 import { connect } from 'react-redux'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
-const Packages = ({ data, package_delete, package_verify, package_download, package_download_stop }) => (
+const Packages = ({ data, local_packages_count, remote_packages_count, package_delete, package_verify, package_download, package_download_stop }) => (
     <div>
-      <h1><FontAwesomeIcon icon="cubes" /> Packages</h1>
+      <h1>
+        <FontAwesomeIcon icon="cubes" /> Packages <span className="badge badge-secondary">
+          <FontAwesomeIcon icon="cube" /> {local_packages_count}
+        </span> <span className="badge badge-secondary ml-2">
+          <FontAwesomeIcon icon="network-wired" /> {remote_packages_count}
+        </span>
+      </h1>
       <table class="table">
         {data.groups.map(g => <tbody key={g.GroupId}>
           {g.Packages.sort((i1, i2) => i1.CreatedSort > i2.CreatedSort).map(p => <tr key={p.Id}>
@@ -30,14 +36,16 @@ const Packages = ({ data, package_delete, package_verify, package_download, pack
 
 
 const mapStateToProps = state => ({
-  data: state.Packages
+  data: state.Packages,
+  local_packages_count: state.Packages.local_packages_count,
+  remote_packages_count: state.Packages.remote_packages_count
 })
 
 const mapDispatchToProps = dispatch => ({
   package_delete: id => dispatch(Commands.package_delete(id)),
   package_verify: id => dispatch(Commands.package_verify(id)),
   package_download: id => dispatch(Commands.package_download(id)),
-  package_download_stop: id => dispatch(Commands.package_download_stop(id)),
+  package_download_stop: id => dispatch(Commands.package_download_stop(id))
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Packages);

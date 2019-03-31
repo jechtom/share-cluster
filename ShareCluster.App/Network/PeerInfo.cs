@@ -25,6 +25,8 @@ namespace ShareCluster.Network
 
         public PeerInfo(PeerId peerId, IClock clock, NetworkSettings networkSettings, ILogger<PeerInfo> logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
             if (clock == null)
             {
                 throw new ArgumentNullException(nameof(clock));
@@ -34,13 +36,11 @@ namespace ShareCluster.Network
             {
                 throw new ArgumentNullException(nameof(networkSettings));
             }
-
             peerId.Validate();
 
             PeerId = peerId;
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             Status = new PeerStatus(clock, networkSettings);
-            RemotePackages = new RemotePackageRegistry();
+            RemotePackages = new RemotePackageRegistry(PeerId);
         }
 
         // identification

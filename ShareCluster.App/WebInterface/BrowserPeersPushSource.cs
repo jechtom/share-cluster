@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
+using ShareCluster.Synchronization;
 using ShareCluster.WebInterface.Models;
 
 namespace ShareCluster.WebInterface
@@ -17,21 +18,26 @@ namespace ShareCluster.WebInterface
         private readonly IBrowserPushTarget _pushTarget;
         private readonly IPeerRegistry _peerRegistry;
         private bool _isAnyConnected;
+        private readonly ThrottlingTimer _throttlingTimer;
 
         public BrowserPeersPushSource(ILogger<BrowserPeersPushSource> logger, IBrowserPushTarget pushTarget, IPeerRegistry peerRegistry)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _pushTarget = pushTarget ?? throw new ArgumentNullException(nameof(pushTarget));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _throttlingTimer = new ThrottlingTimer(
+                minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(500),
+                maximumScheduleDelay: TimeSpan.FromMilliseconds(500),
+                (c) => PushAll());
             peerRegistry.Changed += PeerRegistry_Changed;
         }
 
         private void PeerRegistry_Changed(object sender, DictionaryChangedEvent<PeerId, PeerInfo> e)
         {
-            if(_isAnyConnected) PushAllPeers();
+            if (_isAnyConnected) _throttlingTimer.Schedule();
         }
 
-        private void PushAllPeers()
+        private void PushAll()
         {
             _pushTarget.PushEventToClients(new EventPeersChanged()
             {
@@ -50,7 +56,7 @@ namespace ShareCluster.WebInterface
         public void PushForNewClient()
         {
             _isAnyConnected = true;
-            PushAllPeers();
+            PushAll();
         }
     }
 }

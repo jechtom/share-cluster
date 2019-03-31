@@ -8,9 +8,10 @@ namespace ShareCluster.Packaging
 {
     public class RemotePackageRegistry : IRemotePackageRegistry
     {
-        public RemotePackageRegistry()
+        public RemotePackageRegistry(PeerId owner)
         {
             Items = ImmutableDictionary<Id, RemotePackage>.Empty;
+            Owner = owner;
         }
 
         private readonly object _syncLock = new object();
@@ -18,6 +19,8 @@ namespace ShareCluster.Packaging
         public event EventHandler<DictionaryChangedEvent<Id, RemotePackage>> Changed;
 
         public IImmutableDictionary<Id, RemotePackage> Items { get; private set; }
+
+        public PeerId Owner { get; }
 
         public void Update(IEnumerable<RemotePackage> newValues)
         {

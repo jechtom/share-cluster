@@ -21,3 +21,9 @@ export const package_verify = (packageId) => ({
     operation: "PACKAGE_VERIFY",
     data: { packageId: packageId }
 })
+
+export const create_package_form_change = (id, value) => ({
+    type: "CP_FORM_CHANGE",
+    id: id,
+    value: value
+})
