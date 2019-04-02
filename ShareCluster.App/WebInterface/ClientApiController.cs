@@ -83,22 +83,31 @@ namespace ShareCluster.WebInterface
             return Ok();
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult CreatePackage(CreatePackageViewModel viewModel)
+        [HttpPost, ActionName("CREATE_PACKAGE")]
+        public CreatePackageResultDto CreatePackage([FromBody] CreatePackageViewModel viewModel)
         {
-            if (!ModelState.IsValid) return View();
+            if (!ModelState.IsValid) return new CreatePackageResultDto()
+            {
+                Error = ModelState.SelectMany(ms => ms.Value.Errors).FirstOrDefault()?.ErrorMessage
+            };
 
             try
             {
-                _facade.CreateNewPackage(viewModel.Folder, viewModel.Name);
+                _facade.CreateNewPackage(viewModel.Path, viewModel.Name);
             }
             catch (Exception e)
             {
                 ModelState.AddModelError(string.Empty, e.Message);
-                return View();
+                return new CreatePackageResultDto()
+                {
+                    Error = e.Message
+                };
             }
 
-            return Ok();
+            return new CreatePackageResultDto()
+            {
+                Success = true
+            };
         }
 
         [HttpPost, ValidateAntiForgeryToken]

@@ -1,4 +1,5 @@
-﻿using ShareCluster.Packaging;
+﻿using Newtonsoft.Json;
+using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -8,9 +9,12 @@ namespace ShareCluster.WebInterface
 {
     public class CreatePackageViewModel
     {
-        [Required]
-        public string Folder { get; set; }
+        public string Path { get; set; }
 
         public string Name { get; set; }
+
+        [JsonProperty("package_type")]
+        public string PackageType { get; set; }
+
     }
 }

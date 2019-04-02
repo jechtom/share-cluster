@@ -25,6 +25,7 @@ namespace ShareCluster.Network.Messages
             IsSeeder = packageInfo.DownloadStatus.IsDownloaded;
             GroupId = packageInfo.Metadata.GroupId;
             CreatedUtc = packageInfo.Metadata.CreatedUtc;
+            ContentHash = packageInfo.Metadata.ContentHash;
         }
         
         [ProtoMember(1)]

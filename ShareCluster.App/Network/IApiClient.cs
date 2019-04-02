@@ -11,7 +11,6 @@ namespace ShareCluster.Network.Http
     /// </summary>
     public interface IApiClient
     {
-        
         Task<CatalogDataResponse> GetCatalogAsync(IPEndPoint endpoint, CatalogDataRequest message);
         Task<DataResponseFault> GetDataStreamAsync(IPEndPoint endpoint, DataRequest message, ProcessStreamAsyncDelegate callback);
         PackageResponse GetPackage(IPEndPoint endpoint, PackageRequest message);

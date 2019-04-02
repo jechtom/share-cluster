@@ -136,7 +136,7 @@ namespace ShareCluster.WebInterface
 
             try
             {
-                _facade.CreateNewPackage(viewModel.Folder, viewModel.Name);
+                _facade.CreateNewPackage(viewModel.Path, viewModel.Name);
             }
             catch (Exception e)
             {

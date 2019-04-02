@@ -41,6 +41,7 @@ namespace ShareCluster.Synchronization
             lock (_syncLock)
             {
                 if (_isStopped) return;
+                _scheduledNextTime = null;
                 currentExecutionIndex = _nextExecutionIndex++;
                 _isRunning = true;
             }

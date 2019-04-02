@@ -9,13 +9,14 @@ namespace ShareCluster.Packaging.Dto
     public class PackageMetadataDto
     {
         public PackageMetadataDto() { }
-        public PackageMetadataDto(Id packageId, long packageSize, DateTime createdUtc, string name, Id groupId)
+        public PackageMetadataDto(Id packageId, long packageSize, DateTime createdUtc, string name, Id groupId, Id contentHash)
         {
             PackageId = packageId;
             PackageSize = packageSize;
             CreatedUtc = createdUtc;
             Name = name;
             GroupId = groupId;
+            ContentHash = contentHash;
         }
 
         [ProtoMember(2)]

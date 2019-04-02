@@ -20,7 +20,7 @@ namespace ShareCluster.Network.Http
         //enable to use Fiddler @ localhost: 
         //string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://localhost.fiddler:{endPoint.Port}/api/{apiName}";
 
-        string BuildUrl(IPEndPoint endPoint, string apiName) => $"http://{endPoint}/api/{apiName}";
+        string BuildUrl(IPEndPoint endPoint, string apiPath) => $"http://{endPoint}{apiPath}";
 
         public HttpApiClient(IMessageSerializer serializer, HttpCommonHeadersProcessor headersProcessor)
         {
@@ -35,7 +35,7 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return SendRequestAndGetResponse<Messages.PackageRequest, Messages.PackageResponse>(endpoint, nameof(HttpApiMvcController.GetPackage), message);
+            return SendRequestAndGetResponse<Messages.PackageRequest, Messages.PackageResponse>(endpoint, HttpApiConstants.UrlGetPackage, message);
         }
 
         public async Task<Messages.CatalogDataResponse> GetCatalogAsync(IPEndPoint endpoint, Messages.CatalogDataRequest message)
@@ -45,7 +45,7 @@ namespace ShareCluster.Network.Http
                 throw new ArgumentNullException(nameof(message));
             }
 
-            return await SendRequestAndGetResponeAsync<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, nameof(HttpApiMvcController.GetCatalog), message);
+            return await SendRequestAndGetResponeAsync<Messages.CatalogDataRequest, Messages.CatalogDataResponse>(endpoint, HttpApiConstants.UrlGetCatalog, message);
         }
 
 
@@ -63,7 +63,7 @@ namespace ShareCluster.Network.Http
             }
 
             (HttpResponseMessage resultMessage, CommonHeaderData resultHeaders)
-                = await SendRequestAsync(endpoint, nameof(HttpApiMvcController.Data), message, stream: true);
+                = await SendRequestAsync(endpoint, HttpApiConstants.UrlGetData, message, stream: true);
 
             using(resultMessage)
             {

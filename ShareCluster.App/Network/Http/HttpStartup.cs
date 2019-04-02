@@ -20,20 +20,9 @@ namespace ShareCluster.Network.Http
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<HttpApiMvcHeadersFilter>();
             services.AddSingleton<HttpFilterOnlyLocal>();
             services.AddCors();
-            services.AddMvc(c =>
-            {
-                //c.InputFormatters.Clear();
-                //c.OutputFormatters.Clear();
-                var httpFormatter = new HttpFormatter();
-                c.InputFormatters.Insert(0,httpFormatter);
-                c.OutputFormatters.Insert(0,httpFormatter);
-                
-                // prevent validation of messages - MVC crashes if hits IPAddress/IPEndPoint class
-                c.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Messages.IMessage)));
-            });
+            services.AddMvc();
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
@@ -57,12 +46,13 @@ namespace ShareCluster.Network.Http
                 KeepAliveInterval = TimeSpan.FromSeconds(20)
             });
 
+            app.UseMiddleware<HttpApiServerMiddleware>();
+
             app.MapWhen(p => p.Request.Path == "/ws", appWs => appWs.UseMiddleware<WebSocketHandlerMiddleware>());
 
             app.UseMvc(c =>
             {
                 c.MapRoute("DefaultWebInterface", "{action}", new { controller = "HttpWebInterface", action = "Index" });
-                c.MapRoute("DefaultApi", "api/{action}", new { controller = "HttpApi" });
                 c.MapRoute("ClientApi", "api-client/{action}", new { controller = "ClientApi" });
             });
         }

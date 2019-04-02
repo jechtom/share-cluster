@@ -14,13 +14,25 @@ const Packages = ({ data, local_packages_count, remote_packages_count, package_d
         </span>
       </h1>
       <table class="table">
+        <thead>
+          <tr>
+            <th>Created</th>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Peers availability</th>
+            <th>Local copy</th>
+            <th>Commands</th>
+          </tr>
+        </thead>
         {data.groups.map(g => <tbody key={g.GroupId}>
           {g.Packages.sort((i1, i2) => i1.CreatedSort > i2.CreatedSort).map(p => <tr key={p.Id}>
-            <td><FontAwesomeIcon icon="cube" /> <code class="small">{g.GroupIdShort}/{p.IdShort}</code></td>
+            <td>
+              <FontAwesomeIcon icon="cube" /> { p.Name } <code class="small"><FontAwesomeIcon icon="hashtag" />{p.IdShort}</code>
+            </td>
             <td>{ p.CreatedFormatted }</td>
-            <td>{ p.KnownNames }</td>
             <td>{ p.SizeFormatted }</td>
-            <td><FontAwesomeIcon icon="cloud-download-alt"/> { p.Leechers } / <FontAwesomeIcon icon="cloud-upload-alt"/> { p.Seeders }</td>
+            <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders } seeders / { p.Leechers } leechers</td>
+            <td><FontAwesomeIcon icon={ p.IsLocal ? "check" : "times" }/> { p.IsLocal ? "Downloaded" : "Not downloaded" }</td>
             <td>
               <Link onClick={ (e) => package_delete(p.Id) } alt="Delete"><FontAwesomeIcon icon="trash-alt" /></Link>
               <Link onClick={ (e) => alert("N/A yet") } alt="Extract"><FontAwesomeIcon icon="box-open" /></Link>

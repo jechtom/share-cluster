@@ -30,7 +30,8 @@ namespace ShareCluster.Packaging.IO
                 packageSize: packageDefinition.PackageSize,
                 createdUtc: value.CreatedUtc,
                 name: value.Name,
-                groupId: value.GroupId
+                groupId: value.GroupId,
+                contentHash: value.ContentHash
             );
             _serializer.Serialize<PackageMetadataDto>(dto, stream);
         }

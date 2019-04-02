@@ -23,7 +23,14 @@ export const package_verify = (packageId) => ({
 })
 
 export const create_package_form_change = (id, value) => ({
-    type: "CP_FORM_CHANGE",
+    type: "CREATE_PACKAGE_FORM_CHANGE",
     id: id,
     value: value
+})
+
+export const create_package_form_submit = (data) => ({
+    type: "COMMAND_API",
+    operation: "CREATE_PACKAGE",
+    data: data,
+    callback: "CREATE_PACKAGE_FORM_OK"
 })

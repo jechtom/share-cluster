@@ -4,13 +4,14 @@ import App from "./components/App.jsx";
 
 import React from 'react';
 import { render } from 'react-dom'
-import { createStore } from 'redux'
+import { createStore, applyMiddleware } from 'redux'
+import ApiService from './ApiService';
 import { Provider } from 'react-redux'
 import rootReducer from './reducers'
 
 import './fontawesome-loader'
 
-const store = createStore(rootReducer)
+const store = createStore(rootReducer, applyMiddleware(ApiService))
 
 render(
   <Provider store={store}>
