@@ -1,3 +1,6 @@
+import { push } from 'connected-react-router'
+import { Post } from "../services/ApiClient";
+
 export const package_delete = (packageId) => ({
     type: "COMMAND_API",
     operation: "PACKAGE_DELETE",
@@ -28,9 +31,13 @@ export const create_package_form_change = (id, value) => ({
     value: value
 })
 
-export const create_package_form_submit = (data) => ({
-    type: "COMMAND_API",
-    operation: "CREATE_PACKAGE",
-    data: data,
-    callback: "CREATE_PACKAGE_FORM_OK"
+export const create_package_form_ok = () => ({
+    type: "CREATE_PACKAGE_FORM_OK"
 })
+
+export function create_package_form_submit(data) {
+    return function(dispatch) {
+        dispatch(push("/packages"));
+        Post("CREATE_PACKAGE", data, () => dispatch(create_package_form_ok()));
+    }
+}

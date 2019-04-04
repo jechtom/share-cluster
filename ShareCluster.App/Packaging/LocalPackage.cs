@@ -20,7 +20,7 @@ namespace ShareCluster.Packaging
             DataAccessor = dataAccessor ?? throw new ArgumentNullException(nameof(dataAccessor));
         }
 
-        public Id Id => Definition.PackageContentHash;
+        public Id Id => Metadata.PackageId;
         public PackageDownloadStatus DownloadStatus { get; }
         public PackageContentDefinition Definition { get; }
         public PackageMetadata Metadata { get; }

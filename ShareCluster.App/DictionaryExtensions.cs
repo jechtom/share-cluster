@@ -30,7 +30,7 @@ namespace ShareCluster
                 if (items.TryGetValue(item.Key, out TValue current))
                 {
                     // update not required?
-                    if (current.Equals(item)) continue;
+                    if (current.Equals(item.Value)) continue;
 
                     // do update
                     (changed = changed ?? new List<KeyValueChangedPair<TKey, TValue>>())

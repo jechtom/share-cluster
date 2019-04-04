@@ -5,17 +5,30 @@ import App from "./components/App.jsx";
 import React from 'react';
 import { render } from 'react-dom'
 import { createStore, applyMiddleware } from 'redux'
-import ApiService from './ApiService';
+import ApiServiceMiddleware from './middlewares/ApiServiceMiddleware';
 import { Provider } from 'react-redux'
-import rootReducer from './reducers'
+import thunk from 'redux-thunk';
+import createRootReducer from './reducers'
+import { createHashHistory } from 'history'
+import { routerMiddleware, ConnectedRouter } from 'connected-react-router'
 
 import './fontawesome-loader'
 
-const store = createStore(rootReducer, applyMiddleware(ApiService))
+export const history = createHashHistory()
+const store = createStore(
+  createRootReducer(history),
+  applyMiddleware(
+    routerMiddleware(history), 
+    thunk,
+    ApiServiceMiddleware
+  )
+);
 
 render(
   <Provider store={store}>
-    <App />
+    <ConnectedRouter history={history}>
+      <App />
+    </ConnectedRouter>
   </Provider>,
   document.getElementById('root')
 )

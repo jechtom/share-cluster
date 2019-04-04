@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 const CreatePackage = ({ state, handleChange, handleChangeCheck, handleChangeType, submit }) => (
     <div>
-      <h1><FontAwesomeIcon icon="folder-plus" /> Create Package</h1>
+      <h2><FontAwesomeIcon icon="folder-plus" /> Create Package</h2>
       <form id="create-package-form" className="row container-fluid" onSubmit={ event => submit(event, state)}>
         <div className="row">
           <div className="form-group col-lg-8 col-md-12">

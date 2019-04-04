@@ -141,7 +141,7 @@ namespace ShareCluster.Packaging.PackageFolders
             DirectoryInfo buildDirectory = Directory.CreateDirectory(CreateBuildPath());
 
             // create package archive
-            PackageContentDefinition packageDefinition;
+            PackageContentDefinition packageContentDefinition;
 
             var computeHashBehavior = new HashStreamComputeBehavior(_loggerFactory, defaultSplitInfo.SegmentLength);
 
@@ -155,37 +155,37 @@ namespace ShareCluster.Packaging.PackageFolders
                         writeToStreamAction.Invoke(hashStream);
                     }
                 }
-                packageDefinition = PackageContentDefinition.Build(_crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
+                packageContentDefinition = PackageContentDefinition.Build(_crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
             }
-            var buildPathReference = new PackageFolderReference(packageDefinition.PackageContentHash, buildDirectory.FullName);
+            var buildPathReference = new PackageFolderReference(packageContentDefinition.PackageContentHash, buildDirectory.FullName);
 
             // store package hashes
-            UpdateDefinition(buildPathReference, packageDefinition);
+            UpdateDefinition(buildPathReference, packageContentDefinition);
 
             // store download status
-            var downloadStatus = PackageDownloadStatus.CreateForDownloadedPackage(packageDefinition.PackageSplitInfo);
-            UpdateDownloadStatus(buildPathReference, downloadStatus, packageDefinition);
+            var downloadStatus = PackageDownloadStatus.CreateForDownloadedPackage(packageContentDefinition.PackageSplitInfo);
+            UpdateDownloadStatus(buildPathReference, downloadStatus, packageContentDefinition);
 
             // store metadata - remark: for root packages use content hash as group Id
-            var metadata = new PackageMetadata(Id.Empty, name, DateTime.UtcNow, groupId ?? packageDefinition.PackageContentHash, packageDefinition.PackageContentHash, packageDefinition.PackageSize);
+            var metadata = new PackageMetadata(Id.Empty, name, DateTime.UtcNow, groupId ?? packageContentDefinition.PackageContentHash, packageContentDefinition.PackageContentHash, packageContentDefinition.PackageSize);
             metadata = _packageHashBuilder.CalculatePackageId(metadata);
-            UpdateMetadata(buildPathReference, metadata, packageDefinition);
+            UpdateMetadata(buildPathReference, metadata, packageContentDefinition);
 
             // rename folder
-            string packagePath = CreatePackagePath(packageDefinition.PackageContentHash);
-            var outputPathReference = new PackageFolderReference(packageDefinition.PackageContentHash, packagePath);
+            string packagePath = CreatePackagePath(metadata.PackageId);
+            var outputPathReference = new PackageFolderReference(packageContentDefinition.PackageContentHash, packagePath);
             if (Directory.Exists(packagePath))
             {
-                throw new InvalidOperationException($"Folder for package {packageDefinition.PackageContentHash:s} already exists. {packagePath}");
+                throw new InvalidOperationException($"Folder for package {packageContentDefinition.PackageContentHash:s} already exists. {packagePath}");
             }
             Directory.Move(buildDirectory.FullName, packagePath);
 
             // build result
             return new LocalPackage(
-                definition: packageDefinition,
+                definition: packageContentDefinition,
                 downloadStatus: downloadStatus,
                 metadata: metadata,
-                dataAccessor: _accessorBuilder.BuildFor(this, outputPathReference, packageDefinition)
+                dataAccessor: _accessorBuilder.BuildFor(this, outputPathReference, packageContentDefinition)
             );
         }
 
@@ -302,11 +302,11 @@ namespace ShareCluster.Packaging.PackageFolders
             _logger.LogInformation($"Folder deleted {packageReference.FolderPath}.");
         }
 
-        public LocalPackage AllocatePackageForDownload(PackageContentDefinition packageDefinition, PackageMetadata metadata)
+        public LocalPackage AllocatePackageForDownload(PackageContentDefinition contentDefinition, PackageMetadata metadata)
         {
-            if (packageDefinition == null)
+            if (contentDefinition == null)
             {
-                throw new ArgumentNullException(nameof(packageDefinition));
+                throw new ArgumentNullException(nameof(contentDefinition));
             }
 
             if (metadata == null)
@@ -316,34 +316,34 @@ namespace ShareCluster.Packaging.PackageFolders
 
             // create directory
             EnsurePath();
-            string packagePath = CreatePackagePath(packageDefinition.PackageContentHash);
-            var pathReference = new PackageFolderReference(packageDefinition.PackageContentHash, packagePath);
+            string packagePath = CreatePackagePath(metadata.PackageId);
+            var pathReference = new PackageFolderReference(contentDefinition.PackageContentHash, packagePath);
             if (Directory.Exists(packagePath))
             {
-                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", packageDefinition.PackageContentHash);
+                _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", contentDefinition.PackageContentHash);
                 throw new InvalidOperationException("Package already exists in local repository.");
             }
             Directory.CreateDirectory(packagePath);
 
             // store data
-            var downloadStatus = PackageDownloadStatus.CreateForReadyToDownload(packageDefinition.PackageSplitInfo);
-            UpdateDefinition(pathReference, packageDefinition);
-            UpdateDownloadStatus(pathReference, downloadStatus, packageDefinition);
-            UpdateMetadata(pathReference, metadata, packageDefinition);
+            var downloadStatus = PackageDownloadStatus.CreateForReadyToDownload(contentDefinition.PackageSplitInfo);
+            UpdateDefinition(pathReference, contentDefinition);
+            UpdateDownloadStatus(pathReference, downloadStatus, contentDefinition);
+            UpdateMetadata(pathReference, metadata, contentDefinition);
 
             // allocate
             var allocator = new PackageFolderSpaceAllocator(_loggerFactory);
-            allocator.Allocate(packagePath, packageDefinition.PackageSplitInfo, overwrite: false);
+            allocator.Allocate(packagePath, contentDefinition.PackageSplitInfo, overwrite: false);
 
             // log and build result
-            _logger.LogInformation($"New package {packageDefinition.PackageContentHash:s4} added to repository and allocated. Size: {SizeFormatter.ToString(packageDefinition.PackageSize)}");
+            _logger.LogInformation($"New package {contentDefinition.PackageContentHash:s4} added to repository and allocated. Size: {SizeFormatter.ToString(contentDefinition.PackageSize)}");
 
             // build result
             return new LocalPackage(
-                definition: packageDefinition,
+                definition: contentDefinition,
                 downloadStatus: downloadStatus,
                 metadata: metadata,
-                dataAccessor: _accessorBuilder.BuildFor(this, pathReference, packageDefinition)
+                dataAccessor: _accessorBuilder.BuildFor(this, pathReference, contentDefinition)
             );
         }
     }

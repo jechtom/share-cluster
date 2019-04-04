@@ -1,7 +1,7 @@
 import axios from "axios";
-import { uri_api } from './constants'
+import { uri_api } from '../constants'
 
-const ApiService = store => next => action => {
+const ApiServiceMiddleware = store => next => action => {
     next(action)
     switch (action.type) {
       case 'COMMAND_API':
@@ -33,4 +33,4 @@ const ApiService = store => next => action => {
     }
   }
   
-  export default ApiService;
+  export default ApiServiceMiddleware;
