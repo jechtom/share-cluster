@@ -14,20 +14,19 @@ namespace ShareCluster
     /// </summary>
     public class LongRunningTasksManager
     {
-        private readonly object syncLock = new object();
-        private readonly ILogger<LongRunningTasksManager> logger;
-        private ImmutableList<LongRunningTask> tasks;
-        private ImmutableList<LongRunningTask> completedTasks;
+        private readonly object _syncLock = new object();
+        private readonly ILogger<LongRunningTasksManager> _logger;
+        private ImmutableDictionary<int, LongRunningTask> _tasks;
 
         public LongRunningTasksManager(ILoggerFactory loggerFactory)
         {
-            logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<LongRunningTasksManager>();
-            tasks = ImmutableList<LongRunningTask>.Empty;
-            completedTasks = ImmutableList<LongRunningTask>.Empty;
+            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<LongRunningTasksManager>();
+            _tasks = ImmutableDictionary<int, LongRunningTask>.Empty;
         }
 
-        public IImmutableList<LongRunningTask> Tasks => tasks;
-        public IImmutableList<LongRunningTask> CompletedTasks => completedTasks;
+        public event EventHandler<DictionaryChangedEvent<int, LongRunningTask>> TasksChanged;
+
+        public IImmutableDictionary<int, LongRunningTask> Tasks => _tasks;
 
         public void AddTaskToQueue(LongRunningTask task)
         {
@@ -36,43 +35,48 @@ namespace ShareCluster
                 throw new ArgumentNullException(nameof(task));
             }
 
-            logger.LogDebug($"Added task \"{task.Title}\" to queue.");
+            _logger.LogDebug($"New task: {task.Title}");
 
-            lock (syncLock)
+            lock (_syncLock)
             {
-                if (tasks.Contains(task)) return;
-                tasks = tasks.Add(task);
-                task.CompletionTask.ContinueWith(t => OnCompletedTask(t.Result));
+                if (_tasks.ContainsKey(task.Id)) return;
+                _tasks = _tasks.Add(task.Id, task);
+                task.Task.ContinueWith(t => OnCompletedTask(task));
+
+                // notify
+                TasksChanged?.Invoke(this,DictionaryChangedEvent<int, LongRunningTask>
+                    .FromNullableEnumerable(added: new[] { new KeyValuePair<int, LongRunningTask>(task.Id, task) }, removed: null, changed: null));
             }
         }
         
         private void OnCompletedTask(LongRunningTask task)
         {
-            lock(syncLock)
+            lock(_syncLock)
             {
-                // remove completed task
-                tasks = tasks.Remove(task);
-
-                if (!task.IsCompleted) throw new InvalidOperationException("Task is unfinished.");
+                if (!task.Task.IsCompleted) throw new InvalidOperationException("Task is unfinished.");
 
                 // check result and add to completed
-                if (task.IsCompletedSuccessfully)
+                if (task.Task.IsCompletedSuccessfully)
                 {
-                    logger.LogInformation($"Task \"{task.Title}\" completed successfully. Has been running for {task.Elapsed}.");
+                    _logger.LogInformation($"Task success. Duration {task.Elapsed}. Title: {task.Title}");
                 }
                 else
                 {
-                    logger.LogError(task.FaultException, $"Task \"{task.Title}\" (has been running for {task.Elapsed}): {task.ProgressText ?? "Unknown reason"}");
+                    _logger.LogError(task.Task.Exception, $"Task failed. Duration {task.Elapsed}. Title: {task.Title}. Reason: {task.Task.Exception.Message}");
                 }
-                completedTasks = completedTasks.Insert(index: 0, item: task);
             }
         }
 
         public void CleanCompletedTasks()
         {
-            lock(syncLock)
+            lock(_syncLock)
             {
-                completedTasks = ImmutableList<LongRunningTask>.Empty;
+                var toRemove = _tasks.Where(t => t.Value.Task.IsCompleted).ToList();
+
+                _tasks = _tasks.RemoveRange(toRemove.Select(t => t.Key));
+
+                TasksChanged?.Invoke(this, DictionaryChangedEvent<int, LongRunningTask>
+                    .FromNullableEnumerable(added: null, removed: toRemove, changed: null));
             }
         }
     }

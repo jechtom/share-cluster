@@ -4,12 +4,14 @@ import Packages from './Packages'
 import ServerStatus from './ServerStatus'
 import Peers from './Peers'
 import CreatePackage from './CreatePackage'
+import Tasks from './Tasks'
 
 export default (history) => combineReducers({
     router: connectRouter(history),
     Packages,
     Peers,
     ServerStatus,
-    CreatePackage
+    CreatePackage,
+    Tasks
 })
 

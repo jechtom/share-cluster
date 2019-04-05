@@ -56,3 +56,9 @@ export function create_package_form_submit(data) {
         Post("CREATE_PACKAGE", data, () => dispatch(create_package_form_ok()));
     }
 }
+
+export function tasks_dismiss_all() {
+    return function(dispatch) {
+        Post("TASKS_DISMISS", {}, () => {});
+    }
+}

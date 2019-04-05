@@ -137,19 +137,6 @@ namespace ShareCluster.WebInterface
             _tasks.AddTaskToQueue(task);
         }
 
-        public StatusViewModel GetStatusViewModel()
-        {
-            var result = new StatusViewModel
-            {
-                Packages = _localPackageRegistry.LocalPackages,
-                Peers = _peerRegistry.Items.Values,
-                Instance = _instanceHash,
-                Tasks = _tasks.Tasks.Concat(_tasks.CompletedTasks),
-                UploadSlotsAvailable = _networkThrottling.UploadSlots.Free,
-                DownloadSlotsAvailable = _networkThrottling.DownloadSlots.Free
-            };
-            return result;
-        }
 
         public void ExtractPackage(Id packageId, string folder, bool validate)
         {

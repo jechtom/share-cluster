@@ -110,7 +110,7 @@ namespace ShareCluster.WebInterface
             };
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
+        [HttpPost, ActionName("TASKS_DISMISS")]
         public IActionResult ClearCompletedTasks()
         {
             _facade.CleanTasksHistory();

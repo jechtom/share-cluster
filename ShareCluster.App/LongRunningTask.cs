@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ShareCluster
@@ -10,15 +11,17 @@ namespace ShareCluster
     /// </summary>
     public class LongRunningTask
     {
+        static int _counter = 0;
+
         Stopwatch _stopwatch;
         Func<LongRunningTask, string> _progressFunc;
-
+        
         public LongRunningTask(string title, Task task, string successProgress = null, Func<LongRunningTask, string> progressFunc = null)
         {
-            if (string.IsNullOrEmpty(title)) throw new ArgumentException("message", nameof(title));
-            if (task == null) throw new ArgumentNullException(nameof(task));
-
+            if (string.IsNullOrEmpty(title)) throw new ArgumentException(nameof(title));
             Title = title;
+            Id = Interlocked.Increment(ref _counter);
+            Task = task ?? throw new ArgumentNullException(nameof(task));
             _progressFunc = progressFunc ?? ((t) => "Running");
             _stopwatch = Stopwatch.StartNew();
 
@@ -31,44 +34,25 @@ namespace ShareCluster
                 task = Task.FromException(new Exception($"Can't start task: {e.Message}", e));
             }
 
-            CompletionTask = task.ContinueWith(t =>
+            task.ContinueWith(t =>
             {
                 _stopwatch.Stop();
-                if (t.IsFaulted)
-                {
-                    // extract exception if single exception
-                    AggregateException flattenExc = t.Exception.Flatten();
-                    Exception exc = (flattenExc.InnerExceptions.Count == 1 ? flattenExc.InnerExceptions.First(): flattenExc);
-                    _progressFunc = ((_) => $"Error: {exc}");
-                    FaultException = exc;
-                }
-                else
-                {
-                    _progressFunc = ((_) => $"{successProgress ?? "Success"}");
-                }
-
-                IsCompleted = true;
-
                 return this;
             });
         }
+
+        public int Id { get; }
+
+        public Task Task { get; }
 
         public string Title { get; protected set; }
 
         public virtual string ProgressText => _progressFunc(this);
 
-        public Task<LongRunningTask> CompletionTask { get; private set; }
-
-        public bool IsCompletedSuccessfully => IsCompleted && !IsFaulted;
-        public bool IsRunning => !IsCompleted;
-        public bool IsCompleted { get; private set; }
-        public bool IsFaulted => FaultException != null;
-        public Exception FaultException { get; private set; }
         public TimeSpan Elapsed => _stopwatch.Elapsed;
 
-        public string StatusText =>
-            (IsCompletedSuccessfully) ? "Success" :
-            (IsFaulted) ? "Error" :
-            "Running";
+        public override int GetHashCode() => Id;
+
+        public override bool Equals(object obj) => ((LongRunningTask)obj).Id == Id;
     }
 }

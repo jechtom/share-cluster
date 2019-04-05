@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import NavLink from "./NavLink.jsx";
 import { connect } from 'react-redux'
 import Routes from './Routes.jsx'
+import Tasks from './Tasks.jsx'
 
 const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
   <div>
@@ -48,6 +49,7 @@ const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
 
 
     <div class="container-fluid mt-2">
+      <Tasks />
       <Routes />
     </div>
 

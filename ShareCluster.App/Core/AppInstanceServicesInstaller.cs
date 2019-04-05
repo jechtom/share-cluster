@@ -95,9 +95,11 @@ namespace ShareCluster.Core
             services.AddSingleton<IBrowserPushTarget>(x => x.GetRequiredService<BrowserPushTarget>());
             services.AddSingleton<BrowserPeersPushSource>();
             services.AddSingleton<BrowserPackagesPushSource>();
+            services.AddSingleton<BrowserTasksPushSource>();
             services.AddSingleton(x => new Func<IBrowserPushSource[]>(() => new IBrowserPushSource[] {
                 x.GetRequiredService<BrowserPeersPushSource>(),
-                x.GetRequiredService<BrowserPackagesPushSource>()
+                x.GetRequiredService<BrowserPackagesPushSource>(),
+                x.GetRequiredService<BrowserTasksPushSource>()
             }));
         }
 

@@ -7,7 +7,7 @@ using System.Text;
 namespace ShareCluster
 {
     /// <summary>
-    /// Describes changes in collection.
+    /// Describes changes in collection if item is identified with key.
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
