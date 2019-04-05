@@ -110,9 +110,9 @@ namespace ShareCluster.Packaging.PackageFolders
                 throw new ArgumentNullException(nameof(reference));
             }
 
-            PackageContentDefinition packageDefinition = ReadPackageDefinitionFile(reference);
-            PackageMetadata packageMatadata = ReadPackageMetadata(reference, packageDefinition);
-            PackageDownloadStatus packageDownload = ReadPackageDownloadStatus(reference, packageDefinition);
+            PackageContentDefinition packageDefinition = ReadContentDefinitionFile(reference);
+            PackageMetadata packageMatadata = ReadMetadataFile(reference, packageDefinition);
+            PackageDownloadStatus packageDownload = ReadDownloadStatusFile(reference, packageDefinition);
 
             _logger.LogDebug($"Loaded package {reference}");
 
@@ -160,16 +160,16 @@ namespace ShareCluster.Packaging.PackageFolders
             var buildPathReference = new PackageFolderReference(packageContentDefinition.PackageContentHash, buildDirectory.FullName);
 
             // store package hashes
-            UpdateDefinition(buildPathReference, packageContentDefinition);
+            UpdateContentDefinitionFile(buildPathReference, packageContentDefinition);
 
             // store download status
             var downloadStatus = PackageDownloadStatus.CreateForDownloadedPackage(packageContentDefinition.PackageSplitInfo);
-            UpdateDownloadStatus(buildPathReference, downloadStatus, packageContentDefinition);
+            UpdateDownloadStatusFile(buildPathReference, downloadStatus, packageContentDefinition);
 
-            // store metadata - remark: for root packages use content hash as group Id
-            var metadata = new PackageMetadata(Id.Empty, name, DateTime.UtcNow, groupId ?? packageContentDefinition.PackageContentHash, packageContentDefinition.PackageContentHash, packageContentDefinition.PackageSize);
+            groupId = groupId ?? _crypto.CreateRandom();
+            var metadata = new PackageMetadata(Id.Empty, name, DateTime.UtcNow, groupId.Value, packageContentDefinition.PackageContentHash, packageContentDefinition.PackageSize);
             metadata = _packageHashBuilder.CalculatePackageId(metadata);
-            UpdateMetadata(buildPathReference, metadata, packageContentDefinition);
+            UpdateMetadataFile(buildPathReference, metadata);
 
             // rename folder
             string packagePath = CreatePackagePath(metadata.PackageId);
@@ -248,42 +248,42 @@ namespace ShareCluster.Packaging.PackageFolders
             }
         }
 
-        public PackageContentDefinition ReadPackageDefinitionFile(IPackageFolderReference reference) =>
+        public PackageContentDefinition ReadContentDefinitionFile(IPackageFolderReference reference) =>
             ReadPackageFile<PackageContentDefinition>(
                 reference,
                 PackageDefinitionFileName,
-                stream => _serializerFacade.DefinitionSerializer.Deserialize(stream, reference.Id)
+                stream => _serializerFacade.DefinitionSerializer.Deserialize(stream)
             );
 
-        public PackageDownloadStatus ReadPackageDownloadStatus(IPackageFolderReference reference, PackageContentDefinition packageDefinition) =>
+        public PackageDownloadStatus ReadDownloadStatusFile(IPackageFolderReference reference, PackageContentDefinition packageDefinition) =>
             ReadPackageFile<PackageDownloadStatus>(
                 reference,
                 PackageDownloadFileName,
                 stream => _serializerFacade.DownloadStatusSerializer.Deserialize(stream, packageDefinition)
             );
 
-        public PackageMetadata ReadPackageMetadata(IPackageFolderReference reference, PackageContentDefinition packageDefinition) =>
+        public PackageMetadata ReadMetadataFile(IPackageFolderReference reference, PackageContentDefinition packageDefinition) =>
             ReadPackageFile<PackageMetadata>(
                 reference,
                 PackageMetaFileName,
                 stream => _serializerFacade.MetadataSerializer.Deserialize(stream, packageDefinition)
             );
 
-        public void UpdateDownloadStatus(IPackageFolderReference reference, PackageDownloadStatus status, PackageContentDefinition packageDefinition) =>
+        public void UpdateDownloadStatusFile(IPackageFolderReference reference, PackageDownloadStatus status, PackageContentDefinition packageDefinition) =>
             WritePackageFile(
                 reference,
                 PackageDownloadFileName,
                 (stream) => _serializerFacade.DownloadStatusSerializer.Serialize(status, packageDefinition, stream)
             );
 
-        public void UpdateMetadata(IPackageFolderReference reference, PackageMetadata metadata, PackageContentDefinition packageDefinition) =>
+        public void UpdateMetadataFile(IPackageFolderReference reference, PackageMetadata metadata) =>
             WritePackageFile(
                 reference,
                 PackageMetaFileName,
-                (stream) => _serializerFacade.MetadataSerializer.Serialize(metadata, packageDefinition, stream)
+                (stream) => _serializerFacade.MetadataSerializer.Serialize(metadata, stream)
             );
 
-        public void UpdateDefinition(IPackageFolderReference reference, PackageContentDefinition definition) =>
+        public void UpdateContentDefinitionFile(IPackageFolderReference reference, PackageContentDefinition definition) =>
             WritePackageFile(
                 reference,
                 PackageDefinitionFileName,
@@ -327,9 +327,9 @@ namespace ShareCluster.Packaging.PackageFolders
 
             // store data
             var downloadStatus = PackageDownloadStatus.CreateForReadyToDownload(contentDefinition.PackageSplitInfo);
-            UpdateDefinition(pathReference, contentDefinition);
-            UpdateDownloadStatus(pathReference, downloadStatus, contentDefinition);
-            UpdateMetadata(pathReference, metadata, contentDefinition);
+            UpdateContentDefinitionFile(pathReference, contentDefinition);
+            UpdateDownloadStatusFile(pathReference, downloadStatus, contentDefinition);
+            UpdateMetadataFile(pathReference, metadata);
 
             // allocate
             var allocator = new PackageFolderSpaceAllocator(_loggerFactory);

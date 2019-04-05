@@ -6,6 +6,7 @@ namespace ShareCluster.WebInterface.Models
     {
         public string GroupIdShort { get; set; }
         public string GroupId { get; set; }
+        public string Name { get; set; }
         public IEnumerable<PackageInfoDto> Packages { get; set; }
     }
 }

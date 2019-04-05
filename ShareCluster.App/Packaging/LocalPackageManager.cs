@@ -64,7 +64,7 @@ namespace ShareCluster.Packaging
             return result;
         }
 
-        public LocalPackage CreatePackageFromFolder(string folderToProcess, string name, Id? parentPackageId, MeasureItem writeMeasure)
+        public LocalPackage CreatePackageFromFolder(string folderToProcess, string name, Id? groupId, MeasureItem writeMeasure)
         {
             // folder name is default name
             name = name.NullIfNullOrWhiteSpace() ?? FileHelper.GetFileOrDirectoryName(folderToProcess);
@@ -78,7 +78,7 @@ namespace ShareCluster.Packaging
                 _defaultSplitInfo,
                 writeMeasure,
                 name,
-                parentPackageId,
+                groupId,
                 (streamToWrite) => {
                     stats = _folderStreamSerializer.SerializeFolderToStream(folderToProcess, streamToWrite);
                 }

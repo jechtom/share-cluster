@@ -10,9 +10,9 @@ namespace ShareCluster.Packaging
     /// </summary>
     public class PackageContentDefinition
     {
-        public PackageContentDefinition(Id packageId, ImmutableArray<Id> packageSegmentsHashes, PackageSplitInfo packageSplitInfo)
+        public PackageContentDefinition(Id packageContentHash, ImmutableArray<Id> packageSegmentsHashes, PackageSplitInfo packageSplitInfo)
         {
-            PackageContentHash = packageId;
+            PackageContentHash = packageContentHash;
             PackageSegmentsHashes = packageSegmentsHashes;
             PackageSplitInfo = packageSplitInfo ?? throw new ArgumentNullException(nameof(packageSplitInfo));
 
@@ -25,10 +25,10 @@ namespace ShareCluster.Packaging
         public static PackageContentDefinition Build(CryptoFacade cryptoProvider, IEnumerable<Id> packageSegmentsHashesSource, PackageSplitInfo packageSplitInfo)
         {
             var packageSegmentsHashes = packageSegmentsHashesSource.ToImmutableArray();
-            Id packageId = cryptoProvider.HashFromHashes(packageSegmentsHashes);
+            Id packageContentHash = cryptoProvider.HashFromHashes(packageSegmentsHashes);
 
             return new PackageContentDefinition(
-                packageId,
+                packageContentHash,
                 packageSegmentsHashes,
                 packageSplitInfo
             );

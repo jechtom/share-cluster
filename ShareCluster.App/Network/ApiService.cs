@@ -20,7 +20,7 @@ namespace ShareCluster.Network
         private readonly object _syncLock = new object();
         private readonly ILogger<ApiService> _logger;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly ConcurrentDictionary<Id, PackageDefinitionDto> _packageDefinitions;
+        private readonly ConcurrentDictionary<Id, PackageContentDefinitionDto> _packageDefinitions;
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly PackageDefinitionSerializer _packageDefinitionSerializer;
         private readonly NetworkThrottling _throttling;
@@ -46,7 +46,7 @@ namespace ShareCluster.Network
             _throttling = throttling ?? throw new ArgumentNullException(nameof(throttling));
             _peerManager = peerManager ?? throw new ArgumentNullException(nameof(peerManager));
             _networkSettings = networkSettings ?? throw new ArgumentNullException(nameof(networkSettings));
-            _packageDefinitions = new ConcurrentDictionary<Id, PackageDefinitionDto>();
+            _packageDefinitions = new ConcurrentDictionary<Id, PackageContentDefinitionDto>();
         }
 
         public CatalogDataResponse GetCatalog(CatalogDataRequest request)
@@ -85,7 +85,7 @@ namespace ShareCluster.Network
             }
 
             // dictionary is concurrent, no need to lock
-            PackageDefinitionDto definition = _packageDefinitions.GetOrAdd(packageId, (_) =>
+            PackageContentDefinitionDto definition = _packageDefinitions.GetOrAdd(packageId, (_) =>
                 _packageDefinitionSerializer.SerializeToDto(package.Definition)
             );
 

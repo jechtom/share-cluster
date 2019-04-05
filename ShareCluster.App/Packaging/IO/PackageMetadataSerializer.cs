@@ -21,13 +21,13 @@ namespace ShareCluster.Packaging.IO
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Serialize(PackageMetadata value, PackageContentDefinition packageDefinition, Stream stream)
+        public void Serialize(PackageMetadata value, Stream stream)
         {
             _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
 
             var dto = new PackageMetadataDto(
-                packageId: packageDefinition.PackageContentHash,
-                packageSize: packageDefinition.PackageSize,
+                packageId: value.PackageId,
+                packageSize: value.PackageSize,
                 createdUtc: value.CreatedUtc,
                 name: value.Name,
                 groupId: value.GroupId,
@@ -36,7 +36,7 @@ namespace ShareCluster.Packaging.IO
             _serializer.Serialize<PackageMetadataDto>(dto, stream);
         }
 
-        public PackageMetadata Deserialize(Stream stream, PackageContentDefinition packageDefinition)
+        public PackageMetadata Deserialize(Stream stream, PackageContentDefinition packageContentDefinition)
         {
             if (stream == null)
             {
@@ -56,15 +56,15 @@ namespace ShareCluster.Packaging.IO
             }
 
             // verify
-            Id packageId = packageDefinition.PackageContentHash;
-            if (packageId != dto.PackageId)
+            Id packageContentHash = packageContentDefinition.PackageContentHash;
+            if (packageContentHash != dto.ContentHash)
             {
-                throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {dto.PackageId:s}", packageId, dto.PackageId);
+                throw new HashMismatchException($"Given content hash is for different package. Expected {packageContentHash:s} but actual is {dto.ContentHash:s}", packageContentHash, dto.ContentHash);
             }
 
-            if (packageDefinition.PackageSize != dto.PackageSize)
+            if (packageContentDefinition.PackageSize != dto.PackageSize)
             {
-                throw new HashMismatchException($"Given package size is different than in package definition. Expected {packageDefinition.PackageSize}B but actual is {dto.PackageSize}B", packageId, dto.PackageId);
+                throw new InvalidOperationException($"Given package size is different than in package definition. Expected {packageContentDefinition.PackageSize}B but actual is {dto.PackageSize}B");
             }
 
             // create result

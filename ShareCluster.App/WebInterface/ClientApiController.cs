@@ -93,7 +93,7 @@ namespace ShareCluster.WebInterface
 
             try
             {
-                _facade.CreateNewPackage(viewModel.Path, viewModel.Name);
+                _facade.CreateNewPackage(viewModel.Path, viewModel.Name, viewModel.GroupUse ? viewModel.GroupId : null);
             }
             catch (Exception e)
             {

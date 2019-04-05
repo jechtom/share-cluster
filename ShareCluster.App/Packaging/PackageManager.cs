@@ -105,9 +105,9 @@ namespace ShareCluster.Packaging
             }
         }
 
-        public LocalPackage CreateAndRegisterPackageFromFolder(string folderToProcess, string name, Id? parentPackageId, MeasureItem writeMeasure)
+        public LocalPackage CreateAndRegisterPackageFromFolder(string folderToProcess, string name, Id? groupId, MeasureItem writeMeasure)
         {
-            LocalPackage package = _localPackageManager.CreatePackageFromFolder(folderToProcess, name, parentPackageId, writeMeasure);
+            LocalPackage package = _localPackageManager.CreatePackageFromFolder(folderToProcess, name, groupId, writeMeasure);
             LocalPackageRegistry.AddLocalPackage(package);
             return package;
         }

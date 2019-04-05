@@ -34,6 +34,7 @@ namespace ShareCluster.WebInterface
             _allSources = _sourcesFunc.Invoke();
             _webSocketManager.OnConnected += (s, e) => Sync(() => WebSocketManager_OnConnected(e));
             _webSocketManager.OnDisconnectedAll += (s, e) => Sync(() => WebSocketManager_OnDisconnectedAll());
+            Sync(InitialPush); // there can already be connected clients
         }
 
         private void Sync(Action a)
@@ -65,68 +66,18 @@ namespace ShareCluster.WebInterface
             }
         }
 
-        private void PushPackagesChanged()
+        private void InitialPush()
         {
+            lock (_syncLock)
+            {
+                if (!_webSocketManager.AnyClients) return;
 
-            //PushEventToClients(new EventPackagesChanged()
-            //{
-            //    Groups = source
-            //    .GroupBy(s => s.groupId)
-            //    .Select(g => new PackageGroupInfoDto()
-            //    {
-            //        GroupId = g.Key.ToString(),
-            //        GroupIdShort = g.Key.ToString("s"),
-            //        Packages = g.Select(gi => gi.dto)
-            //    })
-            //});
+                foreach (IBrowserPushSource source in _allSources)
+                {
+                    source.PushForNewClient();
+                }
+            }
         }
-
-        //private (Id groupId, PackageInfoDto dto) BuildPackageInfoDto(Id id, LocalPackage lp, RemotePackage rp)
-        //{
-        //    PackageMetadata meta = (lp?.Metadata ?? rp.PackageMetadata);
-
-        //    long size = lp?.SplitInfo.PackageSize ?? rp.PackageMetadata.PackageSize;
-        //    (int seeders, int leechers) = rp == null ? (0, 0) : _peersRegistry.Items.Values.Aggregate((seeders: 0, leechers: 0),
-        //            (ag, pi) => pi.RemotePackages.Items.TryGetValue(id, out RemotePackage rp) ? (ag.seeders + (rp.IsSeeder ? 1 : 0), ag.leechers + (!rp.IsSeeder ? 1 : 0)) : ag
-        //        );
-        //    if (lp != null && lp.DownloadStatus.IsDownloaded) seeders++;
-        //    if (lp != null && !lp.DownloadStatus.IsDownloaded) leechers++;
-
-        //    var dto = new PackageInfoDto()
-        //    {
-        //        Id = meta.PackageId.ToString(),
-        //        IdShort = meta.PackageId.ToString("s"),
-        //        GroupIdShort = meta.GroupId.ToString("s"),
-        //        SizeBytes = size,
-        //        SizeFormatted = SizeFormatter.ToString(size),
-        //        Seeders = seeders,
-        //        Leechers = leechers,
-        //        KnownNames = meta.Name,
-        //        CreatedSortValue = meta.CreatedUtc.Ticks,
-        //        CreatedFormatted = meta.CreatedUtc.ToLocalTime().ToString("g")
-        //    };
-
-
-        //    return (meta.GroupId, dto);
-        //}
-
-        //class PackageGroupMerge
-        //{
-        //    public PackageGroupMerge(LocalPackage p)
-        //    {
-        //        LocalPackage = p;
-        //    }
-
-        //    public PackageGroupMerge(RemotePackage p)
-        //    {
-        //        RemotePackage = p;
-        //    }
-
-        //    public Id PackageId => LocalPackage != null ? RemotePackage.PackageId : LocalPackage.Id;
-        //    public Id GroupId => LocalPackage != null ? RemotePackage.PackageMetadata.GroupId : LocalPackage.Metadata.GroupId;
-        //    public LocalPackage LocalPackage { get; set; }
-        //    public RemotePackage RemotePackage { get; set; }
-        //}
 
         public void PushEventToClients<T>(T eventData) where T : IClientEvent
         {

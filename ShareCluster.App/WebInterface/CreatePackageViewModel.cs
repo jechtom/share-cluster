@@ -16,5 +16,10 @@ namespace ShareCluster.WebInterface
         [JsonProperty("package_type")]
         public string PackageType { get; set; }
 
+        [JsonProperty("group_use")]
+        public bool GroupUse { get; set; }
+
+        [JsonProperty("group_id")]
+        public Id? GroupId { get; set; }
     }
 }

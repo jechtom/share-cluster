@@ -29,11 +29,11 @@ namespace ShareCluster.Packaging.IO
         public void Serialize(PackageContentDefinition value, Stream stream)
         {
             _serializer.Serialize<VersionNumber>(SerializerVersion, stream);
-            PackageDefinitionDto dto = SerializeToDto(value);
-            _serializer.Serialize<PackageDefinitionDto>(dto, stream);
+            PackageContentDefinitionDto dto = SerializeToDto(value);
+            _serializer.Serialize<PackageContentDefinitionDto>(dto, stream);
         }
 
-        public PackageContentDefinition Deserialize(Stream stream, Id packageId)
+        public PackageContentDefinition Deserialize(Stream stream)
         {
             if (stream == null)
             {
@@ -45,19 +45,19 @@ namespace ShareCluster.Packaging.IO
             FormatVersionMismatchException.ThrowIfDifferent(expectedVersion: SerializerVersion, version);
 
             // read data
-            PackageDefinitionDto dto = _serializer.Deserialize<PackageDefinitionDto>(stream);
+            PackageContentDefinitionDto dto = _serializer.Deserialize<PackageContentDefinitionDto>(stream);
 
             if (dto == null)
             {
                 throw new InvalidOperationException("No valid data in stream.");
             }
 
-            PackageContentDefinition result = DeserializeDto(dto, packageId);
+            PackageContentDefinition result = DeserializeDto(dto);
             
             return result;
         }
 
-        public PackageContentDefinition DeserializeDto(PackageDefinitionDto dto, Id packageId)
+        public PackageContentDefinition DeserializeDto(PackageContentDefinitionDto dto)
         {
             var splitInfo = new PackageSplitInfo(
                 baseInfo: new PackageSplitBaseInfo(
@@ -68,7 +68,7 @@ namespace ShareCluster.Packaging.IO
             );
 
             var result = new PackageContentDefinition(
-                packageId: dto.PackageId,
+                packageContentHash: dto.ContentHash,
                 packageSegmentsHashes: dto.PackageSegmentsHashes.ToImmutableArray(),
                 packageSplitInfo: splitInfo
             );
@@ -80,19 +80,14 @@ namespace ShareCluster.Packaging.IO
                 throw new HashMismatchException($"Invalid hash of package. Expected {expectedId:s} but actual is {result.PackageContentHash:s}", expectedId, result.PackageContentHash);
             }
 
-            if (packageId != result.PackageContentHash)
-            {
-                throw new HashMismatchException($"Given hash is for different package. Expected {packageId:s} but actual is {result.PackageContentHash:s}", expectedId, result.PackageContentHash);
-            }
-
             return result;
         }
 
-        public PackageDefinitionDto SerializeToDto(PackageContentDefinition value)
+        public PackageContentDefinitionDto SerializeToDto(PackageContentDefinition value)
         {
-            var dto = new PackageDefinitionDto(
+            var dto = new PackageContentDefinitionDto(
                 version: SerializerVersion,
-                packageId: value.PackageContentHash,
+                contentHash: value.PackageContentHash,
                 packageSize: value.PackageSize,
                 packageSegmentsHashes: value.PackageSegmentsHashes,
                 segmentLength: value.PackageSplitInfo.SegmentLength,

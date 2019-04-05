@@ -36,12 +36,12 @@ namespace ShareCluster.Packaging.PackageFolders
 
         public void UpdatePackageDownloadStatus(PackageDownloadStatus status)
         {
-            _manager.UpdateDownloadStatus(_reference, status, _packageDefinition);
+            _manager.UpdateDownloadStatusFile(_reference, status, _packageDefinition);
         }
 
         public void UpdatePackageMeta(PackageMetadata metadata)
         {
-            _manager.UpdateMetadata(_reference, metadata, _packageDefinition);
+            _manager.UpdateMetadataFile(_reference, metadata);
         }
 
         public IStreamController CreateReadAllPackageData()

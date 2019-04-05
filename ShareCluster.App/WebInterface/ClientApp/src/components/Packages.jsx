@@ -5,7 +5,7 @@ import * as Commands from '../actions/commands'
 import { connect } from 'react-redux'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
-const Packages = ({ data, local_packages_count, remote_packages_count, package_delete, package_verify, package_download, package_download_stop }) => {
+const Packages = ({ data, local_packages_count, remote_packages_count, package_delete, package_verify, package_download, package_download_stop, create_package_form_with_group }) => {
 
   const GridPackages = () => (
     <table class="table">
@@ -20,6 +20,11 @@ const Packages = ({ data, local_packages_count, remote_packages_count, package_d
       </tr>
     </thead>
     {data.groups.map(g => <tbody key={g.GroupId}>
+      <tr>
+        <td colSpan="6">
+          <BasicLink onClick={ (e) => create_package_form_with_group(g.GroupId, g.Name) } alt="Create new version"><FontAwesomeIcon icon="plus-circle" /></BasicLink>
+        </td>
+      </tr>
       {g.Packages.sort((i1, i2) => i1.CreatedSort > i2.CreatedSort).map(p => <tr key={p.Id}>
         <td>
           <FontAwesomeIcon icon="cube" /> { p.Name } <code class="small"><FontAwesomeIcon icon="hashtag" />{p.IdShort}</code>
@@ -74,7 +79,8 @@ const mapDispatchToProps = dispatch => ({
   package_delete: id => dispatch(Commands.package_delete(id)),
   package_verify: id => dispatch(Commands.package_verify(id)),
   package_download: id => dispatch(Commands.package_download(id)),
-  package_download_stop: id => dispatch(Commands.package_download_stop(id))
+  package_download_stop: id => dispatch(Commands.package_download_stop(id)),
+  create_package_form_with_group: (groupId,name) => dispatch(Commands.create_package_form_with_group(groupId,name))
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Packages);

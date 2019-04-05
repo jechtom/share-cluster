@@ -117,13 +117,13 @@ namespace ShareCluster.WebInterface
             return true;
         }
 
-        public void CreateNewPackage(string folder, string name)
+        public void CreateNewPackage(string folder, string name, Id? groupId)
         {
             if (!Directory.Exists(folder)) throw new InvalidOperationException("Folder does not exists.");
 
             // start
             var measureItem = new MeasureItem(MeasureType.Throughput);
-            var taskCreate = Task.Run(new Action(() => _packageManger.CreateAndRegisterPackageFromFolder(folder, name, null/*TODO allow to select*/, measureItem)));
+            var taskCreate = Task.Run(new Action(() => _packageManger.CreateAndRegisterPackageFromFolder(folder, name, groupId, measureItem)));
 
             // create and register task for starting download
             var task = new LongRunningTask(

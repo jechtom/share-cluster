@@ -140,7 +140,7 @@ namespace ShareCluster.WebInterface
         {
             _pushTarget.PushEventToClients(new EventPackagesChanged()
             {
-                Groups = _groups.Values.Select(g => g.CreateDto()).ToArray(),
+                Groups = _groups.Values.Select(g => g.CreateDto()).OrderBy(g => g.Name).ToArray(),
                 LocalPackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.LocalPackage != null),
                 RemotePackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.Seeders > 0)
             });
@@ -192,8 +192,24 @@ namespace ShareCluster.WebInterface
             {
                 GroupId = GroupId.ToString(),
                 GroupIdShort = GroupId.ToString("s"),
-                Packages = Packages.Values.Select(p => p.CreateDto()).ToArray()
+                Name = GetPreferredPackage().Metadata.Name,
+                Packages = Packages.Values.OrderByDescending(p => p.Metadata.CreatedUtc).Select(p => p.CreateDto()).ToArray()
             };
+
+            private PackageInfo GetPreferredPackage() =>
+                Packages.Values.Aggregate((PackageInfo)null, (candidate, current) =>
+                {
+                    // first
+                    if (candidate == null) return current;
+
+                    // prefer local over remote
+                    if (current.IsLocalPackage && !candidate.IsLocalPackage) return current;
+                    if (!current.IsLocalPackage && candidate.IsLocalPackage) return candidate;
+
+                    // then prefer newer over older
+                    if (current.Metadata.CreatedUtc > candidate.Metadata.CreatedUtc) return current;
+                    return candidate;
+                });
         }
 
         private class PackageInfo
@@ -206,6 +222,7 @@ namespace ShareCluster.WebInterface
 
             public PackageGroupInfo GroupInfo { get; }
             public PackageMetadata Metadata { get; }
+            public bool IsLocalPackage => LocalPackage != null;
             public LocalPackage LocalPackage { get; set; }
             public int Seeders { get; set; }
             public int Leechers { get; set; }

@@ -78,7 +78,13 @@ namespace ShareCluster.Network
             }
 
             // save to local storage
-            PackageContentDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition, packageMeta.PackageId);
+            PackageContentDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition);
+
+            if (packageDefinition.PackageContentHash != packageMeta.ContentHash)
+            {
+                throw new HashMismatchException($"Expected content should have content hash {packageMeta.ContentHash:s} but peer replied with {packageDefinition.PackageContentHash:s}", packageMeta.ContentHash, packageDefinition.PackageContentHash);
+            }
+
             return packageDefinition;
         }
     }

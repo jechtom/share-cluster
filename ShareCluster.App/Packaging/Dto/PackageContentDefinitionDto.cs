@@ -11,16 +11,16 @@ namespace ShareCluster.Packaging.Dto
     /// Identifies package by hash of its parts. This does NOT include local storage and metadata information.
     /// </summary>
     [ProtoContract]
-    public class PackageDefinitionDto
+    public class PackageContentDefinitionDto
     {
-        public PackageDefinitionDto()
+        public PackageContentDefinitionDto()
         {
         }
 
-        public PackageDefinitionDto(VersionNumber version, Id packageId, long packageSize, IEnumerable<Id> packageSegmentsHashes, long segmentLength, long dataFileLength)
+        public PackageContentDefinitionDto(VersionNumber version, Id contentHash, long packageSize, IEnumerable<Id> packageSegmentsHashes, long segmentLength, long dataFileLength)
         {
             Version = version;
-            PackageId = packageId;
+            ContentHash = contentHash;
             PackageSize = packageSize;
             PackageSegmentsHashes = packageSegmentsHashes ?? throw new ArgumentNullException(nameof(packageSegmentsHashes));
             SegmentLength = segmentLength;
@@ -31,7 +31,7 @@ namespace ShareCluster.Packaging.Dto
         public virtual VersionNumber Version { get; }
 
         [ProtoMember(2)]
-        public virtual Id PackageId { get; }
+        public virtual Id ContentHash { get; }
 
         [ProtoMember(3)]
         public virtual long PackageSize { get; }
