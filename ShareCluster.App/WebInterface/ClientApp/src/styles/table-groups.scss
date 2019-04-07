@@ -1,0 +1,54 @@
+$common-table-group-color: gray;
+$common-table-line-width: 0.5em;
+$common-table-line-thickness: 0.2em;
+$common-table-line-padding: 0.5em;
+
+@mixin common-table-group($top, $bottom) {
+    padding: 0;
+    position: relative;
+    &:before {
+        background-color: $common-table-group-color;
+        width: $common-table-line-thickness;
+        content: "";
+        position: absolute;
+        display: inline-block;
+        left: $common-table-line-padding;
+        overflow: hidden;
+
+        @if($top==1 and $bottom==0) {
+            top: 0;
+            height: 50%;
+        } 
+        @if($top==0 and $bottom==1) {
+            top: 50%;
+            height: 55%; // missing pixel if only 50%
+        } 
+        @if($top==1 and $bottom==1) {
+            top: 0;
+            height: 105%;  // missing pixel if only 100%
+        } 
+    }
+    
+    &:after {
+        background-color: $common-table-group-color;
+        width: $common-table-line-width;
+        height: $common-table-line-thickness;
+        content: "";
+        position: absolute;
+        display: inline-block;
+        left: $common-table-line-padding;
+        top: 50%;
+    }
+}
+
+.table-group-bottom {
+    @include common-table-group(1, 0);
+}
+
+.table-group-between {
+    @include common-table-group(1, 1);
+}
+
+.table-group-top {
+    @include common-table-group(0, 1);
+}

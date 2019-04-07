@@ -44,6 +44,7 @@ namespace ShareCluster.WebInterface
             _pushTarget.PushEventToClients(new EventPeersChanged()
             {
                 MyIdShort = _instanceId.Value.ToString("s"),
+                MyId = _instanceId.Value.ToString(),
                 Peers = _peerRegistry.Items.Values.Select(p => new PeerInfoDto()
                 {
                     Endpoint = p.PeerId.EndPoint.ToString(),

@@ -3,3 +3,11 @@
 
 // Required
 @import "~bootstrap/scss/bootstrap";
+
+// Table grouping visual
+@import "table-groups";
+
+// Other
+.copy-link {
+    cursor: copy;
+}

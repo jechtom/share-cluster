@@ -53,6 +53,7 @@ namespace ShareCluster.Network.Http
                 OnPrepareResponse = (context) =>
                 {
                     // make sure static files not cached
+                    // remark: wwwroot is copied to obj on run - it needs to be recompiled to apply newest files - it is not problem with caching - this can be removed if needed
                     context.Context.Response.Headers["Cache-Control"] = "no-cache, no-store";
                     context.Context.Response.Headers["Pragma"] = "no-cache";
                     context.Context.Response.Headers["Expires"] = "-1";

@@ -193,7 +193,7 @@ namespace ShareCluster.WebInterface
                 GroupId = GroupId.ToString(),
                 GroupIdShort = GroupId.ToString("s"),
                 Name = GetPreferredPackage().Metadata.Name,
-                Packages = Packages.Values.OrderByDescending(p => p.Metadata.CreatedUtc).Select(p => p.CreateDto()).ToArray()
+                Packages = Packages.Values.OrderBy(p => p.Metadata.CreatedUtc).Select(p => p.CreateDto()).ToArray()
             };
 
             private PackageInfo GetPreferredPackage() =>

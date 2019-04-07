@@ -1,5 +1,6 @@
 import { push } from 'connected-react-router'
 import { Post } from "../services/ApiClient";
+import { CopyToClipboard } from "../services/Clipboard";
 
 export const package_delete = (packageId) => ({
     type: "COMMAND_API",
@@ -23,6 +24,16 @@ export const package_verify = (packageId) => ({
     type: "COMMAND_API",
     operation: "PACKAGE_VERIFY",
     data: { packageId: packageId }
+})
+
+export const packages_search_change = (term) => ({
+    type: 'PACKAGES_SEARCH_CHANGE',
+    term: term
+})
+
+export const packages_search_reset = (term) => ({
+    type: 'PACKAGES_SEARCH_RESET',
+    term: term
 })
 
 export function create_package_form_with_group(groupId, groupName) {
@@ -58,7 +69,13 @@ export function create_package_form_submit(data) {
 }
 
 export function tasks_dismiss_all() {
-    return function(dispatch) {
+    return function() {
         Post("TASKS_DISMISS", {}, () => {});
+    }
+}
+
+export function clipboard_copy(text) {
+    return function() {
+        CopyToClipboard(text);
     }
 }
