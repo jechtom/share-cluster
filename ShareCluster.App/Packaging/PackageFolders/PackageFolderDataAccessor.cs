@@ -12,14 +12,14 @@ namespace ShareCluster.Packaging.PackageFolders
         private readonly ILoggerFactory _loggerFactory;
         private readonly PackageFolderRepository _manager;
         private readonly PackageContentDefinition _packageDefinition;
-        private readonly IPackageFolderReference _reference;
+        private readonly IPackageFolderReferenceWithId _reference;
         private readonly PackageFolderDataValidator _packageFolderDataValidator;
 
         public PackageFolderDataAccessor(
             ILoggerFactory loggerFactory,
             PackageFolderRepository manager,
             PackageContentDefinition packageDefinition,
-            IPackageFolderReference reference,
+            IPackageFolderReferenceWithId reference,
             PackageFolderDataValidator packageFolderDataValidator)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));

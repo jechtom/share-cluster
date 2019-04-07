@@ -11,35 +11,42 @@ const Packages = ({ data, local_packages_count, remote_packages_count, package_d
     <table class="table">
     <thead>
       <tr>
-        <th>Created</th>
-        <th>Name</th>
-        <th>Size</th>
-        <th>Remote availability</th>
+        <th></th>
         <th>Local copy</th>
         <th>Commands</th>
+        <th>Remote availability</th>
+        <th>Size</th>
+        <th>Created</th>
       </tr>
     </thead>
     {data.groups.map(g => <tbody key={g.GroupId}>
       <tr>
-        <td colSpan="6">
-          <BasicLink onClick={ (e) => create_package_form_with_group(g.GroupId, g.Name) } alt="Create new version"><FontAwesomeIcon icon="plus-circle" /></BasicLink>
+        <td>
+          Group <span class="badge badge-secondary"><FontAwesomeIcon icon="layer-group" /> #{g.GroupIdShort}</span>
+        </td>
+        <td>
+        </td>
+        <td>
+          <BasicLink onClick={ (e) => create_package_form_with_group(g.GroupId, g.Name) } alt="Create new version" className="m-2"><FontAwesomeIcon icon="folder-plus" /> Create new package to this group</BasicLink>
+        </td>
+        <td colSpan="3">
         </td>
       </tr>
-      {g.Packages.sort((i1, i2) => i1.CreatedSort > i2.CreatedSort).map(p => <tr key={p.Id}>
-        <td>
-          <FontAwesomeIcon icon="cube" /> { p.Name } <code class="small"><FontAwesomeIcon icon="hashtag" />{p.IdShort}</code>
+      {g.Packages.map(p => <tr key={p.Id} className={ p.IsDownloaded ? "table-success" : p.IsDownloading ? "table-warning" : "table-secondary" }>
+        <td className="pl-3">
+          Package <span class="badge badge-primary p-2 m-1"><FontAwesomeIcon icon="cube" /> #{p.IdShort}</span> { p.Name }
         </td>
-        <td>{ p.CreatedFormatted }</td>
-        <td>{ p.SizeFormatted }</td>
+        <td><FontAwesomeIcon icon={ p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }</td>
+        <td>
+          { p.IsLocal && <BasicLink onClick={ (e) => package_delete(p.Id) } alt="Delete" className="m-2"><FontAwesomeIcon icon="trash-alt" /> Delete</BasicLink>}
+          { p.IsDownloaded && <BasicLink onClick={ (e) => alert("N/A yet") } alt="Extract" className="m-2"><FontAwesomeIcon icon="box-open" /> Extract</BasicLink>}
+          { p.IsDownloaded && <BasicLink onClick={ (e) => package_verify(p.Id) } alt="Verify" className="m-2"><FontAwesomeIcon icon="hat-wizard" /> Verify</BasicLink>}
+          { p.IsDownloading && <BasicLink onClick={ (e) => package_download_stop(p.Id) } alt="Stop" className="m-2"><FontAwesomeIcon icon="stop-circle" /> Stop</BasicLink>}
+          { !p.IsLocal && <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download" className="m-2"><FontAwesomeIcon icon="arrow-alt-circle-down" /> Download</BasicLink>}
+        </td>
         <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders } seeders / { p.Leechers } leechers</td>
-        <td><FontAwesomeIcon icon={ p.IsLocal ? "check" : "times" }/> { p.IsLocal ? "Downloaded" : "Not downloaded" }</td>
-        <td>
-          <BasicLink onClick={ (e) => package_delete(p.Id) } alt="Delete"><FontAwesomeIcon icon="trash-alt" /></BasicLink>
-          <BasicLink onClick={ (e) => alert("N/A yet") } alt="Extract"><FontAwesomeIcon icon="box-open" /></BasicLink>
-          <BasicLink onClick={ (e) => package_verify(p.Id) } alt="Verify"><FontAwesomeIcon icon="hat-wizard" /></BasicLink>
-          <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download"><FontAwesomeIcon icon="file-download" /></BasicLink>
-          <BasicLink onClick={ (e) => package_download_stop(p.Id) } alt="Stop"><FontAwesomeIcon icon="stop-circle" /></BasicLink>
-        </td>
+        <td>{ p.SizeFormatted }</td>
+        <td>{ p.CreatedFormatted }</td>
       </tr>)}
     </tbody>)}
   </table> 

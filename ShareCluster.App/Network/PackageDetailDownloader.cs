@@ -27,8 +27,12 @@ namespace ShareCluster.Network
 
         public PackageContentDefinition DownloadDetailsForPackage(PackageMetadata packageMetadata)
         {
+            if (packageMetadata == null)
+            {
+                throw new ArgumentNullException(nameof(packageMetadata));
+            }
+
             PackageResponse response = null;
-            PackageMetadata packageMeta = null;
 
             // download package segments
             int counter = 0;
@@ -43,7 +47,7 @@ namespace ShareCluster.Network
                 // who got this?
                 var peersSource =
                     _peerRegistry.Items.Values
-                    .Where(p => p.RemotePackages.Items.ContainsKey(packageMeta.PackageId))
+                    .Where(p => p.RemotePackages.Items.ContainsKey(packageMetadata.PackageId))
                     .ToList();
 
                 if (!peersSource.Any())
@@ -55,19 +59,19 @@ namespace ShareCluster.Network
                 PeerInfo peer = peersSource.ElementAt(ThreadSafeRandom.Next(0, peersSource.Count));
 
                 // download package
-                _logger.LogInformation($"Downloading definition of package \"{packageMeta.Name}\" {packageMeta.PackageId:s} from peer {peer.EndPoint}.");
+                _logger.LogInformation($"Downloading definition of package \"{packageMetadata.Name}\" {packageMetadata.PackageId:s} from peer {peer.EndPoint}.");
                 try
                 {
-                    response = _client.GetPackage(peer.EndPoint, new PackageRequest(packageMeta.PackageId));
+                    response = _client.GetPackage(peer.EndPoint, new PackageRequest(packageMetadata.PackageId));
                     peer.HandlePeerCommunicationSuccess(PeerCommunicationDirection.TcpOutgoing);
                     if (response.Found)
                     {
-                        _logger.LogDebug($"Peer {peer} sent us catalog package {packageMeta}");
+                        _logger.LogDebug($"Peer {peer} sent us catalog package {packageMetadata}");
                         break; // found
                     }
 
                     // this mean we don't have current catalog from peer - it will be updated soon, so just try again
-                    _logger.LogDebug($"Peer {peer} don't know about catalog package {packageMeta}");
+                    _logger.LogDebug($"Peer {peer} don't know about catalog package {packageMetadata}");
                     continue;
                 }
                 catch (Exception e)
@@ -80,9 +84,9 @@ namespace ShareCluster.Network
             // save to local storage
             PackageContentDefinition packageDefinition = _packageDefinitionSerializer.DeserializeDto(response.Definition);
 
-            if (packageDefinition.PackageContentHash != packageMeta.ContentHash)
+            if (packageDefinition.PackageContentHash != packageMetadata.ContentHash)
             {
-                throw new HashMismatchException($"Expected content should have content hash {packageMeta.ContentHash:s} but peer replied with {packageDefinition.PackageContentHash:s}", packageMeta.ContentHash, packageDefinition.PackageContentHash);
+                throw new HashMismatchException($"Expected content should have content hash {packageMetadata.ContentHash:s} but peer replied with {packageDefinition.PackageContentHash:s}", packageMetadata.ContentHash, packageDefinition.PackageContentHash);
             }
 
             return packageDefinition;

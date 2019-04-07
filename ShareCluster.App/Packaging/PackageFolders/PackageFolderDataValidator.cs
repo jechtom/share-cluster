@@ -13,16 +13,18 @@ namespace ShareCluster.Packaging.PackageFolders
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly CryptoFacade _cryptoProvider;
+        private readonly PackageHashBuilder _packageHashBuilder;
         private readonly ILogger<PackageFolderDataValidator> _logger;
 
-        public PackageFolderDataValidator(ILoggerFactory loggerFactory, CryptoFacade cryptoProvider)
+        public PackageFolderDataValidator(ILoggerFactory loggerFactory, CryptoFacade cryptoProvider, PackageHashBuilder packageHashBuilder)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _cryptoProvider = cryptoProvider ?? throw new ArgumentNullException(nameof(cryptoProvider));
+            _packageHashBuilder = packageHashBuilder ?? throw new ArgumentNullException(nameof(packageHashBuilder));
             _logger = loggerFactory.CreateLogger<PackageFolderDataValidator>();
         }
 
-        public async Task<PackageDataValidatorResult> ValidatePackageAsync(IPackageFolderReference reference, LocalPackage package, MeasureItem measure)
+        public async Task<PackageDataValidatorResult> ValidatePackageAsync(IPackageFolderReferenceWithId reference, LocalPackage package, MeasureItem measure)
         {
             _logger.LogDebug($"Starting validation of package {package}.");
             PackageDataValidatorResult result = await ValidatePackageAsyncInternal(reference, package, measure);
@@ -37,7 +39,7 @@ namespace ShareCluster.Packaging.PackageFolders
             return result;
         }
 
-        private async Task<PackageDataValidatorResult> ValidatePackageAsyncInternal(IPackageFolderReference reference, LocalPackage package, MeasureItem measure)
+        private async Task<PackageDataValidatorResult> ValidatePackageAsyncInternal(IPackageFolderReferenceWithId reference, LocalPackage package, MeasureItem measure)
         {
             if (reference == null)
             {
@@ -49,9 +51,11 @@ namespace ShareCluster.Packaging.PackageFolders
                 throw new ArgumentNullException(nameof(package));
             }
 
-            if (reference.Id != package.Id)
+            // validate metadata package id
+            _packageHashBuilder.ValidateHashOfMetadata(package.Metadata);
+
+            if (reference.PackageId != package.Id)
             {
-                // remark: this can be implemented but don't need it now
                 throw new InvalidOperationException("Id mismatch between reference and package.");
             }
 
@@ -66,11 +70,11 @@ namespace ShareCluster.Packaging.PackageFolders
                 return PackageDataValidatorResult.WithError("Hashes file provided invalid count of segments that does not match with sequence.");
             }
 
-            // validate package hash calculated from segment hashes
-            Id calculatedPackageHash = _cryptoProvider.HashFromHashes(package.Definition.PackageSegmentsHashes);
-            if (!calculatedPackageHash.Equals(package.Id))
+            // validate content hash calculated from segment hashes
+            Id calculatedContentHash = _cryptoProvider.HashFromHashes(package.Definition.PackageSegmentsHashes);
+            if (!calculatedContentHash.Equals(package.Metadata.ContentHash))
             {
-                return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated package hash is {calculatedPackageHash:s} but expected is {package.Id:s}.");
+                return PackageDataValidatorResult.WithError($"Hash mismatch. Calculated content hash is {calculatedContentHash:s} but expected is {package.Metadata.ContentHash:s}.");
             }
 
             // before working with files - obtain lock to make sure package is not deleted on check

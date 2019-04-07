@@ -10,7 +10,7 @@ namespace ShareCluster.Packaging
         {
             PackageId = packageId;
             Name = name;
-            CreatedUtc = createdUtc;
+            CreatedUtc = DateTime.SpecifyKind(createdUtc, DateTimeKind.Utc);
             GroupId = groupId;
             ContentHash = contentHash;
             PackageSize = packageSize;

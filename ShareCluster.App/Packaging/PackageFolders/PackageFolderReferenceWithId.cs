@@ -5,15 +5,18 @@ using ShareCluster.Packaging.Dto;
 
 namespace ShareCluster.Packaging.PackageFolders
 {
-    public class PackageFolderReference : IPackageFolderReference
+    public class PackageFolderReferenceWithId : IPackageFolderReferenceWithId
     {
-        public PackageFolderReference(string directoryPath)
+        public PackageFolderReferenceWithId(Id packageId, string directoryPath)
         {
+            PackageId = packageId;
             FolderPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
         }
 
+        public Id PackageId { get; }
+
         public string FolderPath { get; }
 
-        public override string ToString() => $"At {FolderPath} (Id N/A)";
+        public override string ToString() => $"{PackageId:s} at {FolderPath}";
     }
 }

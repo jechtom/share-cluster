@@ -10,7 +10,7 @@ const Tasks = ({ any, any_to_dismiss, tasks, dismiss_all }) => {
   function ResolveAlertClass(t) {
     if(t.IsRunning) return "primary"
     if(t.IsSuccess) return "success"
-    return "alert"
+    return "danger"
   }
 
   function ResolveIcon(t) {
@@ -48,7 +48,7 @@ const Tasks = ({ any, any_to_dismiss, tasks, dismiss_all }) => {
 const mapStateToProps = state => ({
   tasks: state.Tasks.tasks,
   any: state.Tasks.tasks.length > 0,
-  any_to_dismiss: state.Tasks.tasks.some(t => t.IsSuccess)
+  any_to_dismiss: state.Tasks.tasks.some(t => !t.IsRunning)
 })
 
 const mapDispatchToProps = dispatch => ({

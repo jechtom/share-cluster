@@ -49,7 +49,7 @@ namespace ShareCluster.Packaging
             _logger.LogDebug($"Found {packageReference.Count} local package references.");
 
             // load package data
-            foreach (PackageFolderReference folderReference in packageReference)
+            foreach (PackageFolderReferenceWithId folderReference in packageReference)
             {
                 LocalPackage package = _packageFolderRepository.Load(folderReference);
                 result.Add(package);

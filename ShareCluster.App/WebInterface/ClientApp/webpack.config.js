@@ -1,22 +1,28 @@
 const HtmlWebPackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 var path = require("path");
-const devMode = process.env.NODE_ENV !== 'production'
 
-module.exports = {
+module.exports = (env, options) => {
+  // remark: for some reason env is undefined but options.mode is set
+  console.log("Init webpack. Env: " + options.mode)
+  const devServer = process.argv[1].indexOf('webpack-dev-server') !== -1;
+  const devMode = options.mode !== 'production'
+
+  return {
     output: {
       path: path.resolve(__dirname, "./../wwwroot/"),
       publicPath: "",
-      filename: "[name].bundle.js"
+      filename: devMode ? "[name].bundle.js" : "[name].[hash].bundle.js"
     },
     devServer: {
       contentBase: path.resolve(__dirname, "./../wwwroot/"),
       openPage: 'webpack-dev-server/index.html'
     },
-    entry: './src/app.js',
+    entry: [
+      './src/app.js'
+    ],
     module: {
       rules: [
-
         {
           test: /\.(js|jsx)$/,
           exclude: /node_modules/,
@@ -71,12 +77,18 @@ module.exports = {
     },
     plugins: [
       new HtmlWebPackPlugin({
-        template: "./src/index.html",
+        template: "./src/index.ejs",
         filename: "./index.html"
       }),
       new MiniCssExtractPlugin({
         filename: devMode ? '[name].css' : '[name].[hash].css',
         chunkFilename: devMode ? '[id].css' : '[id].[hash].css',
       })
-    ]
+    ],
+    externals: {
+      'Config': JSON.stringify({
+         serverUrl: devServer ? "localhost:13978" : "+"
+      })
+    }
   };
+};

@@ -11,10 +11,6 @@ const ServerStatus = ({ serverStatus }) => {
     )
 }
 
-// ServerStatus.propTypes = {
-//     state: PropTypes.isRequired
-// }
-
 const mapStateToProps = state => ({
     serverStatus: state.ServerStatus
 })

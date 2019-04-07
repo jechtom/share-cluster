@@ -55,12 +55,19 @@ namespace ShareCluster.Network.Http
 
         private static async Task WriteDataStreamAsync(HttpContext context, HttpCommonHeadersProcessor headersProcessor, DataResponseSuccess dataSuccess)
         {
-            var wrapper = new HttpContextHeadersWrapper(context);
-            headersProcessor.AddCommonHeaders(wrapper, HttpCommonHeadersProcessor.TypeHeaderForStream);
-            headersProcessor.AddSegmentsHeader(wrapper, dataSuccess.SegmentsInStream);
+            try
+            {
+                var wrapper = new HttpContextHeadersWrapper(context);
+                headersProcessor.AddCommonHeaders(wrapper, HttpCommonHeadersProcessor.TypeHeaderForStream);
+                headersProcessor.AddSegmentsHeader(wrapper, dataSuccess.SegmentsInStream);
 
-            context.Response.ContentType = "application/octet-stream";
-            await dataSuccess.Stream.CopyToAsync(context.Response.Body, context.RequestAborted);
+                context.Response.ContentType = "application/octet-stream";
+                await dataSuccess.Stream.CopyToAsync(context.Response.Body, context.RequestAborted);
+            }
+            finally
+            {
+                dataSuccess.Stream.Dispose();
+            }
         }
 
         private async Task SerializeProtoResponseAsync<T>(IMessageSerializer serializer, HttpCommonHeadersProcessor headersProcessor, HttpContext context, T response) where T : IMessage

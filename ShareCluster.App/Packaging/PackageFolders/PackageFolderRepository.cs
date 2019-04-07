@@ -91,7 +91,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 }
 
                 cnt++;
-                yield return new PackageFolderReference(packageId, packageDir);
+                yield return new PackageFolderReferenceWithId(packageId, packageDir);
             }
         }
 
@@ -103,7 +103,7 @@ namespace ShareCluster.Packaging.PackageFolders
             Directory.CreateDirectory(PackageRepositoryPath);
         }
 
-        public LocalPackage Load(IPackageFolderReference reference)
+        public LocalPackage Load(IPackageFolderReferenceWithId reference)
         {
             if (reference == null)
             {
@@ -157,7 +157,7 @@ namespace ShareCluster.Packaging.PackageFolders
                 }
                 packageContentDefinition = PackageContentDefinition.Build(_crypto, computeHashBehavior.BuildPackageHashes(), dataFilesController.ResultSplitInfo);
             }
-            var buildPathReference = new PackageFolderReference(packageContentDefinition.PackageContentHash, buildDirectory.FullName);
+            var buildPathReference = new PackageFolderReference(buildDirectory.FullName);
 
             // store package hashes
             UpdateContentDefinitionFile(buildPathReference, packageContentDefinition);
@@ -173,7 +173,7 @@ namespace ShareCluster.Packaging.PackageFolders
 
             // rename folder
             string packagePath = CreatePackagePath(metadata.PackageId);
-            var outputPathReference = new PackageFolderReference(packageContentDefinition.PackageContentHash, packagePath);
+            var outputPathReference = new PackageFolderReferenceWithId(metadata.PackageId, packagePath);
             if (Directory.Exists(packagePath))
             {
                 throw new InvalidOperationException($"Folder for package {packageContentDefinition.PackageContentHash:s} already exists. {packagePath}");
@@ -317,7 +317,7 @@ namespace ShareCluster.Packaging.PackageFolders
             // create directory
             EnsurePath();
             string packagePath = CreatePackagePath(metadata.PackageId);
-            var pathReference = new PackageFolderReference(contentDefinition.PackageContentHash, packagePath);
+            var pathReference = new PackageFolderReferenceWithId(metadata.PackageId, packagePath);
             if (Directory.Exists(packagePath))
             {
                 _logger.LogError("Can't add package with Id {0:s}. This hash already exists in local repository.", contentDefinition.PackageContentHash);

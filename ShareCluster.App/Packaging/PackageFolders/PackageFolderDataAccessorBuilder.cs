@@ -18,7 +18,7 @@ namespace ShareCluster.Packaging.PackageFolders
             _packageFolderDataValidator = packageFolderDataValidator ?? throw new ArgumentNullException(nameof(packageFolderDataValidator));
         }
 
-        public PackageFolderDataAccessor BuildFor(PackageFolderRepository packageFolderRepository, IPackageFolderReference reference, PackageContentDefinition packageDefinition)
+        public PackageFolderDataAccessor BuildFor(PackageFolderRepository packageFolderRepository, IPackageFolderReferenceWithId reference, PackageContentDefinition packageDefinition)
         {
             if (packageFolderRepository == null)
             {

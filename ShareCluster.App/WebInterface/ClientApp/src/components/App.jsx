@@ -1,6 +1,7 @@
 import React from "react";
 import WebSocketHandler from '../containers/WebSocketHandler.jsx';
 import ServerStatus from '../containers/ServerStatus.jsx';
+import MyId from '../containers/MyId.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import NavLink from "./NavLink.jsx";
 import { connect } from 'react-redux'
@@ -12,7 +13,7 @@ const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="navbar-brand">
-        <FontAwesomeIcon icon="th-large" /> ShareCluster 
+        <FontAwesomeIcon icon="th-large" /> ShareCluster
         <small className="ml-2">
           <ServerStatus />
         </small>
@@ -42,6 +43,7 @@ const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
           <span className="badge badge-secondary ml-3 p-2">
             <FontAwesomeIcon icon="angle-up" /> TBD MB/s
           </span>
+          <MyId className="small badge badge-info p-2 ml-3" />
         </div>
       </div>
     </nav>

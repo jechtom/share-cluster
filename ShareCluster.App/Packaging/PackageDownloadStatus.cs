@@ -211,13 +211,13 @@ namespace ShareCluster.Packaging
             lock (_syncLock)
             {
                 bool isDownloadedFully = IsDownloaded;
-                int segmentBytes = SegmentsBitmap.Length;
+                int segmentBytes = BitmapSizeInBytes;
                 int startSegmentByte = ThreadSafeRandom.Next(0, segmentBytes);
                 int currentSegmentByte = startSegmentByte;
                 while (true)
                 {
                     // only segments identified bit not yet downloaded bits are interesting
-                    int interestingBits = (~remoteBitmap[currentSegmentByte]);
+                    int interestingBits = (remoteBitmap[currentSegmentByte] ^ 0xFF);
 
                     // match with local bitmap
                     if (!isDownloadedFully)
@@ -225,8 +225,13 @@ namespace ShareCluster.Packaging
                         // exclude segments not yet locally downloaded
                         interestingBits &= SegmentsBitmap[currentSegmentByte];
                     }
+                    else if(isDownloadedFully && currentSegmentByte == segmentBytes - 1)
+                    {
+                        // mask last byte (if segments % 8 != 0 then in last byt not all bits are valid)
+                        interestingBits &= _lastByteMask;
+                    }
 
-                    if (interestingBits > 0)
+                    if (interestingBits != 0)
                     {
                         for (int bit = 0; bit < 8; bit++)
                         {
@@ -241,7 +246,7 @@ namespace ShareCluster.Packaging
                     }
 
                     // move next
-                    currentSegmentByte = (currentSegmentByte + 1) % SegmentsBitmap.Length;
+                    currentSegmentByte = (currentSegmentByte + 1) % segmentBytes;
                     if (currentSegmentByte == startSegmentByte) break;
                 }
             }

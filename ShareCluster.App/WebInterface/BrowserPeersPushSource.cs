@@ -17,14 +17,16 @@ namespace ShareCluster.WebInterface
         private readonly ILogger<BrowserPeersPushSource> _logger;
         private readonly IBrowserPushTarget _pushTarget;
         private readonly IPeerRegistry _peerRegistry;
+        private readonly InstanceId _instanceId;
         private bool _isAnyConnected;
         private readonly ThrottlingTimer _throttlingTimer;
 
-        public BrowserPeersPushSource(ILogger<BrowserPeersPushSource> logger, IBrowserPushTarget pushTarget, IPeerRegistry peerRegistry)
+        public BrowserPeersPushSource(ILogger<BrowserPeersPushSource> logger, IBrowserPushTarget pushTarget, IPeerRegistry peerRegistry, InstanceId instanceId)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _pushTarget = pushTarget ?? throw new ArgumentNullException(nameof(pushTarget));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _instanceId = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
             _throttlingTimer = new ThrottlingTimer(
                 minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(500),
                 maximumScheduleDelay: TimeSpan.FromMilliseconds(500),
@@ -41,9 +43,11 @@ namespace ShareCluster.WebInterface
         {
             _pushTarget.PushEventToClients(new EventPeersChanged()
             {
+                MyIdShort = _instanceId.Value.ToString("s"),
                 Peers = _peerRegistry.Items.Values.Select(p => new PeerInfoDto()
                 {
-                    Address = $"{p.PeerId.EndPoint}/{p.PeerId.InstanceId:s3}"
+                    Endpoint = p.PeerId.EndPoint.ToString(),
+                    IdShort = $"{p.PeerId.InstanceId:s}"
                 })
             });
         }

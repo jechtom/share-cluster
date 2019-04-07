@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.Extensions.FileProviders;
+using System.IO;
 
 namespace ShareCluster.Network.Http
 {
@@ -20,7 +22,6 @@ namespace ShareCluster.Network.Http
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<HttpFilterOnlyLocal>();
             services.AddCors();
             services.AddMvc();
         }
@@ -39,21 +40,35 @@ namespace ShareCluster.Network.Http
                 );
             }
 
-            app.UseStaticFiles();
-
-            app.UseWebSockets(new WebSocketOptions()
-            {
-                KeepAliveInterval = TimeSpan.FromSeconds(20)
-            });
-
+            // process regular APIs
             app.UseMiddleware<HttpApiServerMiddleware>();
 
-            app.MapWhen(p => p.Request.Path == "/ws", appWs => appWs.UseMiddleware<WebSocketHandlerMiddleware>());
+            // rest is only for local access - admin interface
+            app.UseMiddleware<LocalOnlyMiddleware>();
 
+            // static content with default page
+            app.UseDefaultFiles();
+            app.UseStaticFiles(new StaticFileOptions()
+            {
+                OnPrepareResponse = (context) =>
+                {
+                    // make sure static files not cached
+                    context.Context.Response.Headers["Cache-Control"] = "no-cache, no-store";
+                    context.Context.Response.Headers["Pragma"] = "no-cache";
+                    context.Context.Response.Headers["Expires"] = "-1";
+                }
+            });
+
+            // live push notifications - web sockets API
+            app.MapWhen(p => p.Request.Path == "/admin/ws", appWs => {
+                appWs.UseWebSockets();
+                appWs.UseMiddleware<WebSocketHandlerMiddleware>();
+            });
+
+            // commands API - REST API
             app.UseMvc(c =>
             {
-                c.MapRoute("DefaultWebInterface", "{action}", new { controller = "HttpWebInterface", action = "Index" });
-                c.MapRoute("ClientApi", "api-client/{action}", new { controller = "ClientApi" });
+                c.MapRoute("ClientApi", "admin/commands/{action}", new { controller = "ClientApi" });
             });
         }
     }

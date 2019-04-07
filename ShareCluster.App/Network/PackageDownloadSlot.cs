@@ -209,13 +209,10 @@ namespace ShareCluster.Network
 
             using (IStreamController packageWriterController = LocalPackage.DataAccessor.CreateWriteSpecificPackageData(_segmentsLock.AcceptParts))
             {
-
-                IEnumerable<RangeLong> filterRanges = BuildFilterRanges();
-
                 using (Stream packageWriterStream = _streamsFactory.CreateControlledStreamFor(packageWriterController))
                 using (HashStreamController validateController = _streamsFactory.CreateHashStreamController(hashValidateBehavior, packageWriterStream))
                 using (Stream validateStream = _streamsFactory.CreateControlledStreamFor(validateController, LocalPackage.DownloadMeasure))
-                using (FilterStreamController filterController = _streamsFactory.CreateFilterPartsStreamController(filterRanges, validateStream, closeNested: false))
+                using (FilterStreamController filterController = _streamsFactory.CreateFilterPartsStreamController(_segmentsLock.AcceptRanges, validateStream, closeNested: false))
                 using (Stream filterStream = _streamsFactory.CreateControlledStreamFor(filterController/* TODO measure peer download here with measure param*/))
                 {
                     long bytesDownloaded = -1;
@@ -261,11 +258,6 @@ namespace ShareCluster.Network
                     }
                 }
             }
-        }
-
-        private IEnumerable<RangeLong> BuildFilterRanges()
-        {
-            throw new NotImplementedException();
         }
 
         private void LockSegmentsAndBuildInfo(int[] incomingSegments)

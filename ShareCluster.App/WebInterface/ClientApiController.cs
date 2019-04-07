@@ -8,7 +8,6 @@ using System.Text;
 
 namespace ShareCluster.WebInterface
 {
-    [ServiceFilter(typeof(HttpFilterOnlyLocal))]
     public class ClientApiController : Controller
     {
         private readonly WebFacade _facade;
