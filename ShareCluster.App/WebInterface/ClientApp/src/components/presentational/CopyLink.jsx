@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 const CopyLink = ({textDisplay, textCopy, icon, className, clipboard_copy}) =>
     (
-        <span className={ "copy-link " + className } onClick={(e) => clipboard_copy(textCopy)}>
+        <span title="Click to copy to clipboard" className={ "copy-link " + className } onClick={(e) => clipboard_copy(textCopy)}>
             { icon !== undefined && <FontAwesomeIcon icon={icon} /> } {textDisplay}
         </span>
     );

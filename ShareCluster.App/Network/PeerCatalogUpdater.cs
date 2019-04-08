@@ -21,14 +21,16 @@ namespace ShareCluster.Network
         private readonly object _syncLock = new object();
         private readonly ILogger<PeerCatalogUpdater> _logger;
         private readonly HttpApiClient _apiClient;
+        private readonly PackageHashBuilder _packageHashBuilder;
         private readonly TaskSemaphoreQueue _updateLimitedQueue;
         private readonly HashSet<PeerId> _processing;
         const int _runningTasksLimit = 3;
 
-        public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, HttpApiClient apiClient)
+        public PeerCatalogUpdater(ILogger<PeerCatalogUpdater> logger, HttpApiClient apiClient, PackageHashBuilder packageHashBuilder)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _packageHashBuilder = packageHashBuilder ?? throw new ArgumentNullException(nameof(packageHashBuilder));
             _updateLimitedQueue = new TaskSemaphoreQueue(runningTasksLimit: _runningTasksLimit);
             _processing = new HashSet<PeerId>();
         }
@@ -91,8 +93,6 @@ namespace ShareCluster.Network
                 return;
             }
 
-            // TODO: validate package metadata hash - we can compute hash from metadata object
-
             IEnumerable<CatalogPackage> source = catalogResult.Packages ?? Enumerable.Empty<CatalogPackage>();
             IEnumerable<RemotePackage> remotePackageSource = source.Select(
                 catalogItem => new RemotePackage(
@@ -105,10 +105,26 @@ namespace ShareCluster.Network
                             contentHash: catalogItem.ContentHash,
                             packageSize: catalogItem.PackageSize
                         )
-                    ));
+                    )).ToArray();
 
+            // validate packages
+            foreach (RemotePackage remotePackage in remotePackageSource)
+            {
+                ValidateRemotePackage(remotePackage);
+            }
+
+            // update data
             peer.RemotePackages.Update(remotePackageSource);
             peer.Status.Catalog.UpdateLocalVersion(catalogResult.CatalogVersion);
+        }
+
+        private void ValidateRemotePackage(RemotePackage remotePackage)
+        {
+            _packageHashBuilder.ValidateHashOfMetadata(remotePackage.PackageMetadata);
+            if (remotePackage.PackageId != remotePackage.PackageMetadata.PackageId)
+            {
+                throw new HashMismatchException("Provided Id and metadata does not match.", remotePackage.PackageMetadata.PackageId, remotePackage.PackageId);
+            }
         }
     }
 }

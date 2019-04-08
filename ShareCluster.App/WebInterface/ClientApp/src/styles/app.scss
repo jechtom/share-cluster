@@ -7,7 +7,17 @@
 // Table grouping visual
 @import "table-groups";
 
-// Other
+// copy link component
 .copy-link {
     cursor: copy;
+}
+
+// show modal by default
+.modal {
+    display: block;
+}
+
+// semi-transparent modal backdrop instead of black
+.modal-backdrop {
+    background-color: rgba(0,0,0,.5);
 }

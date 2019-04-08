@@ -1,6 +1,3 @@
-import axios from "axios";
-import { uri_api } from '../constants'
-
 export default function CreatePackage(state = createInitialState(null, null), action) {
     switch (action.type) {
       case 'CREATE_PACKAGE_FORM_CHANGE':
@@ -23,6 +20,18 @@ export default function CreatePackage(state = createInitialState(null, null), ac
       case 'CREATE_PACKAGE_FORM_OK':
         console.log("Package create request has been accepted");
         return createInitialState();
+      case 'CREATE_PACKAGE_FORM_SUBMITTING':
+        return applyCustomRules({ 
+          ...state, 
+          is_sending: true,
+          error_message: null
+        });
+      case 'CREATE_PACKAGE_FORM_ERROR':
+        return applyCustomRules({ 
+          ...state, 
+          is_sending: false,
+          error_message: action.message
+        });
       default:
         return state;
     }
@@ -46,5 +55,7 @@ const createInitialState = () =>
     name: '', 
     path: '',
     name_custom: false,
-    package_type: "archive"
+    package_type: "archive",
+    is_sending: false,
+    error_message: null
   })

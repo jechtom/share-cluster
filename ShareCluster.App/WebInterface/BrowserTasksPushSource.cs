@@ -27,7 +27,7 @@ namespace ShareCluster.WebInterface
             _pushTarget = pushTarget ?? throw new ArgumentNullException(nameof(pushTarget));
             _tasksManager = tasksManager ?? throw new ArgumentNullException(nameof(tasksManager));
             _throttlingTimer = new ThrottlingTimer(
-                minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(1000),
+                minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(500),
                 maximumScheduleDelay: TimeSpan.FromMilliseconds(50),
                 (c) => PushAll());
             _tasksManager.TasksChanged += TasksManager_Changed;
@@ -65,13 +65,20 @@ namespace ShareCluster.WebInterface
 
         private TaskDto ParseToDto(LongRunningTask task)
         {
+            MeasureItem measure = task.Measure;
             TaskStatus status = task.Task.Status;
+            bool success = status == TaskStatus.RanToCompletion;
+            bool faulted = status == TaskStatus.Faulted;
+            bool running = !success && !faulted;
+
             var result = new TaskDto();
             result.Id = task.Id;
             result.Title = task.Title;
-            result.IsSuccess = status == TaskStatus.RanToCompletion;
-            result.IsFaulted = status == TaskStatus.Faulted;
-            result.IsRunning = !result.IsSuccess && !result.IsFaulted;
+            result.IsSuccess = success;
+            result.IsFaulted = faulted;
+            result.IsRunning = running;
+            result.MeasureText = (running && measure != null) ? measure.ValueFormatted : null;
+            result.DurationText = task.Elapsed.ToString("hh\\:mm\\:ss");
             return result;
         }
     }

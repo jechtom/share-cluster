@@ -9,10 +9,9 @@ namespace ShareCluster.WebInterface
     public class ExtractPackageViewModel
     {
         [Required]
-        public string Folder { get; set; }
+        public string Path { get; set; }
 
-        public bool DoValidate { get; set; }
-
-        public PackageOperationViewModel Package { get; set; }
+        [Required]
+        public Id PackageId { get; set; }
     }
 }

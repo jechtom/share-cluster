@@ -7,5 +7,7 @@
         public bool IsFaulted { get; set; }
         public bool IsRunning { get; set; }
         public string Title { get; set; }
+        public string MeasureText { get; set; }
+        public string DurationText { get; set; }
     }
 }

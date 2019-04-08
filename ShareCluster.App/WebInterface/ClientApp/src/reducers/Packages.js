@@ -6,7 +6,8 @@ export default function Packages(state = initialState(), action) {
           groups: [],
           groups_all: action.data.Groups,
           local_packages_count: action.data.LocalPackages,
-          remote_packages_count: action.data.RemotePackages
+          remote_packages_count: action.data.RemotePackages,
+          total_local_size_formatted: action.data.TotalLocalSizeFormatted
         });
       case 'PACKAGES_SEARCH_CHANGE':
         return doSearchOnState({
@@ -16,8 +17,22 @@ export default function Packages(state = initialState(), action) {
       case 'PACKAGES_SEARCH_RESET':
         return doSearchOnState({
           ...state,
-          search: resetSearh()
+          search: resetSearch()
         });
+      case 'PACKAGES_DELETE_MODAL':
+        return {
+          ...state,
+          delete_package_dialog: {
+            visible: true,
+            package_name: action.package_name,
+            package_id: action.package_id
+          }
+        };
+      case 'PACKAGE_DELETE_CANCEL':
+        return {
+          ...state,
+          delete_package_dialog: cancelDeletePackageDialog()
+        };
       default:
         return state;
     }
@@ -28,17 +43,25 @@ const initialState = () => ({
   groups_all: [],
   local_packages_count: 0, 
   remote_packages_count: 0, 
-  search: resetSearh()
+  total_local_size_formatted: "",
+  search: resetSearch(),
+  delete_package_dialog: cancelDeletePackageDialog()
 })
 
-const resetSearh = () => ({
+const resetSearch = () => ({
   term: "",
   is_active: false,
   type: "unknown"
 })
 
+const cancelDeletePackageDialog = () => ({
+  visible: false,
+  package_name: null,
+  package_id: null
+});
+
 const applySearch = (search, term) => {
-  if(term === "") return resetSearh();
+  if(term === "") return resetSearch();
 
   return {
     term: term,

@@ -19,8 +19,7 @@ const store = createStore(
   createRootReducer(history),
   applyMiddleware(
     routerMiddleware(history), 
-    thunk,
-    ApiServiceMiddleware
+    thunk
   )
 );
 

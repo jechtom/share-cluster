@@ -30,7 +30,7 @@ namespace ShareCluster.WebInterface
         {
             if (!ModelState.IsValid) return BadRequest();
             _facade.TryChangeDownloadPackage(request.PackageId, start: false);
-            return Ok();
+            return Ok(GenericResultDto.Ok);
         }
 
         [HttpPost, ActionName("PACKAGE_VERIFY")]
@@ -38,7 +38,7 @@ namespace ShareCluster.WebInterface
         {
             if (!ModelState.IsValid) return BadRequest();
             _facade.TryVerifyPackage(request.PackageId);
-            return Ok();
+            return Ok(GenericResultDto.Ok);
         }
 
         [HttpPost, ActionName("PACKAGE_DELETE")]
@@ -59,36 +59,38 @@ namespace ShareCluster.WebInterface
                 return View(package);
             }
 
-            return Ok();
+            return Ok(GenericResultDto.Ok);
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public IActionResult ExtractPackage(Id packageId, ExtractPackageViewModel viewModel)
+        [HttpPost, ActionName("EXTRACT_PACKAGE")]
+        public IActionResult ExtractPackage([FromBody] ExtractPackageViewModel viewModel)
         {
-            if (!ModelState.IsValid) return View();
+            if (!ModelState.IsValid) return BadRequest(GenericResultDto.Failed(
+                ModelState.SelectMany(ms => ms.Value.Errors).FirstOrDefault()?.ErrorMessage
+            ));
 
             PackageOperationViewModel package;
-            if ((package = _facade.GetPackageOrNull(packageId)) == null) return NotFound();
+            if ((package = _facade.GetPackageOrNull(viewModel.PackageId)) == null) return NotFound();
 
             try
             {
-                _facade.ExtractPackage(package.Id, viewModel.Folder, viewModel.DoValidate);
+                _facade.ExtractPackage(package.Id, viewModel.Path, validate: false);
             }
             catch (Exception e)
             {
                 ModelState.AddModelError(string.Empty, e.Message);
+                return BadRequest(error: GenericResultDto.Failed(e.Message));
             }
 
-            return Ok();
+            return Ok(GenericResultDto.Ok);
         }
 
         [HttpPost, ActionName("CREATE_PACKAGE")]
-        public CreatePackageResultDto CreatePackage([FromBody] CreatePackageViewModel viewModel)
+        public ObjectResult CreatePackage([FromBody] CreatePackageViewModel viewModel)
         {
-            if (!ModelState.IsValid) return new CreatePackageResultDto()
-            {
-                Error = ModelState.SelectMany(ms => ms.Value.Errors).FirstOrDefault()?.ErrorMessage
-            };
+            if (!ModelState.IsValid) return BadRequest(GenericResultDto.Failed(
+                ModelState.SelectMany(ms => ms.Value.Errors).FirstOrDefault()?.ErrorMessage
+            ));
 
             try
             {
@@ -97,23 +99,17 @@ namespace ShareCluster.WebInterface
             catch (Exception e)
             {
                 ModelState.AddModelError(string.Empty, e.Message);
-                return new CreatePackageResultDto()
-                {
-                    Error = e.Message
-                };
+                return BadRequest(error: GenericResultDto.Failed(e.Message));
             }
 
-            return new CreatePackageResultDto()
-            {
-                Success = true
-            };
+            return Ok(GenericResultDto.Ok);
         }
 
         [HttpPost, ActionName("TASKS_DISMISS")]
         public IActionResult ClearCompletedTasks()
         {
             _facade.CleanTasksHistory();
-            return Ok();
+            return Ok(GenericResultDto.Ok);
         }
     }
 }

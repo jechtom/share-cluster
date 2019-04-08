@@ -140,10 +140,18 @@ namespace ShareCluster.WebInterface
         {
             _pushTarget.PushEventToClients(new EventPackagesChanged()
             {
+                TotalLocalSizeFormatted = SizeFormatter.ToString(GetTotalLocalSizeFormatted()),
                 Groups = _groups.Values.Select(g => g.CreateDto()).OrderBy(g => g.Name).ToArray(),
                 LocalPackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.LocalPackage != null),
                 RemotePackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.Seeders > 0)
             });
+        }
+
+        private long GetTotalLocalSizeFormatted()
+        {
+            IImmutableDictionary<Id, LocalPackage> localPackages = _localPackageRegistry.LocalPackages;
+            if (!localPackages.Any()) return 0L;
+            return localPackages.Sum(lp => lp.Value.Metadata.PackageSize);
         }
 
         private PackageGroupInfo GetOrCreateGroup(Id groupId)

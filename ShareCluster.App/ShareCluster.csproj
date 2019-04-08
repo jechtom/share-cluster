@@ -33,9 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="WebInterface\Views\**">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="WebInterface\wwwroot\**">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

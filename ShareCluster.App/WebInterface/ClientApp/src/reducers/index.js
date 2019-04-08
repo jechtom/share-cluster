@@ -4,6 +4,7 @@ import Packages from './Packages'
 import ServerStatus from './ServerStatus'
 import Peers from './Peers'
 import CreatePackage from './CreatePackage'
+import ExtractPackage from './ExtractPackage'
 import Tasks from './Tasks'
 
 export default (history) => combineReducers({
@@ -12,6 +13,7 @@ export default (history) => combineReducers({
     Peers,
     ServerStatus,
     CreatePackage,
+    ExtractPackage,
     Tasks
 })
 

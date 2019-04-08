@@ -1,6 +1,8 @@
 import axios from "axios";
 import { uri_api } from '../constants'
 
+// remark: replaces with service ApiClient and redux-thunk
+
 const ApiServiceMiddleware = store => next => action => {
     next(action)
     switch (action.type) {

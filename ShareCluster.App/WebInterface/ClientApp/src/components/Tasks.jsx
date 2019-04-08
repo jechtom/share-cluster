@@ -20,19 +20,22 @@ const Tasks = ({ any, any_to_dismiss, tasks, dismiss_all }) => {
   }
   
   function ResolveState(t) {
-    if(t.IsRunning) return "Running task"
-    if(t.IsSuccess) return "Completed task"
-    return "Failed task"
+    if(t.IsRunning) {
+      return "Running for " + t.DurationText + "...";
+    } 
+    if(t.IsSuccess) return "Completed successfully in " + t.DurationText
+    return "Failed"
   }
 
   const RenderTasks = () => (
     <div>
       <div class="clearfix mb-2">
         {tasks.map(t => <div key={t.Id} className={"alert alert-" + ResolveAlertClass(t)}>
-          <FontAwesomeIcon icon={ResolveIcon(t)} className="mr-1" /> <strong>{ResolveState(t)}:</strong> {t.Title}
+          {t.Title}<br />
+          <FontAwesomeIcon icon={ResolveIcon(t)} className="mr-1" /> <strong>{ResolveState(t)}</strong> { t.MeasureText && <span>{ t.MeasureText }</span> }
           {/* { t.IsRunning || <button type="button" class="close" aria-label="Close" onClick={dismiss_all}><span aria-hidden="true">&times;</span></button> } */}
         </div>)}
-        { any_to_dismiss && <button onClick={dismiss_all} className="btn btn-secondary float-right">&times; Dismiss all completed</button>}
+        { any_to_dismiss && <button onClick={dismiss_all} className="btn btn-secondary float-left">&times; Dismiss all completed</button>}
       </div>
       <hr />
     </div>

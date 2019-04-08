@@ -14,15 +14,13 @@ namespace ShareCluster
         static int _counter = 0;
 
         Stopwatch _stopwatch;
-        Func<LongRunningTask, string> _progressFunc;
         
-        public LongRunningTask(string title, Task task, string successProgress = null, Func<LongRunningTask, string> progressFunc = null)
+        public LongRunningTask(string title, Task task)
         {
             if (string.IsNullOrEmpty(title)) throw new ArgumentException(nameof(title));
             Title = title;
             Id = Interlocked.Increment(ref _counter);
             Task = task ?? throw new ArgumentNullException(nameof(task));
-            _progressFunc = progressFunc ?? ((t) => "Running");
             _stopwatch = Stopwatch.StartNew();
 
             try
@@ -45,14 +43,20 @@ namespace ShareCluster
 
         public Task Task { get; }
 
-        public string Title { get; protected set; }
-
-        public virtual string ProgressText => _progressFunc(this);
+        public string Title { get; private set; }
 
         public TimeSpan Elapsed => _stopwatch.Elapsed;
+
+        public MeasureItem Measure { get; private set; }
 
         public override int GetHashCode() => Id;
 
         public override bool Equals(object obj) => ((LongRunningTask)obj).Id == Id;
+
+        public LongRunningTask WithMeasure(MeasureItem measure)
+        {
+            Measure = measure;
+            return this;
+        }
     }
 }

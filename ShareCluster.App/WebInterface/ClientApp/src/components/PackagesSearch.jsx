@@ -1,10 +1,7 @@
 import React, { Component } from "react";
-import { Link } from 'react-router-dom'
-import BasicLink from './presentational/BasicLink.jsx'
 import * as Commands from '../actions/commands'
 import { connect } from 'react-redux'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import CopyLink from './presentational/CopyLink.jsx'
 
 const PackagesSearch = ({ search, handle_term_change, handle_reset, handle_key_press }) => {
 

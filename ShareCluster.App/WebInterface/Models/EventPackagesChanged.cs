@@ -9,6 +9,7 @@ namespace ShareCluster.WebInterface.Models
         public IEnumerable<PackageGroupInfoDto> Groups { get; set; }
         public int LocalPackages { get; set; }
         public int RemotePackages { get; set; }
+        public string TotalLocalSizeFormatted { get; set; }
 
         public string ResolveEventName() => "PACKAGES_CHANGED";
     }

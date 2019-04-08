@@ -6,52 +6,61 @@ import { connect } from 'react-redux'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import CopyLink from './presentational/CopyLink.jsx'
 import PackagesSearch from './PackagesSearch.jsx'
+import PackagesModals from './PackagesModals.jsx'
 
-const Packages = ({ data, handle_search_reset, local_packages_count, remote_packages_count, package_delete, package_verify, package_download, package_download_stop, create_package_form_with_group }) => {
+const Packages = ({ 
+  data, 
+  handle_search_reset, 
+  local_packages_count, remote_packages_count, total_local_size_formatted, 
+  package_delete, package_verify, package_download, package_download_stop, package_extract, 
+  create_package_form_with_group, create_package_form_without_group }) => {
 
   const GridPackages = () => (
-    <table class="table table-borderless table-sm">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Commands</th>
-        <th>Local copy</th>
-        <th>Availability</th>
-        <th>Size</th>
-        <th>Created</th>
-      </tr>
-    </thead>
-    {data.groups.map(g => <tbody key={g.GroupId}>
-      {g.Packages.map((p,index) => <tr key={p.Id} className={ p.IsDownloaded ? "table-success" : p.IsDownloading ? "table-warning" : "table-secondary" }>
-        <td className={ " pl-4 " + ((index == 0) ? "table-group-top" : "table-group-between")}>
-          <CopyLink className="badge badge-primary p-1 m-1" icon="cube" textCopy={"package#" + p.Id} text={ "#" + p.IdShort} /> {p.Name}
-        </td>
-        <td>
-          { p.IsDownloaded && <BasicLink onClick={ (e) => alert("N/A yet") } alt="Extract" className="m-1"><FontAwesomeIcon icon="box-open" /> Extract</BasicLink>}
-          { p.IsDownloaded && <BasicLink onClick={ (e) => package_verify(p.Id) } alt="Verify" className="m-1"><FontAwesomeIcon icon="bug" /> Verify</BasicLink>}
-          { p.IsLocal && <BasicLink onClick={ (e) => package_delete(p.Id) } alt="Delete" className="m-1"><FontAwesomeIcon icon="trash-alt" /> Delete</BasicLink>}
-          { p.IsDownloading && <BasicLink onClick={ (e) => package_download_stop(p.Id) } alt="Stop" className="m-1"><FontAwesomeIcon icon="stop-circle" /> Stop</BasicLink>}
-          { !p.IsLocal && <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download" className="m-1"><FontAwesomeIcon icon="arrow-alt-circle-down" /> Download</BasicLink>}
-        </td>
-        <td><FontAwesomeIcon icon={ p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }</td>
-        <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders + p.IsDownloaded ? 1 : 0 } seeders / { p.Leechers + p.IsDownloading ? 1 : 0 } leechers</td>
-        <td>{ p.SizeFormatted }</td>
-        <td>{ p.CreatedFormatted }</td>
-      </tr>)}
-      <tr>
-        <td className="table-group-bottom">
-          {/* Group <span class="badge badge-secondary"><FontAwesomeIcon icon="layer-group" /> #{g.GroupIdShort}</span> */}
-          <BasicLink onClick={ (e) => create_package_form_with_group(g.GroupId, g.Name) } alt="Add new version" className="pl-3 m-1"><FontAwesomeIcon icon="folder-plus" /> Add new version</BasicLink>
-        </td>
-        <td>
-        </td>
-        <td>
-        </td>
-        <td colSpan="3">
-        </td>
-      </tr>
-    </tbody>)}
-  </table> 
+    <div>
+      <table class="table table-borderless table-sm">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Commands</th>
+          <th>Local copy</th>
+          <th>Availability</th>
+          <th>Size</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      {data.groups.map(g => <tbody key={g.GroupId}>
+        {g.Packages.map((p,index) => <tr key={p.Id} className={ p.IsDownloaded ? "table-success" : p.IsDownloading ? "table-warning" : "table-secondary" }>
+          <td className={ " pl-4 " + ((index == 0) ? "table-group-top" : "table-group-between")}>
+            <CopyLink className="badge badge-primary p-1 m-1" icon="cube" textCopy={"package#" + p.Id} text={ "#" + p.IdShort} /> {p.Name}
+          </td>
+          <td>
+            { p.IsDownloaded && <BasicLink onClick={ (e) => package_extract(p.Id, p.Name, p.SizeFormatted) } alt="Extract" className="m-1"><FontAwesomeIcon icon="box-open" /> Extract</BasicLink>}
+            { p.IsDownloaded && <BasicLink onClick={ (e) => package_verify(p.Id) } alt="Verify" className="m-1"><FontAwesomeIcon icon="bug" /> Verify</BasicLink>}
+            { p.IsLocal && <BasicLink onClick={ (e) => package_delete(p.Id, p.Name) } alt="Delete" className="m-1"><FontAwesomeIcon icon="trash-alt" /> Delete</BasicLink>}
+            { p.IsDownloading && <BasicLink onClick={ (e) => package_download_stop(p.Id) } alt="Stop" className="m-1"><FontAwesomeIcon icon="stop-circle" /> Stop</BasicLink>}
+            { !p.IsLocal && <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download" className="m-1"><FontAwesomeIcon icon="arrow-alt-circle-down" /> Download</BasicLink>}
+          </td>
+          <td><FontAwesomeIcon icon={ p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }</td>
+          <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders + p.IsDownloaded ? 1 : 0 } seeders / { p.Leechers + p.IsDownloading ? 1 : 0 } leechers</td>
+          <td>{ p.SizeFormatted }</td>
+          <td>{ p.CreatedFormatted }</td>
+        </tr>)}
+        <tr>
+          <td className="table-group-bottom">
+            {/* Group <span class="badge badge-secondary"><FontAwesomeIcon icon="layer-group" /> #{g.GroupIdShort}</span> */}
+            <BasicLink onClick={ (e) => create_package_form_with_group(g.GroupId, g.Name) } className="pl-3 m-1"><FontAwesomeIcon icon="folder-plus" /> Create new version</BasicLink>
+          </td>
+          <td>
+          </td>
+          <td>
+          </td>
+          <td colSpan="3">
+          </td>
+        </tr>
+      </tbody>)}
+    </table>
+    <BasicLink onClick={ (e) => create_package_form_without_group() } className="pl-3 m-1"><FontAwesomeIcon icon="folder-plus" /> Create new package</BasicLink>
+  </div> 
   )
 
   const RenderGrid = () => {
@@ -68,6 +77,8 @@ const Packages = ({ data, handle_search_reset, local_packages_count, remote_pack
             <FontAwesomeIcon icon="cube" /> {local_packages_count}
           </span> <span className="badge badge-secondary ml-2">
             <FontAwesomeIcon icon="network-wired" /> {remote_packages_count}
+          </span> <span className="badge badge-secondary ml-2">
+            <FontAwesomeIcon icon="hdd" /> { total_local_size_formatted }
           </span>
         </h2>
 
@@ -83,6 +94,8 @@ const Packages = ({ data, handle_search_reset, local_packages_count, remote_pack
       </div>
 
       <RenderGrid />
+
+      <PackagesModals />
     </div>
   )
 }
@@ -91,16 +104,19 @@ const mapStateToProps = state => ({
   data: state.Packages,
   search: state.Packages.search,
   local_packages_count: state.Packages.local_packages_count,
-  remote_packages_count: state.Packages.remote_packages_count
+  remote_packages_count: state.Packages.remote_packages_count,
+  total_local_size_formatted: state.Packages.total_local_size_formatted
 })
 
 const mapDispatchToProps = dispatch => ({
   handle_search_reset: () => dispatch(Commands.packages_search_reset()),
-  package_delete: id => dispatch(Commands.package_delete(id)),
+  package_delete: (id, name) => dispatch(Commands.packages_delete_modal(id,name)),
+  package_extract: (id, name, size) => dispatch(Commands.extract_package_form(id, name, size)),
   package_verify: id => dispatch(Commands.package_verify(id)),
   package_download: id => dispatch(Commands.package_download(id)),
   package_download_stop: id => dispatch(Commands.package_download_stop(id)),
-  create_package_form_with_group: (groupId,name) => dispatch(Commands.create_package_form_with_group(groupId,name))
+  create_package_form_with_group: (groupId,name) => dispatch(Commands.create_package_form_with_group(groupId,name)),
+  create_package_form_without_group: () => dispatch(Commands.create_package_form_without_group()),
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Packages);

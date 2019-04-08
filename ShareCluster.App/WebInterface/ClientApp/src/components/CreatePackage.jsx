@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import BasicLink from './presentational/BasicLink.jsx'
 import { Link } from 'react-router-dom'
 
-function CreatePackage({ state, handleChange, handleChangeCheck, handleChangeType, submit, handleWithoutGroup }) {
+function CreatePackage({ state, handleChange, handleChangeCheck, handleChangeType, submit, handleWithoutGroup, connected }) {
   const Header = () => {
     if(state.group_use) {
       return <div>
@@ -23,11 +23,12 @@ function CreatePackage({ state, handleChange, handleChangeCheck, handleChangeTyp
   return (
     <div>
       <Header />
-      <form id="create-package-form" className="row container-fluid" onSubmit={ event => submit(event, state)}>
+      <form id="create-package-form" className="row container-fluid pb-2" onSubmit={ event => submit(event, state)}>
         <div className="row">
-           <div className="form-group col-lg-8 col-md-12">
+          <div className="form-group col-lg-8 col-md-12">
             <label for="path">Folder or file path</label>
             <input
+              required
               type="text"
               name="path"
               className="form-control form-control-lg"
@@ -50,6 +51,7 @@ function CreatePackage({ state, handleChange, handleChangeCheck, handleChangeTyp
                 </div>
               </div>
               <input
+                  required
                   type="text"
                   name="name"
                   disabled={!state.name_custom}
@@ -70,21 +72,25 @@ function CreatePackage({ state, handleChange, handleChangeCheck, handleChangeTyp
             </div>
             <div className="radio">
               <label>
-                <input type="radio" name="package_type"value="reference" checked={state.package_type == "reference"} onChange={handleChangeType} />Create reference to folder
+                <input type="radio" name="package_type"value="reference" disabled checked={state.package_type == "reference"} onChange={handleChangeType} />Create reference to folder <i>(not yet supported)</i>
                 <small id="nameHelp" class="form-text text-muted">Only reference to given folder is created. This is recommended for large immutable files - like archives or disk images. Smaller files in folder can make upload slower and any changes to data will result in broken package (cannot be downloaded).</small>
               </label>
             </div>
           </div>
         </div>
-        <button type="submit" className="btn btn-primary">Create and publish package</button>
+        <button type="submit" className="btn btn-primary" disabled={!connected || state.is_sending} >Create and publish package</button>
       </form>
+      { state.error_message && <div className="alert alert-danger">
+          <FontAwesomeIcon icon="exclamation-circle" /> {state.error_message}
+      </div> }
     </div>)
   }
 
 
 
 const mapStateToProps = state => ({
-    state: state.CreatePackage
+    state: state.CreatePackage,
+    connected: state.ServerStatus.connected
 })
 
 const mapDispatchToProps = dispatch => ({

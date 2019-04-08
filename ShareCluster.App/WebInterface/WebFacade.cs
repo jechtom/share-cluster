@@ -82,12 +82,10 @@ namespace ShareCluster.WebInterface
                 });
 
             // create and register task for starting download
-            var task = new LongRunningTask(
-                    $"Validation of \"{package.Metadata.Name}\" {package.Id:s}",
-                    extractTask,
-                    $"Package is valid.",
-                    t => $"Validating {measureItem.ValueFormatted}"
-                );
+            LongRunningTask task = new LongRunningTask(
+                    $"Validate package \"{package.Metadata.Name}\" {package.Id:s}",
+                    extractTask
+                ).WithMeasure(measureItem);
 
             // register
             _tasks.AddTaskToQueue(task);
@@ -126,12 +124,10 @@ namespace ShareCluster.WebInterface
             var taskCreate = Task.Run(new Action(() => _packageManger.CreateAndRegisterPackageFromFolder(folder, name, groupId, measureItem)));
 
             // create and register task for starting download
-            var task = new LongRunningTask(
-                    $"Started creating new package from: \"{folder}\"",
-                    taskCreate,
-                    $"Package has been created.",
-                    (t) => $"Writing {measureItem.ValueFormatted}"
-                );
+            LongRunningTask task = new LongRunningTask(
+                    $"Create new package from \"{folder}\"",
+                    taskCreate
+            ).WithMeasure(measureItem);
 
             // register
             _tasks.AddTaskToQueue(task);
@@ -147,10 +143,9 @@ namespace ShareCluster.WebInterface
 
             // create and register task for starting download
             var task = new LongRunningTask(
-                    validate ? $"Validating and extracting \"{package.Metadata.Name}\" {package.Id:s} to: {folder}"
-                        : $"Extracting \"{package.Metadata.Name}\" {package.Id:s} to: {folder}",
-                    extractTask,
-                    $"Success"
+                    validate ? $"Validation and extraction of package \"{package.Metadata.Name}\" {package.Id:s} to: {folder}"
+                        : $"Extraction of package \"{package.Metadata.Name}\" {package.Id:s} to: {folder}",
+                    extractTask
                 );
 
             // register
@@ -166,9 +161,8 @@ namespace ShareCluster.WebInterface
 
             // create and register task for starting download
             var task = new LongRunningTask(
-                    $"Deleting package \"{package.Metadata.Name}\" {package.Id:s}",
-                    deleteTask,
-                    $"Package has been deleted"
+                    $"Delete package \"{package.Metadata.Name}\" {package.Id:s}",
+                    deleteTask
                 );
 
             // register
