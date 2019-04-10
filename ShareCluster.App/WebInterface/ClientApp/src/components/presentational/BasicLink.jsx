@@ -1,18 +1,20 @@
 import React from "react";
-import PropTypes from "prop-types";
+import { connect } from 'react-redux'
 
-class Link extends React.Component {
-  render() {
-      return(
-          <a className={this.props} onClick={this.props.onClick} {...this.props} href="#">
-              {this.props.children}
-          </a>
-      );
-  }
+const BasicLink = ({ ownProps, handleClick }) => {
+  return(
+      <a {...ownProps} onClick={handleClick} href="#">
+          {ownProps.children}
+      </a>
+  );
 }
 
-Link.contextTypes = {
-  router: PropTypes.object
-};
+const mapStateToProps = (state, ownProps) => ({
+  ownProps: ownProps
+})
 
-export default Link;
+const mapDispatchToProps = (dispatch, ownProps) => ({
+  handleClick: (event) => { ownProps.onClick(event); event.preventDefault(); }
+})
+
+export default connect(mapStateToProps, mapDispatchToProps)(BasicLink);

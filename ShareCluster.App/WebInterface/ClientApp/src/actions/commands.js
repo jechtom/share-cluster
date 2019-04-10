@@ -74,7 +74,6 @@ export const create_package_form_change = (id, value) => ({
 
 export function create_package_form_ok() {
     return function(dispatch) {
-        console.log("create_package_form_ok");
         dispatch(push("/packages"));
         dispatch({type: "CREATE_PACKAGE_FORM_OK"});
     };

@@ -14,14 +14,7 @@ import { routerMiddleware, ConnectedRouter } from 'connected-react-router'
 
 import './fontawesome-loader'
 
-export const history = createHashHistory()
-const store = createStore(
-  createRootReducer(history),
-  applyMiddleware(
-    routerMiddleware(history), 
-    thunk
-  )
-);
+const store = configureStore(null /* provide initial state if any */)
 
 render(
   <Provider store={store}>
