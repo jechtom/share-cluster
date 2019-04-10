@@ -105,8 +105,6 @@ export function create_package_form_submit(data) {
 
 ///////// TASKS
 
-///////// TASKS
-
 export function tasks_dismiss_all() {
     return function() {
         Post("TASKS_DISMISS", {}, () => {});

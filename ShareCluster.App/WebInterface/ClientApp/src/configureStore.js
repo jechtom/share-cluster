@@ -3,6 +3,7 @@ import thunk from 'redux-thunk';
 import createRootReducer from './reducers'
 import { createHashHistory } from 'history'
 import { routerMiddleware } from 'connected-react-router'
+import RedirectMiddleware from './middlewares/RedirectMiddleware'
 
 export const history = createHashHistory()
 
@@ -11,8 +12,9 @@ export default function configureStoreAndHistory() {
     createRootReducer(history),
     compose(
       applyMiddleware(
-        routerMiddleware(history), 
-        thunk
+        RedirectMiddleware,
+        thunk,
+        routerMiddleware(history)
       )
     )
   );

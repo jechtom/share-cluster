@@ -8,6 +8,7 @@ import { connect } from 'react-redux'
 import Routes from './Routes.jsx'
 import Tasks from './Tasks.jsx'
 import { Link } from 'react-router-dom'
+import { withRouter } from "react-router";
 
 const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
   <div>
@@ -67,4 +68,4 @@ const mapStateToProps = state => ({
   remote_packages_count: state.Packages.remote_packages_count
 })
 
-export default connect(mapStateToProps)(App);
+export default withRouter(connect(mapStateToProps)(App));
