@@ -38,6 +38,11 @@ namespace ShareCluster.WebInterface
 
             _localPackageRegistry.VersionChanged += _localPackageRegistry_VersionChanged;
             _peerRegistry.Changed += _peerRegistry_Changed;
+            _peerRegistry_Changed(_peerRegistry, DictionaryChangedEvent<PeerId, PeerInfo>.FromNullableEnumerable(
+                    added: peerRegistry.Items,
+                    removed: null,
+                    changed: null
+                ));
         }
 
         private void _peerRegistry_Changed(object sender, DictionaryChangedEvent<PeerId, PeerInfo> e)
