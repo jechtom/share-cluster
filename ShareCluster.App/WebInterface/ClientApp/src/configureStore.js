@@ -1,4 +1,4 @@
-import { createStore, applyMiddleware } from 'redux'
+import { createStore, applyMiddleware, compose } from 'redux'
 import thunk from 'redux-thunk';
 import createRootReducer from './reducers'
 import { createHashHistory } from 'history'
@@ -6,10 +6,9 @@ import { routerMiddleware } from 'connected-react-router'
 
 export const history = createHashHistory()
 
-export default function configureStore(preloadState) {
+export default function configureStoreAndHistory() {
   const store = createStore(
     createRootReducer(history),
-    preloadState,
     compose(
       applyMiddleware(
         routerMiddleware(history), 
@@ -18,5 +17,5 @@ export default function configureStore(preloadState) {
     )
   );
 
-  return store;
+  return { store, history };
 }

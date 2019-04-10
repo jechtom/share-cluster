@@ -2,6 +2,8 @@ import { push } from 'connected-react-router'
 import { Post } from "../services/ApiClient";
 import { CopyToClipboard } from "../services/Clipboard";
 
+///////// PACKAGE OPERATIONS
+
 export function package_download(packageId) {
     return function() {
         Post("PACKAGE_DOWNLOAD", { packageId: packageId });
@@ -20,6 +22,8 @@ export function package_verify(packageId) {
     }
 }
 
+///////// PACKAGE SEARCH
+
 export const packages_search_change = (term) => ({
     type: 'PACKAGES_SEARCH_CHANGE',
     term: term
@@ -29,6 +33,8 @@ export const packages_search_reset = (term) => ({
     type: 'PACKAGES_SEARCH_RESET',
     term: term
 })
+
+///////// PACKAGE DELETE
 
 export const packages_delete_modal = (package_id, package_name) => ({
     type: 'PACKAGES_DELETE_MODAL',
@@ -45,6 +51,8 @@ export function packages_delete(package_id) {
         Post("PACKAGE_DELETE", { packageId: package_id }, () => dispatch(packages_delete_cancel()));
     }
 }
+
+///////// CREATE PACKAGE
 
 export function create_package_form_with_group(groupId, groupName) {
     return function(dispatch) {
@@ -95,17 +103,25 @@ export function create_package_form_submit(data) {
     }
 }
 
+///////// TASKS
+
+///////// TASKS
+
 export function tasks_dismiss_all() {
     return function() {
         Post("TASKS_DISMISS", {}, () => {});
     }
 }
 
+///////// CLIPBOARD
+
 export function clipboard_copy(text) {
     return function() {
         CopyToClipboard(text);
     }
 }
+
+///////// EXTRACT PACKAGE
 
 export function extract_package_form(packageId, packageName, sizeFormatted) {
     return function(dispatch) {

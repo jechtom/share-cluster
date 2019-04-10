@@ -11,7 +11,7 @@ export default function ExtractPackage(state = createInitialState(), action) {
         return { ...state, [action.id]: action.value };
       case 'EXTRACT_PACKAGE_FORM_OK':
         console.log("Package create request has been accepted");
-        return state;
+        return createInitialState();
       case 'EXTRACT_PACKAGE_FORM_SUBMITTING':
         return { 
           ...state, 
