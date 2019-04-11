@@ -214,7 +214,7 @@ namespace ShareCluster.Packaging
                 int segmentBytes = BitmapSizeInBytes;
                 int startSegmentByte = ThreadSafeRandom.Next(0, segmentBytes);
                 int currentSegmentByte = startSegmentByte;
-                while (true)
+                while (result.Count < maximumCount)
                 {
                     // only segments identified bit not yet downloaded bits are interesting
                     int interestingBits = (remoteBitmap[currentSegmentByte] ^ 0xFF);

@@ -9,6 +9,22 @@ export default function Packages(state = initialState(), action) {
           remote_packages_count: action.data.RemotePackages,
           total_local_size_formatted: action.data.TotalLocalSizeFormatted
         });
+      case 'PROGRESS_CHANGED':
+        if(action.data.Events.length == 0) return state;
+
+        var newGroups =  Array.from(state.groups_all);
+
+        action.data.Events.forEach(ev => {
+          var index = findWithAttr(newGroups, "Id", ev.PackageId);
+          if(index != -1) {
+            newGroups[index].progress = ev;
+          }
+        });  
+
+        return doSearchOnState({
+          ...state,
+          groups_all: newGroups
+        });
       case 'PACKAGES_SEARCH_CHANGE':
         return doSearchOnState({
           ...state,
@@ -37,6 +53,15 @@ export default function Packages(state = initialState(), action) {
         return state;
     }
   }
+
+function findWithAttr(array, attr, value) {
+  for(var i = 0; i < array.length; i += 1) {
+      if(array[i][attr] === value) {
+          return i;
+      }
+  }
+  return -1;
+}
 
 const initialState = () => ({
   groups: [], 

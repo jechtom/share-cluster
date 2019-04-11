@@ -40,7 +40,15 @@ const Packages = ({
             { p.IsDownloading && <BasicLink onClick={ (e) => package_download_stop(p.Id) } alt="Stop" className="m-1"><FontAwesomeIcon icon="stop-circle" /> Stop</BasicLink>}
             { (!p.IsLocal || p.IsDownloadingPaused) && <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download" className="m-1"><FontAwesomeIcon icon="arrow-alt-circle-down" /> Download</BasicLink>}
           </td>
-          <td><FontAwesomeIcon icon={ p.IsDownloadingPaused ? "pause" : p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloadingPaused ? "Download paused" : p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }</td>
+          <td>
+            <FontAwesomeIcon icon={ p.IsDownloadingPaused ? "pause" : p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloadingPaused ? "Download paused" : p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }
+            { p.IsDownloading && p.progress != null && <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style={"width: " + p.progress.ProgressPercent + "%;"} aria-valuenow={p.progress.ProgressPercent} aria-valuemin="0" aria-valuemax="100">{p.progress.ProgressFormatted}</div>
+            </div>}
+            { p.IsDownloadingPaused && p.progress != null && <div class="progress">
+              <div class="progress-bar progress-bar-striped bg-warning" role="progressbar" style={"width: " + p.progress.ProgressPercent + "%;"} aria-valuenow={p.progress.ProgressPercent} aria-valuemin="0" aria-valuemax="100">{p.progress.ProgressFormatted}</div>
+            </div>}
+          </td>
           <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders + (p.IsDownloaded ? 1 : 0) } seeders / { p.Leechers + (p.IsDownloading ? 1 : 0) } leechers</td>
           <td>{ p.SizeFormatted }</td>
           <td>{ p.CreatedFormatted }</td>

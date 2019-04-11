@@ -196,6 +196,12 @@ namespace ShareCluster.Network
                     _segmentsLock.IncomingParts.Format(), _segmentsLock.AcceptParts.Format(), SizeFormatter.ToString(_segmentsLock.TotalBytesAccepted));
             }
 
+            if(_segmentsLock.TotalBytesAccepted == 0)
+            {
+                _logger.LogDebug("Accepting 0 bytes. This can happen time to time in random cases as requests returns exactly same results.");
+                return;
+            }
+
             // process:
             // +----------+    +--------+    +----------+    +----------------+
             // | incoming | => | filter | => | validate | => | package writer |
@@ -281,7 +287,7 @@ namespace ShareCluster.Network
                 // if part is accepted, add it to lists
                 if (acceptingSegmentsBitmap[i])
                 {
-                    acceptSegments.Add(i);
+                    acceptSegments.Add(incomingSegments[i]);
                     acceptRanges.Add(new RangeLong(incomingStreamPosition, partLength));
                     totalAcceptingSize += partLength;
                 }

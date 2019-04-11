@@ -17,7 +17,7 @@ namespace ShareCluster
 
         public MeasureItem(MeasureType measureType)
         {
-            _measureLimit = TimeSpan.FromSeconds(5);
+            _measureLimit = TimeSpan.FromSeconds(2);
             _stopwatch = Stopwatch.StartNew();
             MeasureType = measureType;
         }
