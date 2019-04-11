@@ -22,19 +22,27 @@ namespace ShareCluster.WebInterface
         private readonly IBrowserPushTarget _pushTarget;
         private readonly ILocalPackageRegistry _localPackageRegistry;
         private readonly IPeerRegistry _peerRegistry;
+        private readonly PackageDownloadManager _downloadManager;
         private bool _isAnyConnected;
         private readonly ThrottlingTimer _throttlingTimer;
+        private readonly ThrottlingTimer _throttlingTimerProgress;
 
-        public BrowserPackagesPushSource(ILogger<BrowserPackagesPushSource> logger, IBrowserPushTarget pushTarget, ILocalPackageRegistry localPackageRegistry, IPeerRegistry peerRegistry)
+        public BrowserPackagesPushSource(ILogger<BrowserPackagesPushSource> logger, IBrowserPushTarget pushTarget, ILocalPackageRegistry localPackageRegistry, IPeerRegistry peerRegistry, PackageDownloadManager downloadManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _pushTarget = pushTarget ?? throw new ArgumentNullException(nameof(pushTarget));
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
             _peerRegistry = peerRegistry ?? throw new ArgumentNullException(nameof(peerRegistry));
+            _downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
             _throttlingTimer = new ThrottlingTimer(
                 minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(2000),
                 maximumScheduleDelay: TimeSpan.FromMilliseconds(1000),
                 (c) => RegenerateAndPush());
+
+            _throttlingTimerProgress = new ThrottlingTimer(
+                minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(1000),
+                maximumScheduleDelay: TimeSpan.FromMilliseconds(0),
+                (c) => ProgressPushLoop());
 
             _localPackageRegistry.VersionChanged += _localPackageRegistry_VersionChanged;
             _peerRegistry.Changed += _peerRegistry_Changed;
@@ -44,6 +52,7 @@ namespace ShareCluster.WebInterface
                     changed: null
                 ));
         }
+
 
         private void _peerRegistry_Changed(object sender, DictionaryChangedEvent<PeerId, PeerInfo> e)
         {
@@ -99,8 +108,12 @@ namespace ShareCluster.WebInterface
         {
             lock (_syncLock)
             {
-                if(!_isAnyConnected) Regenerate();
-                _isAnyConnected = true;
+                if (!_isAnyConnected)
+                {
+                    _isAnyConnected = true;
+                    Regenerate();
+                    ScheduleProgressPushLoop();
+                }
                 PushAll();
             }
         }
@@ -112,6 +125,12 @@ namespace ShareCluster.WebInterface
             _throttlingTimer.Schedule();
         }
 
+        private void ScheduleProgressPushLoop()
+        {
+            if (!_isAnyConnected) return; // ignore if there are no browsers connected
+            _throttlingTimerProgress.Schedule();
+        }
+
         private void RegenerateAndPush()
         {
             Regenerate();
@@ -120,36 +139,58 @@ namespace ShareCluster.WebInterface
 
         private void Regenerate()
         {
-            _groups.Clear();
-
-            // local packages
-            foreach (LocalPackage package in _localPackageRegistry.LocalPackages.Values)
+            lock (_syncLock)
             {
-                PackageInfo packageInfo = GetOrCreatePackageInfo(package.Metadata);
-                packageInfo.LocalPackage = package;
-            }
+                _groups.Clear();
 
-            // remote packages
-            foreach (PeerInfo peer in _peerRegistry.Items.Values)
-            {
-                foreach(RemotePackage remotePackage in peer.RemotePackages.Items.Values)
+                // local packages
+                foreach (LocalPackage package in _localPackageRegistry.LocalPackages.Values)
                 {
-                    PackageInfo packageInfo = GetOrCreatePackageInfo(remotePackage.PackageMetadata);
-                    if (remotePackage.IsSeeder) packageInfo.Seeders++;
-                    if (!remotePackage.IsSeeder) packageInfo.Leechers++;
+                    PackageInfo packageInfo = GetOrCreatePackageInfo(package.Metadata);
+                    packageInfo.LocalPackage = package;
+                }
+
+                // remote packages
+                foreach (PeerInfo peer in _peerRegistry.Items.Values)
+                {
+                    foreach (RemotePackage remotePackage in peer.RemotePackages.Items.Values)
+                    {
+                        PackageInfo packageInfo = GetOrCreatePackageInfo(remotePackage.PackageMetadata);
+                        if (remotePackage.IsSeeder) packageInfo.Seeders++;
+                        if (!remotePackage.IsSeeder) packageInfo.Leechers++;
+                    }
                 }
             }
         }
         
         private void PushAll()
         {
-            _pushTarget.PushEventToClients(new EventPackagesChanged()
+            lock (_syncLock)
             {
-                TotalLocalSizeFormatted = SizeFormatter.ToString(GetTotalLocalSizeFormatted()),
-                Groups = _groups.Values.Select(g => g.CreateDto()).OrderBy(g => g.Name).ToArray(),
-                LocalPackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.LocalPackage != null),
-                RemotePackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.Seeders > 0)
-            });
+                _pushTarget.PushEventToClients(new EventPackagesChanged()
+                {
+                    TotalLocalSizeFormatted = SizeFormatter.ToString(GetTotalLocalSizeFormatted()),
+                    Groups = _groups.Values.Select(g => g.CreateDto(_downloadManager)).OrderBy(g => g.Name).ToArray(),
+                    LocalPackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.LocalPackage != null),
+                    RemotePackages = _groups.Values.SelectMany(g => g.Packages).Count(p => p.Value.Seeders > 0)
+                });
+            }
+        }
+
+        private void ProgressPushLoop()
+        {
+            lock (_syncLock)
+            {
+                if (_downloadManager.Downloads.Any())
+                {
+                    _pushTarget.PushEventToClients(new EventPackagesChangedPartial()
+                    {
+                        Groups = _groups.Values.Select(g => g.CreateDto(_downloadManager)).OrderBy(g => g.Name).ToArray(),
+                    });
+                }
+            }
+
+            ScheduleProgressPushLoop();
         }
 
         private long GetTotalLocalSizeFormatted()
@@ -201,12 +242,12 @@ namespace ShareCluster.WebInterface
             public Id GroupId { get; }
             public Dictionary<Id, PackageInfo> Packages { get; } = new Dictionary<Id, PackageInfo>();
 
-            public PackageGroupInfoDto CreateDto() => new PackageGroupInfoDto()
+            public PackageGroupInfoDto CreateDto(PackageDownloadManager downloadManager) => new PackageGroupInfoDto()
             {
                 GroupId = GroupId.ToString(),
                 GroupIdShort = GroupId.ToString("s"),
                 Name = GetPreferredPackage().Metadata.Name,
-                Packages = Packages.Values.OrderBy(p => p.Metadata.CreatedUtc).Select(p => p.CreateDto()).ToArray()
+                Packages = Packages.Values.OrderBy(p => p.Metadata.CreatedUtc).Select(p => p.CreateDto(downloadManager)).ToArray()
             };
 
             private PackageInfo GetPreferredPackage() =>
@@ -240,8 +281,11 @@ namespace ShareCluster.WebInterface
             public int Seeders { get; set; }
             public int Leechers { get; set; }
 
-            public PackageInfoDto CreateDto()
+            public PackageInfoDto CreateDto(PackageDownloadManager downloadManager)
             {
+                PackageDownload download;
+                if (LocalPackage == null || !downloadManager.Downloads.TryGetValue(LocalPackage.Id, out download)) download = null;
+
                 var result = new PackageInfoDto()
                 {
                     Id = Metadata.PackageId.ToString(),
@@ -257,7 +301,15 @@ namespace ShareCluster.WebInterface
                     IsDownloaded = LocalPackage?.DownloadStatus.IsDownloaded ?? false,
                     IsDownloadingPaused = !IsLocalPackage ? false : (!LocalPackage.DownloadStatus.IsDownloading && !LocalPackage.DownloadStatus.IsDownloaded),
                     SizeBytes = Metadata.PackageSize,
-                    SizeFormatted = SizeFormatter.ToString(Metadata.PackageSize)
+                    SizeFormatted = SizeFormatter.ToString(Metadata.PackageSize),
+                    Progress = download == null ? null : new EventProgressDto()
+                    {
+                        PackageId = download.PackageId.ToString(),
+                        DownloadSpeedFormatted = LocalPackage.DownloadMeasure.ValueFormatted,
+                        UploadSpeedFormatted = LocalPackage.UploadMeasure.ValueFormatted,
+                        ProgressFormatted = $"{LocalPackage.DownloadStatus.Progress * 100:0.0}%",
+                        ProgressPercent = (int)Math.Floor(LocalPackage.DownloadStatus.Progress * 100)
+                    }
                 };
 
                 return result;

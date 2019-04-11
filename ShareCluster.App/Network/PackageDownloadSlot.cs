@@ -219,9 +219,9 @@ namespace ShareCluster.Network
             {
                 using (Stream packageWriterStream = _streamsFactory.CreateControlledStreamFor(packageWriterController))
                 using (HashStreamController validateController = _streamsFactory.CreateHashStreamController(hashValidateBehavior, packageWriterStream))
-                using (Stream validateStream = _streamsFactory.CreateControlledStreamFor(validateController, LocalPackage.DownloadMeasure))
+                using (Stream validateStream = _streamsFactory.CreateControlledStreamFor(validateController))
                 using (FilterStreamController filterController = _streamsFactory.CreateFilterPartsStreamController(_segmentsLock.AcceptRanges, validateStream, closeNested: false))
-                using (Stream filterStream = _streamsFactory.CreateControlledStreamFor(filterController/* TODO measure peer download here with measure param*/))
+                using (Stream filterStream = _streamsFactory.CreateControlledStreamFor(filterController, LocalPackage.DownloadMeasure))
                 {
                     long bytesDownloaded = -1;
 

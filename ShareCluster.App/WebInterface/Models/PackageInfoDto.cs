@@ -16,5 +16,6 @@
         public bool IsDownloading { get; set; }
         public bool IsDownloaded { get; set; }
         public bool IsDownloadingPaused { get; set; }
+        public EventProgressDto Progress { get; set; }
     }
 }

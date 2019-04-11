@@ -303,7 +303,7 @@ namespace ShareCluster.Network
                 // randomly try download parts for all eligible downloads
                 while(eligibleDownloads.Any() && _downloadSlots.Count < _networkThrottling.DownloadSlots.Limit)
                 {
-                    int packageRandomIndex = ThreadSafeRandom.Next(0, Downloads.Count);
+                    int packageRandomIndex = ThreadSafeRandom.Next(0, eligibleDownloads.Count());
                     PackageDownload packageDownload = eligibleDownloads.ElementAt(packageRandomIndex);
                     eligibleDownloads.RemoveAt(packageRandomIndex);
 

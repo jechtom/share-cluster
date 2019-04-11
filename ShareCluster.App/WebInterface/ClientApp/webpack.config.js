@@ -87,7 +87,7 @@ module.exports = (env, options) => {
     ],
     externals: {
       'Config': JSON.stringify({
-         serverUrl: devServer ? "localhost:13978" : "+"
+         serverUrl: devServer ? "localhost:13979" : "+"
       })
     }
   };

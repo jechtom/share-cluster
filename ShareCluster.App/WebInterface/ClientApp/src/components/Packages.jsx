@@ -42,11 +42,11 @@ const Packages = ({
           </td>
           <td>
             <FontAwesomeIcon icon={ p.IsDownloadingPaused ? "pause" : p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloadingPaused ? "Download paused" : p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }
-            { p.IsDownloading && p.progress != null && <div class="progress">
-              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style={"width: " + p.progress.ProgressPercent + "%;"} aria-valuenow={p.progress.ProgressPercent} aria-valuemin="0" aria-valuemax="100">{p.progress.ProgressFormatted}</div>
+            { p.IsDownloading && p.Progress != null && <div class="progress">
+              <div className="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style={{width: p.Progress.ProgressPercent + "%"}} aria-valuenow={p.Progress.ProgressPercent} aria-valuemin="0" aria-valuemax="100">{p.Progress.ProgressFormatted} {p.Progress.DownloadSpeedFormatted}</div>
             </div>}
-            { p.IsDownloadingPaused && p.progress != null && <div class="progress">
-              <div class="progress-bar progress-bar-striped bg-warning" role="progressbar" style={"width: " + p.progress.ProgressPercent + "%;"} aria-valuenow={p.progress.ProgressPercent} aria-valuemin="0" aria-valuemax="100">{p.progress.ProgressFormatted}</div>
+            { p.IsDownloadingPaused && p.Progress != null && <div class="progress">
+              <div className="progress-bar progress-bar-striped bg-warning" role="progressbar" style={{width: p.Progress.ProgressPercent + "%"}} aria-valuenow={p.Progress.ProgressPercent} aria-valuemin="0" aria-valuemax="100">{p.Progress.ProgressFormatted}</div>
             </div>}
           </td>
           <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders + (p.IsDownloaded ? 1 : 0) } seeders / { p.Leechers + (p.IsDownloading ? 1 : 0) } leechers</td>

@@ -1,6 +1,6 @@
 import React from "react";
 import WebSocketHandler from '../containers/WebSocketHandler.jsx';
-import ServerStatus from '../containers/ServerStatus.jsx';
+import { ServerStatusBadge } from '../containers/ServerStatus.jsx';
 import MyId from '../containers/MyId.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import NavLink from "./NavLink.jsx";
@@ -13,9 +13,9 @@ const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="navbar-brand">
-        <FontAwesomeIcon icon="th-large" /> ShareCluster
+        <FontAwesomeIcon icon="th-large" /> ShareCluster beta-4.0
         <small className="ml-2">
-          <ServerStatus />
+          <ServerStatusBadge />
         </small>
       </div>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,12 +37,12 @@ const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
           <NavLink to={`/about`}>About</NavLink>
         </ul>
         <div className="my-2">
-          <span className="badge badge-secondary p-2">
+          {/* <span className="badge badge-secondary p-2">
             <FontAwesomeIcon icon="angle-down" /> TBD MB/s 
           </span>
           <span className="badge badge-secondary ml-3 p-2">
             <FontAwesomeIcon icon="angle-up" /> TBD MB/s
-          </span>
+          </span> */}
           <MyId className="small badge badge-info p-2 ml-3" />
         </div>
       </div>
