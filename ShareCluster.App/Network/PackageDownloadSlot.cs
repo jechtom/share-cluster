@@ -48,7 +48,7 @@ namespace ShareCluster.Network
         public PackageDownload Download { get; }
         public LocalPackage LocalPackage { get; }
 
-        public async Task StartAsync()
+        public async Task<bool> StartAsync()
         {
             try
             {
@@ -57,7 +57,7 @@ namespace ShareCluster.Network
                 {
                     // already marked for deletion
                     _logger.LogTrace("Package {0} already marked for deletion.", LocalPackage);
-                    return;
+                    return false;
                 }
 
                 _isPackageLockReleaseNeeded = true;
@@ -66,7 +66,7 @@ namespace ShareCluster.Network
                 if (!LocalPackage.DownloadStatus.IsMoreToDownload)
                 {
                     _logger.LogTrace("No more work for package {0}", LocalPackage);
-                    return;
+                    return false;
                 }
 
                 // we're ready to download
@@ -82,6 +82,8 @@ namespace ShareCluster.Network
                 // release all locks and stuff
                 OnDownloadEnd();
             }
+
+            return true;
         }
         
         private async Task DownloadAsync()

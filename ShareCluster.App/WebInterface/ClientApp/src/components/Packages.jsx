@@ -38,10 +38,10 @@ const Packages = ({
             { p.IsDownloaded && <BasicLink onClick={ (e) => package_verify(p.Id) } alt="Verify" className="m-1"><FontAwesomeIcon icon="bug" /> Verify</BasicLink>}
             { p.IsLocal && <BasicLink onClick={ (e) => package_delete(p.Id, p.Name) } alt="Delete" className="m-1"><FontAwesomeIcon icon="trash-alt" /> Delete</BasicLink>}
             { p.IsDownloading && <BasicLink onClick={ (e) => package_download_stop(p.Id) } alt="Stop" className="m-1"><FontAwesomeIcon icon="stop-circle" /> Stop</BasicLink>}
-            { !p.IsLocal && <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download" className="m-1"><FontAwesomeIcon icon="arrow-alt-circle-down" /> Download</BasicLink>}
+            { (!p.IsLocal || p.IsDownloadingPaused) && <BasicLink onClick={ (e) => package_download(p.Id) } alt="Download" className="m-1"><FontAwesomeIcon icon="arrow-alt-circle-down" /> Download</BasicLink>}
           </td>
-          <td><FontAwesomeIcon icon={ p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }</td>
-          <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders + p.IsDownloaded ? 1 : 0 } seeders / { p.Leechers + p.IsDownloading ? 1 : 0 } leechers</td>
+          <td><FontAwesomeIcon icon={ p.IsDownloadingPaused ? "pause" : p.IsDownloaded ? "check" : p.IsDownloading ? "angle-double-down" : "times" }/> { p.IsDownloadingPaused ? "Download paused" : p.IsDownloaded ? "Downloaded" : p.IsDownloading ? "Downloading..." : "Not downloaded" }</td>
+          <td><FontAwesomeIcon icon="satellite-dish"/> { p.Seeders + (p.IsDownloaded ? 1 : 0) } seeders / { p.Leechers + (p.IsDownloading ? 1 : 0) } leechers</td>
           <td>{ p.SizeFormatted }</td>
           <td>{ p.CreatedFormatted }</td>
         </tr>)}

@@ -140,7 +140,7 @@ namespace ShareCluster.WebInterface
                 }
             }
         }
-
+        
         private void PushAll()
         {
             _pushTarget.PushEventToClients(new EventPackagesChanged()
@@ -255,6 +255,7 @@ namespace ShareCluster.WebInterface
                     IsLocal = LocalPackage != null,
                     IsDownloading = LocalPackage?.DownloadStatus.IsDownloading ?? false,
                     IsDownloaded = LocalPackage?.DownloadStatus.IsDownloaded ?? false,
+                    IsDownloadingPaused = !IsLocalPackage ? false : (!LocalPackage.DownloadStatus.IsDownloading && !LocalPackage.DownloadStatus.IsDownloaded),
                     SizeBytes = Metadata.PackageSize,
                     SizeFormatted = SizeFormatter.ToString(Metadata.PackageSize)
                 };

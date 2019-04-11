@@ -15,5 +15,6 @@
         public bool IsLocal { get; set; }
         public bool IsDownloading { get; set; }
         public bool IsDownloaded { get; set; }
+        public bool IsDownloadingPaused { get; set; }
     }
 }

@@ -52,8 +52,6 @@ namespace ShareCluster.Packaging
 
             // forget
             LocalPackageRegistry.RemoveLocalPackage(package);
-
-            // TODO remove from downloading list if needed
             
             // wait for all resources all unlocked
             await waitForReleaseLocksTask;

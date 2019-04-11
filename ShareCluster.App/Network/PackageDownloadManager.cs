@@ -162,7 +162,7 @@ namespace ShareCluster.Network
                 packageDownload = packageDownload.WithIsCancelled();
 
                 // update status
-                if (packageDownload.IsLocalPackageAvailable)
+                if (packageDownload.IsLocalPackageAvailable && !packageDownload.LocalPackage.Locks.IsMarkedToDelete)
                 {
                     LocalPackage package = packageDownload.LocalPackage;
 
@@ -348,9 +348,10 @@ namespace ShareCluster.Network
             PackageDownloadSlot slot = _slotFactory.Create(this, packageDownload, peer);
             _downloadSlots.Add(slot);
 
+            bool continueDownload = true;
             try
             {
-                await slot.StartAsync();
+                continueDownload = await slot.StartAsync();
             }
             finally
             {
@@ -363,7 +364,10 @@ namespace ShareCluster.Network
                         StopDownload(slot.Download.PackageId);
                     }
 
-                    ScheduleFreeSlots();
+                    if (continueDownload)
+                    {
+                        ScheduleFreeSlots();
+                    }
                 }
             }
         }
