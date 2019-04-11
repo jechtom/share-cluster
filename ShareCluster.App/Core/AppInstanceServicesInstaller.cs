@@ -111,12 +111,7 @@ namespace ShareCluster.Core
                     {
                         { "Default", _settings.Logging.DefaultAppLogLevel },
                         { "System", _settings.Logging.DefaultSystemLogLevel },
-                        { "Microsoft", _settings.Logging.DefaultSystemLogLevel },
-                        //{ "Microsoft.AspNetCore", LogLevel.Debug },
-                        { "ShareCluster.Network.Udp", LogLevel.Debug },
-                        { "ShareCluster.Network.PeerCatalogUpdater", LogLevel.Debug },
-                        { "ShareCluster.Packaging.ValidatePackageDataStreamController", LogLevel.Debug },
-                        { "ShareCluster.Packaging.WritePackageDataStreamController", LogLevel.Debug }
+                        { "Microsoft", _settings.Logging.DefaultSystemLogLevel }
                     }
             });
             return loggerFactory;

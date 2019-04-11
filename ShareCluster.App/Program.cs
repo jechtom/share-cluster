@@ -52,7 +52,8 @@ namespace ShareCluster
                 // instance 1
                 var appSettings = new AppInstanceSettings
                 {
-                    Logging = loggingSettings
+                    Logging = loggingSettings,
+                    StartBrowserWithPortalOnStart = true
                 };
 
                 var instance = new AppInstance();
