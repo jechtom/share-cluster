@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
@@ -23,7 +24,7 @@ namespace ShareCluster.Network.Http
             _next = next;
         }
 
-        public async Task InvokeAsync(HttpContext context, IApiService apiService, HttpCommonHeadersProcessor headersProcessor, IMessageSerializer serializer)
+        public async Task InvokeAsync(HttpContext context, IApiService apiService, HttpCommonHeadersProcessor headersProcessor, IMessageSerializer serializer, ILogger<HttpApiServerMiddleware> logger)
         {
             switch (context.Request.Path)
             {
@@ -46,14 +47,14 @@ namespace ShareCluster.Network.Http
                         return;
                     }
                     // send data stream
-                    await WriteDataStreamAsync(context, headersProcessor, dataSuccess);
+                    await WriteDataStreamAsync(logger, context, headersProcessor, dataSuccess);
                     return;
             }
 
             await _next(context);
         }
 
-        private static async Task WriteDataStreamAsync(HttpContext context, HttpCommonHeadersProcessor headersProcessor, DataResponseSuccess dataSuccess)
+        private static async Task WriteDataStreamAsync(ILogger<HttpApiServerMiddleware> logger, HttpContext context, HttpCommonHeadersProcessor headersProcessor, DataResponseSuccess dataSuccess)
         {
             try
             {
@@ -63,6 +64,14 @@ namespace ShareCluster.Network.Http
 
                 context.Response.ContentType = "application/octet-stream";
                 await dataSuccess.Stream.CopyToAsync(context.Response.Body, context.RequestAborted);
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogDebug("Request cancelled");
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Error processing data request");
             }
             finally
             {

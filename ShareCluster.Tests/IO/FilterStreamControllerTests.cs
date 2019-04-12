@@ -145,6 +145,34 @@ namespace ShareCluster.Tests.IO
                 Assert.Empty(actualData);
             }
         }
+
+        [Fact]
+        public void VerifyWriteFullLength()
+        {
+            ILoggerFactory loggerFactory = DefaultServices.DefaultLoggerFactory;
+
+            using (var srcStream = new MemoryStream())
+            using (var dstStream = new MemoryStream())
+            {
+                // write
+                for (int i = 0; i < 50; i++)
+                {
+                    srcStream.WriteByte((byte)(i % 256));
+                }
+                srcStream.Position = 0;
+
+                // copy thru controlled stream
+                var controller = new FilterStreamController(new RangeLong[0], dstStream, closeNested: false);
+                using (var stream = new ControlledStream(loggerFactory, controller))
+                {
+                    srcStream.CopyTo(stream);
+                }
+
+                // check result
+                var actualData = dstStream.ToArray();
+                Assert.Empty(actualData);
+            }
+        }
     }
 
 }

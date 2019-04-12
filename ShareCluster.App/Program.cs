@@ -84,6 +84,7 @@ namespace ShareCluster
             var appSettings = new AppInstanceSettings();
             appSettings.StartBrowserWithPortalOnStart = false;
             appSettings.PackagingSettings.DataRootPath = @"c:\temp\temp" + index;
+            //appSettings.PackagingSettings.DataRootPath = @"C:\ShareCluster\data";
             appSettings.Logging = loggingSettings;
             appSettings.NetworkSettings.TcpServicePort += (ushort)(index);
             appSettings.NetworkSettings.UdpAnnouncePort += (ushort)(index == 0 ? 0 : 1);

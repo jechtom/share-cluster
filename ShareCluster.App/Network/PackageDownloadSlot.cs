@@ -297,6 +297,7 @@ namespace ShareCluster.Network
 
             _segmentsLock = new SegmentsReceivingInfo(
                 incomingParts: incomingSegments,
+                totalBytesIncoming: incomingStreamPosition,
                 acceptParts: acceptSegments.ToArray(),
                 acceptRanges: acceptRanges,
                 totalBytesAccepted: totalAcceptingSize
@@ -308,9 +309,10 @@ namespace ShareCluster.Network
         /// </summary>
         public class SegmentsReceivingInfo
         {
-            public SegmentsReceivingInfo(int[] incomingParts, int[] acceptParts, long totalBytesAccepted, IEnumerable<RangeLong> acceptRanges)
+            public SegmentsReceivingInfo(int[] incomingParts, long totalBytesIncoming, int[] acceptParts, long totalBytesAccepted, IEnumerable<RangeLong> acceptRanges)
             {
                 IncomingParts = incomingParts ?? throw new ArgumentNullException(nameof(incomingParts));
+                TotalBytesIncoming = totalBytesIncoming;
                 AcceptParts = acceptParts ?? throw new ArgumentNullException(nameof(acceptParts));
                 AcceptRanges = acceptRanges ?? throw new ArgumentNullException(nameof(acceptRanges));
                 TotalBytesAccepted = totalBytesAccepted;
@@ -320,6 +322,7 @@ namespace ShareCluster.Network
             public long TotalBytesAccepted { get; }
             public int[] AcceptParts { get; }
             public IEnumerable<RangeLong> AcceptRanges { get; }
+            public long TotalBytesIncoming { get; }
         }
     }
 }

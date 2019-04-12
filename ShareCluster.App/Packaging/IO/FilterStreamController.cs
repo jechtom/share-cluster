@@ -28,7 +28,7 @@ namespace ShareCluster.Packaging.IO
 
         public bool CanRead => false;
 
-        public long? Length => _nestedStream.Length;
+        public long? Length => null;
 
         public void OnStreamClosed()
         {
