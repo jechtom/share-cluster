@@ -7,13 +7,14 @@ import NavLink from "./NavLink.jsx";
 import { connect } from 'react-redux'
 import Routes from './Routes.jsx'
 import Tasks from './Tasks.jsx'
+import { version } from '../constants'
 
 const App = ({ peers_count, local_packages_count, remote_packages_count }) => (
   <div>
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="navbar-brand">
-        <FontAwesomeIcon icon="th-large" /> ShareCluster beta-4.0
+        <FontAwesomeIcon icon="th-large" /> ShareCluster {version}
         <small className="ml-2">
           <ServerStatusBadge />
         </small>

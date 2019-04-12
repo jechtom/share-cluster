@@ -358,6 +358,7 @@ namespace ShareCluster.Network
                 lock (_syncLock)
                 {
                     _downloadSlots.Remove(slot);
+                    peer.Status.Slots.ReleaseSlot();
 
                     if (slot.LocalPackage.DownloadStatus.IsDownloaded)
                     {
