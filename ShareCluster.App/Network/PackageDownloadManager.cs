@@ -3,6 +3,7 @@ using ShareCluster.Core;
 using ShareCluster.Network.Protocol.Http;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
+using ShareCluster.Peers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

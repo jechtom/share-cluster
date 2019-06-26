@@ -6,6 +6,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
 using ShareCluster.Packaging;
+using ShareCluster.Peers;
 using ShareCluster.Synchronization;
 using ShareCluster.WebInterface.Models;
 

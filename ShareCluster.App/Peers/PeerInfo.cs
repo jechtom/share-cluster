@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ShareCluster.Network;
 using ShareCluster.Packaging;
 using System;
 using System.Collections.Generic;
@@ -9,7 +10,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Represents immutable information known about peer endpoint.

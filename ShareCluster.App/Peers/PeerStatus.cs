@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ShareCluster.Network;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Mutable peer status that stores if peer is available or not.

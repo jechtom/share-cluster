@@ -1,5 +1,6 @@
 ﻿using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Peers;
 using System;
 using System.Collections.Generic;
 using System.IO;

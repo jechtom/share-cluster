@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Packaging;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network.Protocol.Http
 {

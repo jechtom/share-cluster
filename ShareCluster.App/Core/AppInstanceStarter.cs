@@ -6,6 +6,7 @@ using ShareCluster.Network.ChangeNotifier;
 using ShareCluster.Network.Discovery;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.PackageFolders;
+using ShareCluster.Peers;
 using ShareCluster.WebInterface;
 using System;
 using System.Collections.Generic;

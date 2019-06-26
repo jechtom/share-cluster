@@ -3,6 +3,7 @@ using ShareCluster.Network;
 using ShareCluster.Network.Protocol;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.PackageFolders;
+using ShareCluster.Peers;
 using ShareCluster.WebInterface.Models;
 using System;
 using System.Collections.Generic;

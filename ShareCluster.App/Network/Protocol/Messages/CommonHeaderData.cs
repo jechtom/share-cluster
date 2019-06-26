@@ -1,4 +1,5 @@
 ﻿using ShareCluster.Network.Protocol.Http;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network.Protocol.Messages
 {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Mutable peer communication status.
@@ -45,7 +45,7 @@ namespace ShareCluster.Network
                 {
                     TimeSpan limitTime = _clock.Time.Subtract(_removeTimeout);
 
-                    bool shouldDelete =
+                    var shouldDelete =
                         _lastUdpSuccess < limitTime
                         && _lastIncomingTcpFail < limitTime
                         && _lastIncomingTcpSuccess < limitTime
@@ -55,7 +55,7 @@ namespace ShareCluster.Network
                 }
             }
         }
-        
+
         public void ReportCommunicationFail(PeerCommunicationDirection communicationType)
         {
             lock (_syncLock)

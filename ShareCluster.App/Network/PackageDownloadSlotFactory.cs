@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Protocol.Http;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network
 {

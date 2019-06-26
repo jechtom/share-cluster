@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Mutable status of slots counter of the peer.
@@ -28,7 +28,7 @@ namespace ShareCluster.Network
         /// </summary>
         public void MarkChoked()
         {
-            lock(_syncLock)
+            lock (_syncLock)
             {
                 // choked - ignore for some time to let peer answer to others
                 _releasedSlots = 0;
@@ -40,7 +40,7 @@ namespace ShareCluster.Network
         {
             lock (_syncLock)
             {
-                if(_clock.Time >= _forgetChokingIn)
+                if (_clock.Time >= _forgetChokingIn)
                 {
                     // no choke wait - no need to store anything
                     return;
@@ -62,7 +62,7 @@ namespace ShareCluster.Network
                     return true;
                 }
 
-                if(_releasedSlots > 0)
+                if (_releasedSlots > 0)
                 {
                     // we have released some slot before choking
                     // wait ends so there can be one free

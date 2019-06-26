@@ -8,7 +8,7 @@ using ShareCluster.Network.Protocol.Http;
 using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Synchronization;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Maintains list of alive peers.
@@ -107,7 +107,7 @@ namespace ShareCluster.Network
             foreach (PeerInfo peer in _peerRegistry.Items.Values)
             {
                 // mark timeouted peers as dead
-                if(peer.Status.Communication.ShouldDeleteClient)
+                if (peer.Status.Communication.ShouldDeleteClient)
                 {
                     peer.Status.ReportDead(PeerDeadReason.Down);
                 }
@@ -134,7 +134,7 @@ namespace ShareCluster.Network
 
         public void Dispose()
         {
-            if(_housekeepingTimer != null)
+            if (_housekeepingTimer != null)
             {
                 _housekeepingTimer.Dispose();
                 _housekeepingTimer = null;

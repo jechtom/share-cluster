@@ -1,5 +1,5 @@
-﻿using ShareCluster.Network;
-using ShareCluster.Packaging;
+﻿using ShareCluster.Packaging;
+using ShareCluster.Peers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

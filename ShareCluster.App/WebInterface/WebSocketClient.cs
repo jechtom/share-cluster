@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Synchronization;
 
-namespace ShareCluster.Network.WebAdmin
+namespace ShareCluster.WebInterface
 {
     /// <summary>
     /// Describes connected web socket client and handles communication loop and queueing.
@@ -48,7 +48,7 @@ namespace ShareCluster.Network.WebAdmin
 
                 _handled = true;
             }
-            
+
             // start sending loop
             _logger.LogDebug($"Starting web socket for {context.Connection}");
             _socketManager.AddClient(this);
@@ -102,12 +102,12 @@ namespace ShareCluster.Network.WebAdmin
 
         private async Task PushLoopAsync(HttpContext context, WebSocket webSocket, CancellationToken cancellationToken)
         {
-            
+
             try
             {
                 while (webSocket.State == WebSocketState.Open)
                 {
-                    string message = Newtonsoft.Json.JsonConvert.SerializeObject(DateTime.Now.ToString());
+                    var message = Newtonsoft.Json.JsonConvert.SerializeObject(DateTime.Now.ToString());
                     await webSocket.SendAsync(Encoding.UTF8.GetBytes(message), WebSocketMessageType.Text, true, cancellationToken);
                     await Task.Delay(1000, cancellationToken);
                 }
@@ -118,7 +118,7 @@ namespace ShareCluster.Network.WebAdmin
             }
             finally
             {
-                
+
             }
         }
 

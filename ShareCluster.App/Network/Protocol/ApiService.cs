@@ -9,6 +9,7 @@ using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
 using ShareCluster.Packaging.IO;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network.Protocol
 {

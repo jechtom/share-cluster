@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using ProtoBuf;
-using ShareCluster.Network.Protocol.Messages;
 
 namespace ShareCluster.Network.Discovery.Messages
 {

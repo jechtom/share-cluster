@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Describes change in <see cref="PeerInfo"/> registration.

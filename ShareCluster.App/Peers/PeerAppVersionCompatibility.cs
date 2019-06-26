@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Defines with which versions of app is this app compatible.

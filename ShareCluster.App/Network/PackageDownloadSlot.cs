@@ -11,6 +11,7 @@ using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
 using ShareCluster.Packaging.PackageFolders;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     public interface IPeerRegistry
     {

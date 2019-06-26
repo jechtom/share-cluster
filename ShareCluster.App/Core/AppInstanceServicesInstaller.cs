@@ -14,10 +14,10 @@ using ShareCluster.Network;
 using Newtonsoft.Json;
 using ShareCluster.Network.Discovery;
 using ShareCluster.Network.Protocol;
-using ShareCluster.Network.WebAdmin;
 using ShareCluster.Network.ChangeNotifier;
 using ShareCluster.Network.Protocol.Http;
 using Microsoft.Extensions.Logging.Console;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Core
 {

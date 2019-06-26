@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using ShareCluster.Network;
+using ShareCluster.Peers;
 using ShareCluster.Synchronization;
 using ShareCluster.WebInterface.Models;
 

@@ -11,6 +11,7 @@ using System.Diagnostics;
 using ShareCluster.Packaging;
 using System.IO;
 using ShareCluster.Network.Discovery.Messages;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network.Discovery
 {

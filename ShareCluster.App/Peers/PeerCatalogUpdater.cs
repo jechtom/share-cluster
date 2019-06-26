@@ -10,7 +10,7 @@ using ShareCluster.Synchronization;
 using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Network.Protocol.Http;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Updates remote package registry with data from peers.

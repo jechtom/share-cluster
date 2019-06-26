@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using ShareCluster.Network.Protocol;
-using ShareCluster.Network.WebAdmin;
+using ShareCluster.WebInterface;
 using System;
 using System.Collections.Generic;
 using System.Net;

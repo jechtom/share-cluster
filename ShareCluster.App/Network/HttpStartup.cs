@@ -14,10 +14,10 @@ using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Extensions.FileProviders;
 using System.IO;
-using ShareCluster.Network.WebAdmin;
 using ShareCluster.Network.Protocol;
 using ShareCluster.Network.Protocol.Http;
 using Microsoft.Extensions.Hosting;
+using ShareCluster.WebInterface;
 
 namespace ShareCluster.Network
 {

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace ShareCluster.Network.WebAdmin
+namespace ShareCluster.WebInterface
 {
     public class WebSocketManager
     {

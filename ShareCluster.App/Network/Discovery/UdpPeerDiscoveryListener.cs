@@ -10,6 +10,7 @@ using System.IO;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using ShareCluster.Network.Discovery.Messages;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network.Discovery
 {

@@ -7,6 +7,7 @@ using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
 using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Network.Protocol.Http;
+using ShareCluster.Peers;
 
 namespace ShareCluster.Network
 {

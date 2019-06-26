@@ -17,7 +17,6 @@ namespace ShareCluster
     /// </summary>
     [ProtoContract]
     [JsonConverter(typeof(IdJsonConverter))]
-    [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(IdModelBinder))]
     public struct Id : IEquatable<Id>, IFormattable
     {
         [ProtoMember(1)]

@@ -1,4 +1,4 @@
-﻿namespace ShareCluster.Network
+﻿namespace ShareCluster.Peers
 {
     public interface IPeerCatalogUpdater
     {

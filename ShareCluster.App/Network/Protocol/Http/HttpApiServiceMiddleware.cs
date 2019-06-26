@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
+using ShareCluster.Peers;
 using System;
 using System.Collections.Generic;
 using System.IO;

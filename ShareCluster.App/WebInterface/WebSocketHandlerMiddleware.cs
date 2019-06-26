@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
-namespace ShareCluster.Network.WebAdmin
+namespace ShareCluster.WebInterface
 {
     public class WebSocketHandlerMiddleware
     {

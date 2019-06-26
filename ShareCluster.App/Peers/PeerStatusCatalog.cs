@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     /// <summary>
     /// Stores versions of peers catalog.

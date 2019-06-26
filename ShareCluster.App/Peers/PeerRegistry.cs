@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
-namespace ShareCluster.Network
+namespace ShareCluster.Peers
 {
     public class PeerRegistry : IPeerRegistry
     {
@@ -23,7 +23,7 @@ namespace ShareCluster.Network
 
         public PeerInfo GetOrAddPeer(PeerId peerId, Func<PeerInfo> createFunc)
         {
-            if(Items.TryGetValue(peerId, out PeerInfo result))
+            if (Items.TryGetValue(peerId, out PeerInfo result))
             {
                 return result;
             }
