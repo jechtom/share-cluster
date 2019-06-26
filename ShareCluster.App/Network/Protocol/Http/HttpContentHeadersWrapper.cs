@@ -5,9 +5,9 @@ using System.Net.Http.Headers;
 namespace ShareCluster.Network.Protocol.Http
 {
     /// <summary>
-    /// Wrapper allowing use of <see cref="IHttpHeaderReader"/> and <see cref="IHttpHeaderWriter"/> with <see cref="HttpContentHeaders"/>.
+    /// Wrapper allowing use of <see cref="IHeaderReader"/> and <see cref="IHttpHeaderWriter"/> with <see cref="HttpContentHeaders"/>.
     /// </summary>
-    internal class HttpContentHeadersWrapper : IHttpHeaderWriter, IHttpHeaderReader
+    internal class HttpContentHeadersWrapper : IHeaderWriter, IHeaderReader
     {
         private HttpContentHeaders _requestHeaders;
         private HttpResponseHeaders _responseHeaders;

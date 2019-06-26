@@ -71,7 +71,7 @@ namespace ShareCluster.Network.Protocol.Http
             _localPackageRegistry = localPackageRegistry ?? throw new ArgumentNullException(nameof(localPackageRegistry));
         }
 
-        public void AddSegmentsHeader(IHttpHeaderWriter headerWriter, IEnumerable<int> segments)
+        public void AddSegmentsHeader(IHeaderWriter headerWriter, IEnumerable<int> segments)
         {
             if (segments == null)
             {
@@ -88,7 +88,7 @@ namespace ShareCluster.Network.Protocol.Http
         }
 
 
-        public int[] ReadAndValidateSegmentsHeader(IPAddress remoteAddress, IHttpHeaderReader headerReader)
+        public int[] ReadAndValidateSegmentsHeader(IPAddress remoteAddress, IHeaderReader headerReader)
         {
             // read
             if (!headerReader.TryReadHeader(SegmentsHeaderName, out var valueStringSegments))
@@ -106,7 +106,7 @@ namespace ShareCluster.Network.Protocol.Http
             return segments;
         }
 
-        public void AddCommonHeaders(IHttpHeaderWriter headerWriter, string typeString)
+        public void AddCommonHeaders(IHeaderWriter headerWriter, string typeString)
         {
             if (headerWriter == null)
             {
@@ -125,7 +125,7 @@ namespace ShareCluster.Network.Protocol.Http
             headerWriter.WriteHeader(CatalogVersionHeaderName, _localPackageRegistry.Version.ToString());
         }
 
-        public CommonHeaderData ReadAndValidateAndProcessCommonHeaders(IPAddress remoteAddress, PeerCommunicationDirection peerCommunicationType, IHttpHeaderReader headerReader)
+        public CommonHeaderData ReadAndValidateAndProcessCommonHeaders(IPAddress remoteAddress, PeerCommunicationDirection peerCommunicationType, IHeaderReader headerReader)
         {
             // validate version
             if (!headerReader.TryReadHeader(VersionHeaderName, out var valueStringInstance))

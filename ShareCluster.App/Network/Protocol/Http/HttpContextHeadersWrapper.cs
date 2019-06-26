@@ -7,9 +7,9 @@ using Microsoft.Extensions.Primitives;
 namespace ShareCluster.Network.Protocol.Http
 {
     /// <summary>
-    /// Wrapper allowing use of <see cref="IHttpHeaderReader"/> and <see cref="IHttpHeaderWriter"/> with <see cref="HttpContext"/>.
+    /// Wrapper allowing use of <see cref="IHeaderReader"/> and <see cref="IHttpHeaderWriter"/> with <see cref="HttpContext"/>.
     /// </summary>
-    public class HttpContextHeadersWrapper : IHttpHeaderWriter, IHttpHeaderReader
+    public class HttpContextHeadersWrapper : IHeaderWriter, IHeaderReader
     {
         private readonly HttpContext _httpContext;
 

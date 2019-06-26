@@ -17,6 +17,7 @@ using System.IO;
 using ShareCluster.Network.WebAdmin;
 using ShareCluster.Network.Protocol;
 using ShareCluster.Network.Protocol.Http;
+using Microsoft.Extensions.Hosting;
 
 namespace ShareCluster.Network
 {
@@ -25,10 +26,13 @@ namespace ShareCluster.Network
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddCors();
-            services.AddMvc();
+            services.AddMvc(o =>
+            {
+                o.EnableEndpointRouting = false;
+            });
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {

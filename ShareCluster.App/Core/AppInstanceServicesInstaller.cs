@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -18,6 +17,7 @@ using ShareCluster.Network.Protocol;
 using ShareCluster.Network.WebAdmin;
 using ShareCluster.Network.ChangeNotifier;
 using ShareCluster.Network.Protocol.Http;
+using Microsoft.Extensions.Logging.Console;
 
 namespace ShareCluster.Core
 {
@@ -45,7 +45,7 @@ namespace ShareCluster.Core
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton(CreateLoggerFactory());
+            services.AddLogging(ConfigureLogging);
             services.AddSingleton(CreateDefaultMessageSerializer());
             services.AddSingleton(CreateDefaultCryptoProvider());
             services.AddSingleton(_settings.NetworkSettings);
@@ -106,18 +106,10 @@ namespace ShareCluster.Core
             }));
         }
 
-        private ILoggerFactory CreateLoggerFactory()
-        {
-            ILoggerFactory loggerFactory = new LoggerFactory().AddConsole(new ConsoleLoggerSettings()
-            {
-                Switches = new Dictionary<string, LogLevel>()
-                    {
-                        { "Default", _settings.Logging.DefaultAppLogLevel },
-                        { "System", _settings.Logging.DefaultSystemLogLevel },
-                        { "Microsoft", _settings.Logging.DefaultSystemLogLevel }
-                    }
-            });
-            return loggerFactory;
-        }
+        private void ConfigureLogging(ILoggingBuilder l) => l
+            .AddConsole()
+            .AddFilter("Default", _settings.Logging.DefaultAppLogLevel)
+            .AddFilter("System", _settings.Logging.DefaultAppLogLevel)
+            .AddFilter("Microsoft", _settings.Logging.DefaultAppLogLevel);
     }
 }
