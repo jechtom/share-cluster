@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
-using ShareCluster.Network.Http;
+using ShareCluster.Network.WebAdmin;
 using ShareCluster.Packaging;
 using ShareCluster.WebInterface.Models;
 

@@ -1,10 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using ShareCluster.Core;
-using ShareCluster.Network.Http;
-using ShareCluster.Network.Messages;
+using ShareCluster.Network.Protocol.Http;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
-using ShareCluster.Packaging.PackageFolders;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

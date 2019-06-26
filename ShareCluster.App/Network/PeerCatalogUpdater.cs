@@ -5,10 +5,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using ShareCluster.Network.Http;
-using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Synchronization;
+using ShareCluster.Network.Protocol.Messages;
+using ShareCluster.Network.Protocol.Http;
 
 namespace ShareCluster.Network
 {

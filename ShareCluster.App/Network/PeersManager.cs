@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using Microsoft.Extensions.Logging;
-using ShareCluster.Network.Http;
+using ShareCluster.Network.Discovery;
+using ShareCluster.Network.Protocol.Http;
+using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Synchronization;
 
 namespace ShareCluster.Network
@@ -18,13 +20,13 @@ namespace ShareCluster.Network
         private readonly ILogger<PeersManager> _logger;
         private readonly PeerInfoFactory _peerFactory;
         private readonly IPeerRegistry _peerRegistry;
-        private readonly Udp.UdpPeerDiscoveryListener _udpPeerDiscoveryListener;
+        private readonly UdpPeerDiscoveryListener _udpPeerDiscoveryListener;
         private readonly IPeerCatalogUpdater _peerCatalogUpdater;
         private readonly HttpCommonHeadersProcessor _commonHeadersProcessor;
         private readonly TimeSpan _housekeepingInterval = TimeSpan.FromSeconds(15);
         private Timer _housekeepingTimer;
 
-        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, Udp.UdpPeerDiscoveryListener udpPeerDiscoveryListener, IPeerCatalogUpdater peerCatalogUpdater, HttpCommonHeadersProcessor commonHeadersProcessor)
+        public PeersManager(ILogger<PeersManager> logger, PeerInfoFactory peerFactory, IPeerRegistry peerRegistry, UdpPeerDiscoveryListener udpPeerDiscoveryListener, IPeerCatalogUpdater peerCatalogUpdater, HttpCommonHeadersProcessor commonHeadersProcessor)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _peerFactory = peerFactory ?? throw new ArgumentNullException(nameof(peerFactory));
@@ -48,7 +50,7 @@ namespace ShareCluster.Network
             peer.HandlePeerCommunicationSuccess(headerData.CommunicationType);
         }
 
-        private void UdpPeerDiscoveryListener_Discovery(object sender, Udp.UdpPeerDiscoveryInfo e)
+        private void UdpPeerDiscoveryListener_Discovery(object sender, UdpPeerDiscoveryInfo e)
         {
             PeerInfo peerInfo = GetOrCreatePeerInfo(e.PeerId);
 

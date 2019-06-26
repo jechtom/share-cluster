@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ShareCluster.Network.Http;
+using ShareCluster.Network.Protocol;
 using ShareCluster.WebInterface.Models;
 using System;
 using System.Collections.Generic;

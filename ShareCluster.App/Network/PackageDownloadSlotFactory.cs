@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using ShareCluster.Network.Http;
+using ShareCluster.Network.Protocol.Http;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.IO;
 

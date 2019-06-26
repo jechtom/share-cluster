@@ -2,7 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ShareCluster.Network;
-using ShareCluster.Network.Udp;
+using ShareCluster.Network.ChangeNotifier;
+using ShareCluster.Network.Discovery;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.PackageFolders;
 using ShareCluster.WebInterface;

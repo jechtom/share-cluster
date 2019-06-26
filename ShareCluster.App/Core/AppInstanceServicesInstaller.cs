@@ -12,9 +12,12 @@ using Microsoft.Extensions.DependencyInjection;
 using ShareCluster.Packaging.PackageFolders;
 using ShareCluster.WebInterface;
 using ShareCluster.Network;
-using ShareCluster.Network.Udp;
-using ShareCluster.Network.Http;
 using Newtonsoft.Json;
+using ShareCluster.Network.Discovery;
+using ShareCluster.Network.Protocol;
+using ShareCluster.Network.WebAdmin;
+using ShareCluster.Network.ChangeNotifier;
+using ShareCluster.Network.Protocol.Http;
 
 namespace ShareCluster.Core
 {

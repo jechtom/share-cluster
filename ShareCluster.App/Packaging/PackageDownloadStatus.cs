@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using ShareCluster.Synchronization;
-using ShareCluster.Network.Messages;
 using System.Linq;
 using System.Collections.Immutable;
 

@@ -1,21 +1,10 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using ShareCluster.Network;
-using ShareCluster.Packaging;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using ShareCluster.Network.Http;
-using ShareCluster.WebInterface;
 using System.Reflection;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using ShareCluster.Packaging.IO;
-using ShareCluster.Packaging.PackageFolders;
-using ShareCluster.Network.Udp;
+using ShareCluster.Network;
 
 namespace ShareCluster.Core
 {

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Primitives;
 using System.Collections.Immutable;
 using System.Linq;
 using Newtonsoft.Json;
+using ShareCluster.Network.Protocol;
 
 namespace ShareCluster
 {
@@ -16,7 +17,7 @@ namespace ShareCluster
     /// </summary>
     [ProtoContract]
     [JsonConverter(typeof(IdJsonConverter))]
-    [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(Network.Http.IdModelBinder))]
+    [Microsoft.AspNetCore.Mvc.ModelBinder(BinderType = typeof(IdModelBinder))]
     public struct Id : IEquatable<Id>, IFormattable
     {
         [ProtoMember(1)]

@@ -3,10 +3,10 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using ShareCluster.Network.Messages;
 using ShareCluster.Packaging;
-using ShareCluster.Network.Http;
 using ShareCluster.Packaging.IO;
+using ShareCluster.Network.Protocol.Messages;
+using ShareCluster.Network.Protocol.Http;
 
 namespace ShareCluster.Network
 {

@@ -5,35 +5,34 @@ using System.Text;
 using ProtoBuf;
 using System.Net;
 using ProtoBuf.Meta;
-using ShareCluster.Network.Messages;
 
 namespace ShareCluster
 {
     public class ProtoBufMessageSerializer : MessageSerializerBase
     {
-        const PrefixStyle LengthPrefixStyle = PrefixStyle.Base128;
-        const int LengthPrefixField = 0;
+        const PrefixStyle _lengthPrefixStyle = PrefixStyle.Base128;
+        const int _lengthPrefixField = 0;
 
-        RuntimeTypeModel typeModel;
+        RuntimeTypeModel _typeModel;
 
         public ProtoBufMessageSerializer()
         {
-            typeModel = RuntimeTypeModel.Create();
+            _typeModel = RuntimeTypeModel.Create();
 
             // these types cannot be serialized - replace then with surrogate on wire
-            typeModel[typeof(IPAddress)].SetSurrogate(typeof(IPAddressSurrogate));
-            typeModel[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
-            typeModel.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
+            _typeModel[typeof(IPAddress)].SetSurrogate(typeof(IPAddressSurrogate));
+            _typeModel[typeof(IPEndPoint)].SetSurrogate(typeof(IPEndPointSurrogate));
+            _typeModel.Add(typeof(DateTimeOffset), false).SetSurrogate(typeof(DateTimeOffsetSurrogate));
         }
 
         public override void Serialize(object value, Stream stream, Type type)
         {
-            typeModel.SerializeWithLengthPrefix(stream, value, type, LengthPrefixStyle, LengthPrefixField);
+            _typeModel.SerializeWithLengthPrefix(stream, value, type, _lengthPrefixStyle, _lengthPrefixField);
         }
 
         public override object Deserialize(Stream stream, Type type)
         {
-            return typeModel.DeserializeWithLengthPrefix(stream, null, type, LengthPrefixStyle, LengthPrefixField);
+            return _typeModel.DeserializeWithLengthPrefix(stream, null, type, _lengthPrefixStyle, _lengthPrefixField);
         }
 
         public override string MimeType => "application/protobuf";

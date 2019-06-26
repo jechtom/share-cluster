@@ -1,4 +1,4 @@
-﻿using ShareCluster.Network.Messages;
+﻿using ShareCluster.Network.Protocol.Messages;
 using ShareCluster.Packaging;
 using ShareCluster.Packaging.Dto;
 using ShareCluster.Tests.Helpers;
