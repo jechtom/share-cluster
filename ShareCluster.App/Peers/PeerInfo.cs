@@ -67,7 +67,7 @@ namespace ShareCluster.Peers
         {
             switch (e)
             {
-                case PeerChokeException chokeException:
+                case PeerChokeException _:
                     Status.Slots.MarkChoked();
                     _logger.LogDebug($"Peer {PeerId} in choked state.", e);
                     break;

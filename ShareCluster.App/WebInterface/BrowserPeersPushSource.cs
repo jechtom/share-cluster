@@ -29,7 +29,7 @@ namespace ShareCluster.WebInterface
             _instanceId = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
             _throttlingTimer = new ThrottlingTimer(
                 minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(500),
-                maximumScheduleDelay: TimeSpan.FromMilliseconds(500),
+                scheduleDelay: TimeSpan.FromMilliseconds(500),
                 (c) => PushAll());
             peerRegistry.Changed += PeerRegistry_Changed;
         }

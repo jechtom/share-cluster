@@ -25,11 +25,11 @@ namespace ShareCluster.Synchronization
         /// Creates new instance of <see cref="ThrottlingTimer"/>
         /// </summary>
         /// <param name="minimumDelayBetweenExecutions">Sets minimum delay between end of last run and start of next scheduled run.</param>
-        /// <param name="maximumScheduleDelay">Sets delay to wait after scheduling to possibly group multiple scheduling requests at short time (for example some update batches etc.)</param>
-        public ThrottlingTimer(TimeSpan minimumDelayBetweenExecutions, TimeSpan maximumScheduleDelay, ThrottlingTimerCallback callback)
+        /// <param name="scheduleDelay">Sets delay to wait after scheduling to possibly group multiple scheduling requests at short time (for example some update batches etc.)</param>
+        public ThrottlingTimer(TimeSpan minimumDelayBetweenExecutions, TimeSpan scheduleDelay, ThrottlingTimerCallback callback)
         {
             MinimumDelayBetweenExecutions = minimumDelayBetweenExecutions;
-            MaximumScheduleDelay = maximumScheduleDelay;
+            ScheduleDelay = scheduleDelay;
             _callback = callback ?? throw new ArgumentNullException(nameof(callback));
             _timer = new Timer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             _time = Stopwatch.StartNew();
@@ -65,7 +65,7 @@ namespace ShareCluster.Synchronization
         }
 
         public TimeSpan MinimumDelayBetweenExecutions { get; }
-        public TimeSpan MaximumScheduleDelay { get; }
+        public TimeSpan ScheduleDelay { get; }
 
         public void Schedule()
         {
@@ -82,7 +82,7 @@ namespace ShareCluster.Synchronization
         private void ScheduleNextTimerTick()
         {
             // calculate delay until next run based on scheduled time and schedule delay
-            TimeSpan untilNextRun = _scheduledNextTime.Value + MaximumScheduleDelay - _time.Elapsed;
+            TimeSpan untilNextRun = _scheduledNextTime.Value + ScheduleDelay - _time.Elapsed;
 
             if (_lastFinishTime != null)
             {

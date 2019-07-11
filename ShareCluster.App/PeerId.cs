@@ -6,7 +6,7 @@ using System.Text;
 namespace ShareCluster
 {
     /// <summary>
-    /// Immutable identification of remote peer - instance Id and endpoint.
+    /// Immutable identification of remote peer instance - instance Id and endpoint.
     /// </summary>
     public struct PeerId : IEquatable<PeerId>
     {
@@ -19,6 +19,7 @@ namespace ShareCluster
         }
 
         public Id InstanceId { get; }
+
         public IPEndPoint EndPoint { get; }
 
         public override bool Equals(object obj) => Equals((PeerId)obj);

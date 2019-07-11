@@ -28,7 +28,7 @@ namespace ShareCluster.WebInterface
             _tasksManager = tasksManager ?? throw new ArgumentNullException(nameof(tasksManager));
             _throttlingTimer = new ThrottlingTimer(
                 minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(500),
-                maximumScheduleDelay: TimeSpan.FromMilliseconds(50),
+                scheduleDelay: TimeSpan.FromMilliseconds(50),
                 (c) => PushAll());
             _tasksManager.TasksChanged += TasksManager_Changed;
         }

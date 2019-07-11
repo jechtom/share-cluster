@@ -37,12 +37,12 @@ namespace ShareCluster.WebInterface
             _downloadManager = downloadManager ?? throw new ArgumentNullException(nameof(downloadManager));
             _throttlingTimer = new ThrottlingTimer(
                 minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(2000),
-                maximumScheduleDelay: TimeSpan.FromMilliseconds(1000),
+                scheduleDelay: TimeSpan.FromMilliseconds(1000),
                 (c) => RegenerateAndPush());
 
             _throttlingTimerProgress = new ThrottlingTimer(
                 minimumDelayBetweenExecutions: TimeSpan.FromMilliseconds(1000),
-                maximumScheduleDelay: TimeSpan.FromMilliseconds(0),
+                scheduleDelay: TimeSpan.FromMilliseconds(0),
                 (c) => ProgressPushLoop());
 
             _localPackageRegistry.VersionChanged += _localPackageRegistry_VersionChanged;

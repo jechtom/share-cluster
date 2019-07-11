@@ -17,7 +17,7 @@ namespace ShareCluster.Network.Discovery
     public class UdpPeerDiscovery : IDisposable
     {
         private readonly TimeSpan _udpAnnounceIntervalMinimum = TimeSpan.FromSeconds(5); // fastest announce interval
-        private readonly TimeSpan _udpAnnounceInterval = TimeSpan.FromMinutes(5); // when to announce if nothing has changed
+        private readonly TimeSpan _udpAnnounceInterval = TimeSpan.FromMinutes(2); // when to announce if nothing has changed
         private readonly ILocalPackageRegistryVersionProvider _localPackageRegistryVersionProvider;
         private readonly INetworkChangeNotifier _networkChangeNotifier;
         private readonly ILogger<UdpPeerDiscovery> _logger;
